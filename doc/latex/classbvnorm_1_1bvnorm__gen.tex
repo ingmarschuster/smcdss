@@ -1,0 +1,138 @@
+\hypertarget{classbvnorm_1_1bvnorm__gen}{
+\section{bvnorm::bvnorm\_\-gen Class Reference}
+\label{classbvnorm_1_1bvnorm__gen}\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}}
+}
+\subsection*{Public Member Functions}
+\begin{CompactItemize}
+\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_628377c8e017c5314b8a5ef36db8d892}{cdf}
+\begin{CompactList}\small\item\em Computes the bivariate normal cumulative distribution function, i.e. \item\end{CompactList}\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_e259683554c1efa1017f733f0824a38a}{pdf}
+\begin{CompactList}\small\item\em Computes the bivariate normal probability distribution function, i.e. \item\end{CompactList}\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_eee6362a2e4206e66e79425e4f5431d5}{lowerDW}
+\begin{CompactList}\small\item\em Computes bivariate normal probabilities; lowerDW calculates the probability that x $<$ dh and y $<$ dk using the Drezner-Wesolowsky approximation. \item\end{CompactList}\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_bd58b5d4090258a364bcb50619b24b08}{upperDW}
+\begin{CompactList}\small\item\em Computes bivariate normal probabilities; upperDW calculates the probability that x $>$ dh and y $>$ dk. \item\end{CompactList}\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_00b5b765f63ca54c859717b98744d9dc}{lowerDI}
+\begin{CompactList}\small\item\em Computes bivariate normal probabilities; lowerDW calculates the probability that x $<$ dh and y $<$ dk using the Drezner-Wesolowsky approximation. \item\end{CompactList}\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_a21b04c4ce48d3215ead047576149238}{upperDI}
+\begin{CompactList}\small\item\em Computes bivariate normal probabilities; upperDW calculates the probability that x $>$ dh and y $>$ dk. \item\end{CompactList}\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_86b9c8b6b258da3a7eb66cd91b00416b}{lowerMC}
+\begin{CompactList}\small\item\em Computes bivariate normal probabilities; lowerMC calculates the probability that x $<$ dh and y $<$ dk using a Monte Carlo approximation of n samples. \item\end{CompactList}\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_65e19caa62c397d0e2de0e4d66a57d26}{upperMC}
+\begin{CompactList}\small\item\em Computes bivariate normal probabilities; upperMC calculates the probability that x $>$ dh and y $>$ dk. \item\end{CompactList}\end{CompactItemize}
+\subsection*{Private Member Functions}
+\begin{CompactItemize}
+\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_1f85ab2898c7ce352de4eaa9b47d6817}{\_\-rvs}
+\item 
+def \hyperlink{classbvnorm_1_1bvnorm__gen_5c395f39255b5b08cc050672e0094ca5}{\_\-\_\-W}
+\begin{CompactList}\small\item\em Auxiliary function for Divgi method. \item\end{CompactList}\end{CompactItemize}
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classbvnorm_1_1bvnorm__gen_5c395f39255b5b08cc050672e0094ca5}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!\_\-\_\-W@{\_\-\_\-W}}
+\index{\_\-\_\-W@{\_\-\_\-W}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{\_\-\_\-W}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::\_\-\_\-W ( {\em R}, \/   {\em psi})\hspace{0.3cm}{\tt  \mbox{[}private\mbox{]}}}}
+\label{classbvnorm_1_1bvnorm__gen_5c395f39255b5b08cc050672e0094ca5}
+
+
+Auxiliary function for Divgi method. 
+
+\hypertarget{classbvnorm_1_1bvnorm__gen_1f85ab2898c7ce352de4eaa9b47d6817}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!\_\-rvs@{\_\-rvs}}
+\index{\_\-rvs@{\_\-rvs}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{\_\-rvs}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::\_\-rvs ( {\em self}, \/   {\em r} = {\tt 0})\hspace{0.3cm}{\tt  \mbox{[}private\mbox{]}}}}
+\label{classbvnorm_1_1bvnorm__gen_1f85ab2898c7ce352de4eaa9b47d6817}
+
+
+\hypertarget{classbvnorm_1_1bvnorm__gen_628377c8e017c5314b8a5ef36db8d892}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!cdf@{cdf}}
+\index{cdf@{cdf}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{cdf}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::cdf ( {\em self}, \/   {\em x}, \/   {\em r} = {\tt 0})}}
+\label{classbvnorm_1_1bvnorm__gen_628377c8e017c5314b8a5ef36db8d892}
+
+
+Computes the bivariate normal cumulative distribution function, i.e. 
+
+the probability that X $<$ x and Y $<$ y.
+
+The function only calls lowerDW(x, y, r). \hypertarget{classbvnorm_1_1bvnorm__gen_00b5b765f63ca54c859717b98744d9dc}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!lowerDI@{lowerDI}}
+\index{lowerDI@{lowerDI}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{lowerDI}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::lowerDI ( {\em dh}, \/   {\em dk}, \/   {\em r})}}
+\label{classbvnorm_1_1bvnorm__gen_00b5b765f63ca54c859717b98744d9dc}
+
+
+Computes bivariate normal probabilities; lowerDW calculates the probability that x $<$ dh and y $<$ dk using the Drezner-Wesolowsky approximation. 
+
+The function only calls upperDI(-dh, -dk, r). \hypertarget{classbvnorm_1_1bvnorm__gen_eee6362a2e4206e66e79425e4f5431d5}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!lowerDW@{lowerDW}}
+\index{lowerDW@{lowerDW}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{lowerDW}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::lowerDW ( {\em self}, \/   {\em dh}, \/   {\em dk}, \/   {\em r})}}
+\label{classbvnorm_1_1bvnorm__gen_eee6362a2e4206e66e79425e4f5431d5}
+
+
+Computes bivariate normal probabilities; lowerDW calculates the probability that x $<$ dh and y $<$ dk using the Drezner-Wesolowsky approximation. 
+
+The function only calls upperDW(-dh, -dk, r). \hypertarget{classbvnorm_1_1bvnorm__gen_86b9c8b6b258da3a7eb66cd91b00416b}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!lowerMC@{lowerMC}}
+\index{lowerMC@{lowerMC}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{lowerMC}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::lowerMC ( {\em self}, \/   {\em dh}, \/   {\em dk}, \/   {\em r}, \/   {\em n} = {\tt 100000})}}
+\label{classbvnorm_1_1bvnorm__gen_86b9c8b6b258da3a7eb66cd91b00416b}
+
+
+Computes bivariate normal probabilities; lowerMC calculates the probability that x $<$ dh and y $<$ dk using a Monte Carlo approximation of n samples. 
+
+The function only calls upperMC(-dh, -dk, r, n). \hypertarget{classbvnorm_1_1bvnorm__gen_e259683554c1efa1017f733f0824a38a}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!pdf@{pdf}}
+\index{pdf@{pdf}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{pdf}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::pdf ( {\em self}, \/   {\em x}, \/   {\em r} = {\tt 0})}}
+\label{classbvnorm_1_1bvnorm__gen_e259683554c1efa1017f733f0824a38a}
+
+
+Computes the bivariate normal probability distribution function, i.e. 
+
+the density at (x, y) \hypertarget{classbvnorm_1_1bvnorm__gen_a21b04c4ce48d3215ead047576149238}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!upperDI@{upperDI}}
+\index{upperDI@{upperDI}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{upperDI}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::upperDI ( {\em dh}, \/   {\em dk}, \/   {\em r})}}
+\label{classbvnorm_1_1bvnorm__gen_a21b04c4ce48d3215ead047576149238}
+
+
+Computes bivariate normal probabilities; upperDW calculates the probability that x $>$ dh and y $>$ dk. 
+
+dh 1st lower integration limit dk 2nd lower integration limit r correlation coefficient
+
+This function is based on the method described by D.R. Divgi, (1979), \char`\"{}Calculation of univariate and bivariate normal probability functions\char`\"{}, Teh Annals of Statistics, Vol.7, No.4, pp. 903-910.
+
+The function does not yet deliver the correct values for every correlation coefficient r. \hypertarget{classbvnorm_1_1bvnorm__gen_bd58b5d4090258a364bcb50619b24b08}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!upperDW@{upperDW}}
+\index{upperDW@{upperDW}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{upperDW}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::upperDW ( {\em self}, \/   {\em dh}, \/   {\em dk}, \/   {\em r})}}
+\label{classbvnorm_1_1bvnorm__gen_bd58b5d4090258a364bcb50619b24b08}
+
+
+Computes bivariate normal probabilities; upperDW calculates the probability that x $>$ dh and y $>$ dk. 
+
+dh 1st lower integration limit dk 2nd lower integration limit r correlation coefficient
+
+This function is based on the method described by Z. Drezner and G.O. Wesolowsky, (1989), \char`\"{}On the computation of the bivariate normal integral\char`\"{}, Journal of Statist. Comput. Simul. 35, pp. 101-107, with major modifications for double precision, for $|$r$|$ close to 1.
+
+The code was adapted for python from the matlab routine by Alan Genz. \hypertarget{classbvnorm_1_1bvnorm__gen_65e19caa62c397d0e2de0e4d66a57d26}{
+\index{bvnorm::bvnorm\_\-gen@{bvnorm::bvnorm\_\-gen}!upperMC@{upperMC}}
+\index{upperMC@{upperMC}!bvnorm::bvnorm_gen@{bvnorm::bvnorm\_\-gen}}
+\subsubsection[{upperMC}]{\setlength{\rightskip}{0pt plus 5cm}def bvnorm::bvnorm\_\-gen::upperMC ( {\em self}, \/   {\em dh}, \/   {\em dk}, \/   {\em r}, \/   {\em n} = {\tt 100000})}}
+\label{classbvnorm_1_1bvnorm__gen_65e19caa62c397d0e2de0e4d66a57d26}
+
+
+Computes bivariate normal probabilities; upperMC calculates the probability that x $>$ dh and y $>$ dk. 
+
+dh 1st lower integration limit dk 2nd lower integration limit r correlation coefficient n sample size (=100000)
+
+This function is a simple MC evaluation used to cross-check the approximation algorithms DW and DI. 
+
+The documentation for this class was generated from the following file:\begin{CompactItemize}
+\item 
+/mnt/eden/cschafer/Documents/smcdss/trunk/src/\hyperlink{bvnorm_8py}{bvnorm.py}\end{CompactItemize}

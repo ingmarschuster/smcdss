@@ -1,0 +1,329 @@
+\hypertarget{classsmc_1_1smc}{
+\section{smc::smc Class Reference}
+\label{classsmc_1_1smc}\index{smc::smc@{smc::smc}}
+}
+Sequential Monte Carlo class for model choice problems.  
+
+
+\subsection*{Public Member Functions}
+\begin{CompactItemize}
+\item 
+def \hyperlink{classsmc_1_1smc_32f2ee107cd254620e678aac22a45d21}{dosmc}
+\begin{CompactList}\small\item\em Construct a particle approximation to the target via sequential Monte Carlo methods. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_e7f644f3b5cb36aa99f0ebf7b4ebc3a4}{estimatePriorDistr}
+\begin{CompactList}\small\item\em Run a pilot Markov chain to estimate the prior distribution and the log level. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_f567f3fc9711a87297d72cab09fea035}{estimateProposalDistr}
+\begin{CompactList}\small\item\em Estimate the parameters of the proposal distribution from the particle system. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_cf375f96d980adede8438b3fead19938}{moveParticleSystem}
+\begin{CompactList}\small\item\em Move particles according to an MH kernel to fight depletion of the particle system. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_747f9eabdfcb52a9a2ccf6ec84bfdb83}{kernel\_\-indmh}
+\begin{CompactList}\small\item\em Metropolis Hasting kernel with independent proposal distribution estimated from the particle system. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_698a2598642ff7f48f0b6ab87b0e81cc}{updateLogWeights}
+\begin{CompactList}\small\item\em Update the log weights. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_495a950f5dc0aa66fdf5279ae8ca6242}{normalize}
+\begin{CompactList}\small\item\em Return normalized importance weights. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_95aec6accabbea27d33eb8a5a4eb7ed2}{ess}
+\begin{CompactList}\small\item\em Return effective sample size 1/(sum\_\-\{w  weights\} w$^\wedge$2) . \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_61bd1b39ab3f3dcbfe19cca533276937}{getParticleDiversity}
+\begin{CompactList}\small\item\em Return the particle diversity. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_7c417c930e9039fd1bbda56d40ceb38d}{resampleParticleSystem}
+\begin{CompactList}\small\item\em Resample the particle system. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_50453b83eb4dc3519a2be7cba5ae51c7}{logprior}
+\begin{CompactList}\small\item\em Return the prior log probability. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_7af51336a53e7096b370af78e42e9cfa}{resample\_\-python}
+\begin{CompactList}\small\item\em Compute the particle indices by residual resampling - adopted from Pierre's code. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_75f94a2618bc58ed2cc419dc36817ff9}{resample\_\-weave}
+\begin{CompactList}\small\item\em Compute the particle indices by residual resampling using scypy.weave. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_462f5030ead3c90a3d7be5419a0539b6}{plotSteps}
+\begin{CompactList}\small\item\em Plot the marginal probabilities and correlation matrix of the particle system. \item\end{CompactList}\item 
+def \hyperlink{classsmc_1_1smc_485fc39676c507c373e922a124f51748}{printParticleStructure}
+\begin{CompactList}\small\item\em Print out a summary of how many particles are n-fold in the particle system. \item\end{CompactList}\end{CompactItemize}
+\subsection*{Public Attributes}
+\begin{CompactItemize}
+\item 
+\hyperlink{classsmc_1_1smc_e3829faa0fc80c586754db6ff6be0e21}{plot}
+\item 
+\hyperlink{classsmc_1_1smc_38c24613680356068405f403b837c4c5}{verbose}
+\item 
+\hyperlink{classsmc_1_1smc_c63ef54a10ca8d071ccb44851861074d}{kappa}
+\item 
+\hyperlink{classsmc_1_1smc_30edcc21d770d259d6985d4b79c6d95d}{targetDistr}
+\item 
+\hyperlink{classsmc_1_1smc_927a6dd0b643bac0c5cadf396389b44d}{changeProposalDistr}
+\item 
+\hyperlink{classsmc_1_1smc_6162e817e2c67350cc277006bdb05b31}{rho}
+\item 
+\hyperlink{classsmc_1_1smc_44b55c368632379dd23476a13ff2c7e5}{n}
+\item 
+\hyperlink{classsmc_1_1smc_6487e2a8d1dd4e355f689c0a6ef2ddae}{ps}
+\item 
+\hyperlink{classsmc_1_1smc_0478d6b05231542beed9a2aa7c7cf1b6}{t}
+\item 
+\hyperlink{classsmc_1_1smc_21babd9a1ec1e969dd9ae3cc62c6dd1d}{loglevel}
+\item 
+\hyperlink{classsmc_1_1smc_55ec911b9b714e1103220453efe648be}{proposalDistr}
+\item 
+\hyperlink{classsmc_1_1smc_09b83207e06db24e39c512371d100485}{priorDistr}
+\item 
+\hyperlink{classsmc_1_1smc_1ee6881c16f30b39c30b365d3aeeb5f1}{pdata}
+\end{CompactItemize}
+
+
+\subsection{Detailed Description}
+Sequential Monte Carlo class for model choice problems. 
+
+\subsection{Member Function Documentation}
+\hypertarget{classsmc_1_1smc_32f2ee107cd254620e678aac22a45d21}{
+\index{smc::smc@{smc::smc}!dosmc@{dosmc}}
+\index{dosmc@{dosmc}!smc::smc@{smc::smc}}
+\subsubsection[{dosmc}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::dosmc ( {\em self}, \/   {\em targetDistr}, \/   {\em nparticles}, \/   {\em kappa}, \/   {\em verbose} = {\tt True}, \/   {\em nbridge} = {\tt None}, \/   {\em plot} = {\tt False})}}
+\label{classsmc_1_1smc_32f2ee107cd254620e678aac22a45d21}
+
+
+Construct a particle approximation to the target via sequential Monte Carlo methods. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em targetDistr}]The target distribution. \item[{\em proposalDistr}]The proposal distributions. \item[{\em nbridge}]Number of bridge steps between the prior and the target. \item[{\em nparticles}]Number of particles. \item[{\em kappa}]Prior smoothing parameter: 0 $<$= kappa $<$= 1. \item[{\em plot}]True, if the steps are to be plotted. \item[{\em verbose}]True, if reports to standard are desired. \end{description}
+\end{Desc}
+\hypertarget{classsmc_1_1smc_95aec6accabbea27d33eb8a5a4eb7ed2}{
+\index{smc::smc@{smc::smc}!ess@{ess}}
+\index{ess@{ess}!smc::smc@{smc::smc}}
+\subsubsection[{ess}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::ess ( {\em self})}}
+\label{classsmc_1_1smc_95aec6accabbea27d33eb8a5a4eb7ed2}
+
+
+Return effective sample size 1/(sum\_\-\{w  weights\} w$^\wedge$2) . 
+
+\hypertarget{classsmc_1_1smc_e7f644f3b5cb36aa99f0ebf7b4ebc3a4}{
+\index{smc::smc@{smc::smc}!estimatePriorDistr@{estimatePriorDistr}}
+\index{estimatePriorDistr@{estimatePriorDistr}!smc::smc@{smc::smc}}
+\subsubsection[{estimatePriorDistr}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::estimatePriorDistr ( {\em self}, \/   {\em steps})}}
+\label{classsmc_1_1smc_e7f644f3b5cb36aa99f0ebf7b4ebc3a4}
+
+
+Run a pilot Markov chain to estimate the prior distribution and the log level. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em steps}]Number of MCMC steps for the pilot run. \end{description}
+\end{Desc}
+\hypertarget{classsmc_1_1smc_f567f3fc9711a87297d72cab09fea035}{
+\index{smc::smc@{smc::smc}!estimateProposalDistr@{estimateProposalDistr}}
+\index{estimateProposalDistr@{estimateProposalDistr}!smc::smc@{smc::smc}}
+\subsubsection[{estimateProposalDistr}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::estimateProposalDistr ( {\em self})}}
+\label{classsmc_1_1smc_f567f3fc9711a87297d72cab09fea035}
+
+
+Estimate the parameters of the proposal distribution from the particle system. 
+
+\hypertarget{classsmc_1_1smc_61bd1b39ab3f3dcbfe19cca533276937}{
+\index{smc::smc@{smc::smc}!getParticleDiversity@{getParticleDiversity}}
+\index{getParticleDiversity@{getParticleDiversity}!smc::smc@{smc::smc}}
+\subsubsection[{getParticleDiversity}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::getParticleDiversity ( {\em self})}}
+\label{classsmc_1_1smc_61bd1b39ab3f3dcbfe19cca533276937}
+
+
+Return the particle diversity. 
+
+\hypertarget{classsmc_1_1smc_747f9eabdfcb52a9a2ccf6ec84bfdb83}{
+\index{smc::smc@{smc::smc}!kernel\_\-indmh@{kernel\_\-indmh}}
+\index{kernel\_\-indmh@{kernel\_\-indmh}!smc::smc@{smc::smc}}
+\subsubsection[{kernel\_\-indmh}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::kernel\_\-indmh ( {\em self}, \/   {\em index})}}
+\label{classsmc_1_1smc_747f9eabdfcb52a9a2ccf6ec84bfdb83}
+
+
+Metropolis Hasting kernel with independent proposal distribution estimated from the particle system. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em index}]Index of the particle to be processed by the kernel. \end{description}
+\end{Desc}
+\hypertarget{classsmc_1_1smc_50453b83eb4dc3519a2be7cba5ae51c7}{
+\index{smc::smc@{smc::smc}!logprior@{logprior}}
+\index{logprior@{logprior}!smc::smc@{smc::smc}}
+\subsubsection[{logprior}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::logprior ( {\em self}, \/   {\em x} = {\tt None})}}
+\label{classsmc_1_1smc_50453b83eb4dc3519a2be7cba5ae51c7}
+
+
+Return the prior log probability. 
+
+\begin{Desc}
+\item[Parameters:]
+\begin{description}
+\item[{\em x}]If x is an index, the function returns self.ps\mbox{[}'logprior'\mbox{]}\mbox{[}x\mbox{]} plus the log level. If x is a float, it returns x plus the log level. If x is not specified, it returns the vector self.ps\mbox{[}'logprior'\mbox{]} plus the loglevel. \end{description}
+\end{Desc}
+\hypertarget{classsmc_1_1smc_cf375f96d980adede8438b3fead19938}{
+\index{smc::smc@{smc::smc}!moveParticleSystem@{moveParticleSystem}}
+\index{moveParticleSystem@{moveParticleSystem}!smc::smc@{smc::smc}}
+\subsubsection[{moveParticleSystem}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::moveParticleSystem ( {\em self})}}
+\label{classsmc_1_1smc_cf375f96d980adede8438b3fead19938}
+
+
+Move particles according to an MH kernel to fight depletion of the particle system. 
+
+\hypertarget{classsmc_1_1smc_495a950f5dc0aa66fdf5279ae8ca6242}{
+\index{smc::smc@{smc::smc}!normalize@{normalize}}
+\index{normalize@{normalize}!smc::smc@{smc::smc}}
+\subsubsection[{normalize}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::normalize ( {\em self})}}
+\label{classsmc_1_1smc_495a950f5dc0aa66fdf5279ae8ca6242}
+
+
+Return normalized importance weights. 
+
+\hypertarget{classsmc_1_1smc_462f5030ead3c90a3d7be5419a0539b6}{
+\index{smc::smc@{smc::smc}!plotSteps@{plotSteps}}
+\index{plotSteps@{plotSteps}!smc::smc@{smc::smc}}
+\subsubsection[{plotSteps}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::plotSteps ( {\em self}, \/   {\em step})}}
+\label{classsmc_1_1smc_462f5030ead3c90a3d7be5419a0539b6}
+
+
+Plot the marginal probabilities and correlation matrix of the particle system. 
+
+\hypertarget{classsmc_1_1smc_485fc39676c507c373e922a124f51748}{
+\index{smc::smc@{smc::smc}!printParticleStructure@{printParticleStructure}}
+\index{printParticleStructure@{printParticleStructure}!smc::smc@{smc::smc}}
+\subsubsection[{printParticleStructure}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::printParticleStructure ( {\em self})}}
+\label{classsmc_1_1smc_485fc39676c507c373e922a124f51748}
+
+
+Print out a summary of how many particles are n-fold in the particle system. 
+
+\hypertarget{classsmc_1_1smc_7af51336a53e7096b370af78e42e9cfa}{
+\index{smc::smc@{smc::smc}!resample\_\-python@{resample\_\-python}}
+\index{resample\_\-python@{resample\_\-python}!smc::smc@{smc::smc}}
+\subsubsection[{resample\_\-python}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::resample\_\-python ( {\em self})}}
+\label{classsmc_1_1smc_7af51336a53e7096b370af78e42e9cfa}
+
+
+Compute the particle indices by residual resampling - adopted from Pierre's code. 
+
+\hypertarget{classsmc_1_1smc_75f94a2618bc58ed2cc419dc36817ff9}{
+\index{smc::smc@{smc::smc}!resample\_\-weave@{resample\_\-weave}}
+\index{resample\_\-weave@{resample\_\-weave}!smc::smc@{smc::smc}}
+\subsubsection[{resample\_\-weave}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::resample\_\-weave ( {\em self})}}
+\label{classsmc_1_1smc_75f94a2618bc58ed2cc419dc36817ff9}
+
+
+Compute the particle indices by residual resampling using scypy.weave. 
+
+\hypertarget{classsmc_1_1smc_7c417c930e9039fd1bbda56d40ceb38d}{
+\index{smc::smc@{smc::smc}!resampleParticleSystem@{resampleParticleSystem}}
+\index{resampleParticleSystem@{resampleParticleSystem}!smc::smc@{smc::smc}}
+\subsubsection[{resampleParticleSystem}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::resampleParticleSystem ( {\em self})}}
+\label{classsmc_1_1smc_7c417c930e9039fd1bbda56d40ceb38d}
+
+
+Resample the particle system. 
+
+\hypertarget{classsmc_1_1smc_698a2598642ff7f48f0b6ab87b0e81cc}{
+\index{smc::smc@{smc::smc}!updateLogWeights@{updateLogWeights}}
+\index{updateLogWeights@{updateLogWeights}!smc::smc@{smc::smc}}
+\subsubsection[{updateLogWeights}]{\setlength{\rightskip}{0pt plus 5cm}def smc::smc::updateLogWeights ( {\em self})}}
+\label{classsmc_1_1smc_698a2598642ff7f48f0b6ab87b0e81cc}
+
+
+Update the log weights. 
+
+Return effective sample size. 
+
+\subsection{Member Data Documentation}
+\hypertarget{classsmc_1_1smc_927a6dd0b643bac0c5cadf396389b44d}{
+\index{smc::smc@{smc::smc}!changeProposalDistr@{changeProposalDistr}}
+\index{changeProposalDistr@{changeProposalDistr}!smc::smc@{smc::smc}}
+\subsubsection[{changeProposalDistr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::changeProposalDistr}}}
+\label{classsmc_1_1smc_927a6dd0b643bac0c5cadf396389b44d}
+
+
+\hypertarget{classsmc_1_1smc_c63ef54a10ca8d071ccb44851861074d}{
+\index{smc::smc@{smc::smc}!kappa@{kappa}}
+\index{kappa@{kappa}!smc::smc@{smc::smc}}
+\subsubsection[{kappa}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::kappa}}}
+\label{classsmc_1_1smc_c63ef54a10ca8d071ccb44851861074d}
+
+
+\hypertarget{classsmc_1_1smc_21babd9a1ec1e969dd9ae3cc62c6dd1d}{
+\index{smc::smc@{smc::smc}!loglevel@{loglevel}}
+\index{loglevel@{loglevel}!smc::smc@{smc::smc}}
+\subsubsection[{loglevel}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::loglevel}}}
+\label{classsmc_1_1smc_21babd9a1ec1e969dd9ae3cc62c6dd1d}
+
+
+\hypertarget{classsmc_1_1smc_44b55c368632379dd23476a13ff2c7e5}{
+\index{smc::smc@{smc::smc}!n@{n}}
+\index{n@{n}!smc::smc@{smc::smc}}
+\subsubsection[{n}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::n}}}
+\label{classsmc_1_1smc_44b55c368632379dd23476a13ff2c7e5}
+
+
+\hypertarget{classsmc_1_1smc_1ee6881c16f30b39c30b365d3aeeb5f1}{
+\index{smc::smc@{smc::smc}!pdata@{pdata}}
+\index{pdata@{pdata}!smc::smc@{smc::smc}}
+\subsubsection[{pdata}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::pdata}}}
+\label{classsmc_1_1smc_1ee6881c16f30b39c30b365d3aeeb5f1}
+
+
+\hypertarget{classsmc_1_1smc_e3829faa0fc80c586754db6ff6be0e21}{
+\index{smc::smc@{smc::smc}!plot@{plot}}
+\index{plot@{plot}!smc::smc@{smc::smc}}
+\subsubsection[{plot}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::plot}}}
+\label{classsmc_1_1smc_e3829faa0fc80c586754db6ff6be0e21}
+
+
+\hypertarget{classsmc_1_1smc_09b83207e06db24e39c512371d100485}{
+\index{smc::smc@{smc::smc}!priorDistr@{priorDistr}}
+\index{priorDistr@{priorDistr}!smc::smc@{smc::smc}}
+\subsubsection[{priorDistr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::priorDistr}}}
+\label{classsmc_1_1smc_09b83207e06db24e39c512371d100485}
+
+
+\hypertarget{classsmc_1_1smc_55ec911b9b714e1103220453efe648be}{
+\index{smc::smc@{smc::smc}!proposalDistr@{proposalDistr}}
+\index{proposalDistr@{proposalDistr}!smc::smc@{smc::smc}}
+\subsubsection[{proposalDistr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::proposalDistr}}}
+\label{classsmc_1_1smc_55ec911b9b714e1103220453efe648be}
+
+
+\hypertarget{classsmc_1_1smc_6487e2a8d1dd4e355f689c0a6ef2ddae}{
+\index{smc::smc@{smc::smc}!ps@{ps}}
+\index{ps@{ps}!smc::smc@{smc::smc}}
+\subsubsection[{ps}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::ps}}}
+\label{classsmc_1_1smc_6487e2a8d1dd4e355f689c0a6ef2ddae}
+
+
+\hypertarget{classsmc_1_1smc_6162e817e2c67350cc277006bdb05b31}{
+\index{smc::smc@{smc::smc}!rho@{rho}}
+\index{rho@{rho}!smc::smc@{smc::smc}}
+\subsubsection[{rho}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::rho}}}
+\label{classsmc_1_1smc_6162e817e2c67350cc277006bdb05b31}
+
+
+\hypertarget{classsmc_1_1smc_0478d6b05231542beed9a2aa7c7cf1b6}{
+\index{smc::smc@{smc::smc}!t@{t}}
+\index{t@{t}!smc::smc@{smc::smc}}
+\subsubsection[{t}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::t}}}
+\label{classsmc_1_1smc_0478d6b05231542beed9a2aa7c7cf1b6}
+
+
+\hypertarget{classsmc_1_1smc_30edcc21d770d259d6985d4b79c6d95d}{
+\index{smc::smc@{smc::smc}!targetDistr@{targetDistr}}
+\index{targetDistr@{targetDistr}!smc::smc@{smc::smc}}
+\subsubsection[{targetDistr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::targetDistr}}}
+\label{classsmc_1_1smc_30edcc21d770d259d6985d4b79c6d95d}
+
+
+\hypertarget{classsmc_1_1smc_38c24613680356068405f403b837c4c5}{
+\index{smc::smc@{smc::smc}!verbose@{verbose}}
+\index{verbose@{verbose}!smc::smc@{smc::smc}}
+\subsubsection[{verbose}]{\setlength{\rightskip}{0pt plus 5cm}{\bf smc::smc::verbose}}}
+\label{classsmc_1_1smc_38c24613680356068405f403b837c4c5}
+
+
+
+
+The documentation for this class was generated from the following file:\begin{CompactItemize}
+\item 
+/mnt/eden/cschafer/Documents/smcdss/trunk/src/\hyperlink{smc_8py}{smc.py}\end{CompactItemize}

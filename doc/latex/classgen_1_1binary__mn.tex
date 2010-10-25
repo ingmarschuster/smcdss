@@ -1,0 +1,279 @@
+\hypertarget{classgen_1_1binary__mn}{
+\section{gen::binary\_\-mn Class Reference}
+\label{classgen_1_1binary__mn}\index{gen::binary\_\-mn@{gen::binary\_\-mn}}
+}
+Inheritance diagram for gen::binary\_\-mn::\begin{figure}[H]
+\begin{center}
+\leavevmode
+\includegraphics[height=2cm]{classgen_1_1binary__mn}
+\end{center}
+\end{figure}
+\subsection*{Public Member Functions}
+\begin{CompactItemize}
+\item 
+def \hyperlink{classgen_1_1binary__mn_b3ee86170c3b41948a15567440c68fac}{\_\-\_\-init\_\-\_\-}
+\begin{CompactList}\small\item\em Generates samples from the multivariate normal model. \item\end{CompactList}\item 
+def \hyperlink{classgen_1_1binary__mn_5c42384da221ad688d6e1a344606a017}{randomQ}
+\begin{CompactList}\small\item\em Generate a random matrix X with entries U\mbox{[}-1,1\mbox{]}. \item\end{CompactList}\item 
+def \hyperlink{classgen_1_1binary__mn_95f12365524907d99c52f77c36e53ba9}{independentQ}
+\begin{CompactList}\small\item\em Set Q = I. \item\end{CompactList}\item 
+def \hyperlink{classgen_1_1binary__mn_6e5ed2fe6e5b8c6540c797d4a49421bf}{scaledQ}
+\begin{CompactList}\small\item\em Rescale the locally adjusted matrix localQ to make it positive definite. \item\end{CompactList}\item 
+def \hyperlink{classgen_1_1binary__mn_98267c7b73f23c23331312345685bbee}{nearestQ}
+\begin{CompactList}\small\item\em Compute the nearest correlation matrix (Frobenius norm) for the locally adjusted matrix localQ. \item\end{CompactList}\item 
+def \hyperlink{classgen_1_1binary__mn_4d8919d948c2946f8c2f3a2467718ff9}{Q2R}
+\begin{CompactList}\small\item\em Compute the \hyperlink{classgen_1_1binary}{binary} correlation matrix R from the normal correlation matrix Q. \item\end{CompactList}\item 
+def \hyperlink{classgen_1_1binary__mn_2e6f5771808178612aefbeebe6737f18}{R2Q}
+\begin{CompactList}\small\item\em Compute the locally adjusted matrix localQ from the \hyperlink{classgen_1_1binary}{binary} correlation matrix R. \item\end{CompactList}\item 
+def \hyperlink{classgen_1_1binary__mn_698853fe63226716476aa5a4bf9df76c}{R2localQ}
+\begin{CompactList}\small\item\em Compute the locally adjusted matrix localQ from the \hyperlink{classgen_1_1binary}{binary} correlation matrix R. \item\end{CompactList}\item 
+def \hyperlink{classgen_1_1binary__mn_f8d4b9ee7e9ed2ed06c4da3b2babaadf}{r2localq}
+\begin{CompactList}\small\item\em Computes the normal correlation q necessary to generate a bivariate bernoulli samples with correlation r. \item\end{CompactList}\end{CompactItemize}
+\subsection*{Public Attributes}
+\begin{CompactItemize}
+\item 
+\hyperlink{classgen_1_1binary__mn_3a53b153bb420c5888eb0e65047bf3db}{name}
+\item 
+\hyperlink{classgen_1_1binary__mn_1df80ef0ecd8ba01ec9a6a2a460f46cc}{oldC}
+\item 
+\hyperlink{classgen_1_1binary__mn_60a38465bb9902b0fce51973efb4f65a}{oldQ}
+\item 
+\hyperlink{classgen_1_1binary__mn_bac8dcefdbdb3f0ec22628023041e779}{oldmu}
+\item 
+\hyperlink{classgen_1_1binary__mn_dc21a4441917a15c0336211938051cac}{data}
+\item 
+\hyperlink{classgen_1_1binary__mn_a3e93467420a3516765e31ecd164808f}{R}
+\item 
+\hyperlink{classgen_1_1binary__mn_eaff316a00faac4a925e5fc2a9ae8b59}{mean}
+\item 
+\hyperlink{classgen_1_1binary__mn_31f2c16e8843c761fbd4dcbd0d4237ed}{mu}
+\item 
+\hyperlink{classgen_1_1binary__mn_cb44e6b25ddd534c843734c4443c2f21}{p}
+\item 
+\hyperlink{classgen_1_1binary__mn_26e659ee26e9a63f034065231014f3a3}{Q}
+\item 
+\hyperlink{classgen_1_1binary__mn_30427a1bc1bbc9f50e67e20d763c9c1e}{C}
+\item 
+\hyperlink{classgen_1_1binary__mn_878160281d5c61d8de14db9ebc93f822}{dim}
+\end{CompactItemize}
+\subsection*{Static Public Attributes}
+\begin{CompactItemize}
+\item 
+tuple \hyperlink{classgen_1_1binary__mn_e27aacf71cc73e5a334eb14344706ddc}{r2localq} = staticmethod(\hyperlink{classgen_1_1binary__mn_e27aacf71cc73e5a334eb14344706ddc}{r2localq})
+\end{CompactItemize}
+\subsection*{Private Member Functions}
+\begin{CompactItemize}
+\item 
+def \hyperlink{classgen_1_1binary__mn_a6f0dd2bcf5dc7087ce71b982408a963}{\_\-pmf}
+\item 
+def \hyperlink{classgen_1_1binary__mn_281d5cb707dd1b6845c3aa9d63a5558e}{\_\-rvs}
+\end{CompactItemize}
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classgen_1_1binary__mn_b3ee86170c3b41948a15567440c68fac}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!\_\-\_\-init\_\-\_\-@{\_\-\_\-init\_\-\_\-}}
+\index{\_\-\_\-init\_\-\_\-@{\_\-\_\-init\_\-\_\-}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{\_\-\_\-init\_\-\_\-}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::\_\-\_\-init\_\-\_\- ( {\em self}, \/   {\em data} = {\tt None}, \/   {\em fraction\_\-mean} = {\tt 1}, \/   {\em smooth\_\-mean} = {\tt 0}, \/   {\em fraction\_\-corr} = {\tt 1}, \/   {\em smooth\_\-corr} = {\tt 0}, \/   {\em threshold\_\-randomness} = {\tt 0}, \/   {\em mu} = {\tt \char`\"{}random\char`\"{}}, \/   {\em Q} = {\tt \char`\"{}independent\char`\"{}}, \/   {\em mean} = {\tt None}, \/   {\em R} = {\tt None}, \/   {\em p} = {\tt None}, \/   {\em min\_\-p} = {\tt 0}, \/   {\em weighted} = {\tt False}, \/   {\em verbose} = {\tt False})}}
+\label{classgen_1_1binary__mn_b3ee86170c3b41948a15567440c68fac}
+
+
+Generates samples from the multivariate normal model. 
+
+data data object mu mean vector (normal) Q correlation matrix (normal) mean probability vector (\hyperlink{classgen_1_1binary}{binary}) R correlation matrix (\hyperlink{classgen_1_1binary}{binary}) p dimension
+
+a delay parameter b fraction for estimation of R c decrease correlation by R = (c$\ast$I+R)/(1+c)
+
+mu = \char`\"{}uniform\char`\"{}, \char`\"{}random\char`\"{} Q = \char`\"{}scaled\char`\"{}, \char`\"{}nearest\char`\"{}, \char`\"{}gaussian\char`\"{}, \char`\"{}independent\char`\"{}, \char`\"{}random\char`\"{} \hypertarget{classgen_1_1binary__mn_a6f0dd2bcf5dc7087ce71b982408a963}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!\_\-pmf@{\_\-pmf}}
+\index{\_\-pmf@{\_\-pmf}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{\_\-pmf}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::\_\-pmf ( {\em self}, \/   {\em gamma})\hspace{0.3cm}{\tt  \mbox{[}private\mbox{]}}}}
+\label{classgen_1_1binary__mn_a6f0dd2bcf5dc7087ce71b982408a963}
+
+
+\hypertarget{classgen_1_1binary__mn_281d5cb707dd1b6845c3aa9d63a5558e}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!\_\-rvs@{\_\-rvs}}
+\index{\_\-rvs@{\_\-rvs}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{\_\-rvs}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::\_\-rvs ( {\em self})\hspace{0.3cm}{\tt  \mbox{[}private\mbox{]}}}}
+\label{classgen_1_1binary__mn_281d5cb707dd1b6845c3aa9d63a5558e}
+
+
+\hypertarget{classgen_1_1binary__mn_95f12365524907d99c52f77c36e53ba9}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!independentQ@{independentQ}}
+\index{independentQ@{independentQ}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{independentQ}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::independentQ ( {\em self})}}
+\label{classgen_1_1binary__mn_95f12365524907d99c52f77c36e53ba9}
+
+
+Set Q = I. 
+
+\hypertarget{classgen_1_1binary__mn_98267c7b73f23c23331312345685bbee}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!nearestQ@{nearestQ}}
+\index{nearestQ@{nearestQ}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{nearestQ}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::nearestQ ( {\em self})}}
+\label{classgen_1_1binary__mn_98267c7b73f23c23331312345685bbee}
+
+
+Compute the nearest correlation matrix (Frobenius norm) for the locally adjusted matrix localQ. 
+
+The nearest correlation matrix problem is solved using the alternating projection method proposed in \char`\"{}Computing the Nearest Correlation Matrix - A problem from Finance\char`\"{} by N. Higham (2001) \hypertarget{classgen_1_1binary__mn_4d8919d948c2946f8c2f3a2467718ff9}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!Q2R@{Q2R}}
+\index{Q2R@{Q2R}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{Q2R}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::Q2R ( {\em self})}}
+\label{classgen_1_1binary__mn_4d8919d948c2946f8c2f3a2467718ff9}
+
+
+Compute the \hyperlink{classgen_1_1binary}{binary} correlation matrix R from the normal correlation matrix Q. 
+
+\hypertarget{classgen_1_1binary__mn_f8d4b9ee7e9ed2ed06c4da3b2babaadf}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!r2localq@{r2localq}}
+\index{r2localq@{r2localq}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{r2localq}]{\setlength{\rightskip}{0pt plus 5cm}def {\bf gen::binary\_\-mn::r2localq} ( {\em mu}, \/   {\em rho}, \/   {\em p} = {\tt \mbox{[}inf}, \/   {\em inf}, \/   {\em initq} = {\tt 0}, \/   {\em verbose} = {\tt False})}}
+\label{classgen_1_1binary__mn_f8d4b9ee7e9ed2ed06c4da3b2babaadf}
+
+
+Computes the normal correlation q necessary to generate a bivariate bernoulli samples with correlation r. 
+
+mu mean of normal variates r target correlation of bernoulli variates p mean of bianry variates \hypertarget{classgen_1_1binary__mn_698853fe63226716476aa5a4bf9df76c}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!R2localQ@{R2localQ}}
+\index{R2localQ@{R2localQ}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{R2localQ}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::R2localQ ( {\em self})}}
+\label{classgen_1_1binary__mn_698853fe63226716476aa5a4bf9df76c}
+
+
+Compute the locally adjusted matrix localQ from the \hyperlink{classgen_1_1binary}{binary} correlation matrix R. 
+
+\hypertarget{classgen_1_1binary__mn_2e6f5771808178612aefbeebe6737f18}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!R2Q@{R2Q}}
+\index{R2Q@{R2Q}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{R2Q}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::R2Q ( {\em self})}}
+\label{classgen_1_1binary__mn_2e6f5771808178612aefbeebe6737f18}
+
+
+Compute the locally adjusted matrix localQ from the \hyperlink{classgen_1_1binary}{binary} correlation matrix R. 
+
+\hypertarget{classgen_1_1binary__mn_5c42384da221ad688d6e1a344606a017}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!randomQ@{randomQ}}
+\index{randomQ@{randomQ}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{randomQ}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::randomQ ( {\em self})}}
+\label{classgen_1_1binary__mn_5c42384da221ad688d6e1a344606a017}
+
+
+Generate a random matrix X with entries U\mbox{[}-1,1\mbox{]}. 
+
+Set Q = X$\ast$X$^\wedge$t and normalize. \hypertarget{classgen_1_1binary__mn_6e5ed2fe6e5b8c6540c797d4a49421bf}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!scaledQ@{scaledQ}}
+\index{scaledQ@{scaledQ}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{scaledQ}]{\setlength{\rightskip}{0pt plus 5cm}def gen::binary\_\-mn::scaledQ ( {\em self})}}
+\label{classgen_1_1binary__mn_6e5ed2fe6e5b8c6540c797d4a49421bf}
+
+
+Rescale the locally adjusted matrix localQ to make it positive definite. 
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classgen_1_1binary__mn_30427a1bc1bbc9f50e67e20d763c9c1e}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!C@{C}}
+\index{C@{C}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{C}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::C}}}
+\label{classgen_1_1binary__mn_30427a1bc1bbc9f50e67e20d763c9c1e}
+
+
+\hypertarget{classgen_1_1binary__mn_dc21a4441917a15c0336211938051cac}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!data@{data}}
+\index{data@{data}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{data}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::data}}}
+\label{classgen_1_1binary__mn_dc21a4441917a15c0336211938051cac}
+
+
+
+
+Reimplemented from \hyperlink{classgen_1_1binary_156a3b3004ee18dc4472dbbb22e58441}{gen::binary}.\hypertarget{classgen_1_1binary__mn_878160281d5c61d8de14db9ebc93f822}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!dim@{dim}}
+\index{dim@{dim}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{dim}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::dim}}}
+\label{classgen_1_1binary__mn_878160281d5c61d8de14db9ebc93f822}
+
+
+
+
+Reimplemented from \hyperlink{classgen_1_1binary_37e0504e82a2e1117ed23ff2d8617274}{gen::binary}.\hypertarget{classgen_1_1binary__mn_eaff316a00faac4a925e5fc2a9ae8b59}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!mean@{mean}}
+\index{mean@{mean}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{mean}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::mean}}}
+\label{classgen_1_1binary__mn_eaff316a00faac4a925e5fc2a9ae8b59}
+
+
+
+
+Reimplemented from \hyperlink{classgen_1_1binary_a14a164be1fc67e5a014782fc29d287b}{gen::binary}.\hypertarget{classgen_1_1binary__mn_31f2c16e8843c761fbd4dcbd0d4237ed}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!mu@{mu}}
+\index{mu@{mu}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{mu}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::mu}}}
+\label{classgen_1_1binary__mn_31f2c16e8843c761fbd4dcbd0d4237ed}
+
+
+\hypertarget{classgen_1_1binary__mn_3a53b153bb420c5888eb0e65047bf3db}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!name@{name}}
+\index{name@{name}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{name}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::name}}}
+\label{classgen_1_1binary__mn_3a53b153bb420c5888eb0e65047bf3db}
+
+
+\hypertarget{classgen_1_1binary__mn_1df80ef0ecd8ba01ec9a6a2a460f46cc}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!oldC@{oldC}}
+\index{oldC@{oldC}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{oldC}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::oldC}}}
+\label{classgen_1_1binary__mn_1df80ef0ecd8ba01ec9a6a2a460f46cc}
+
+
+\hypertarget{classgen_1_1binary__mn_bac8dcefdbdb3f0ec22628023041e779}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!oldmu@{oldmu}}
+\index{oldmu@{oldmu}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{oldmu}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::oldmu}}}
+\label{classgen_1_1binary__mn_bac8dcefdbdb3f0ec22628023041e779}
+
+
+\hypertarget{classgen_1_1binary__mn_60a38465bb9902b0fce51973efb4f65a}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!oldQ@{oldQ}}
+\index{oldQ@{oldQ}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{oldQ}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::oldQ}}}
+\label{classgen_1_1binary__mn_60a38465bb9902b0fce51973efb4f65a}
+
+
+\hypertarget{classgen_1_1binary__mn_cb44e6b25ddd534c843734c4443c2f21}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!p@{p}}
+\index{p@{p}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{p}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::p}}}
+\label{classgen_1_1binary__mn_cb44e6b25ddd534c843734c4443c2f21}
+
+
+
+
+Reimplemented from \hyperlink{classgen_1_1binary_838502808c65c543b3cb558435047f92}{gen::binary}.\hypertarget{classgen_1_1binary__mn_26e659ee26e9a63f034065231014f3a3}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!Q@{Q}}
+\index{Q@{Q}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{Q}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::Q}}}
+\label{classgen_1_1binary__mn_26e659ee26e9a63f034065231014f3a3}
+
+
+\hypertarget{classgen_1_1binary__mn_a3e93467420a3516765e31ecd164808f}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!R@{R}}
+\index{R@{R}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{R}]{\setlength{\rightskip}{0pt plus 5cm}{\bf gen::binary\_\-mn::R}}}
+\label{classgen_1_1binary__mn_a3e93467420a3516765e31ecd164808f}
+
+
+\hypertarget{classgen_1_1binary__mn_e27aacf71cc73e5a334eb14344706ddc}{
+\index{gen::binary\_\-mn@{gen::binary\_\-mn}!r2localq@{r2localq}}
+\index{r2localq@{r2localq}!gen::binary_mn@{gen::binary\_\-mn}}
+\subsubsection[{r2localq}]{\setlength{\rightskip}{0pt plus 5cm}tuple {\bf gen::binary\_\-mn::r2localq} = staticmethod({\bf r2localq})\hspace{0.3cm}{\tt  \mbox{[}static\mbox{]}}}}
+\label{classgen_1_1binary__mn_e27aacf71cc73e5a334eb14344706ddc}
+
+
+
+
+The documentation for this class was generated from the following file:\begin{CompactItemize}
+\item 
+/mnt/eden/cschafer/Documents/smcdss/trunk/src/\hyperlink{gen_8py}{gen.py}\end{CompactItemize}
