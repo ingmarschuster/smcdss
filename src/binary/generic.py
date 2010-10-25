@@ -4,16 +4,15 @@ Created on 19 oct. 2010
 @author: cschafer
 '''
 
-from ..auxiliary import decbin
 
-class binary(rv_discrete):
+
+class genericBinary(rv_discrete):
     '''
     The generator interface to be implemented by generators.
     '''
-    def __init__(self, verbose=False):
-        self.verbose=False
-        rv_discrete.__init__(self, name='binary')
-            
+    def __init__(self, name):
+        rv_discrete.__init__(self, name=name)
+        
     def pmf(self, gamma):
         '''
         Evaluate probability mass function.
@@ -31,4 +30,11 @@ class binary(rv_discrete):
         Generate a random variable.
         '''       
         return self._rvs()
+    
+    def rvslpmf(self):
+        '''
+        Generates a random variable and evaluates the unnormalized log-likelihood.
+        '''       
+        return self._rvslpmf()
+    
         
