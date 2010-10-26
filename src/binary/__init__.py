@@ -1,2 +1,2 @@
-from product import *
-from normal import *
+from product_model import *
+from hnormal_model import *

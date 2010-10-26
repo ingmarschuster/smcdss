@@ -5,5 +5,5 @@
 import binary
 from numpy import zeros, array
 
-x=binary.rnormal(4)
-x.autotest(1000)
+x=binary.product_binary.random(5)
+print x.rvslpmf()

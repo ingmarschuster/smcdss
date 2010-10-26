@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <html><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
-<title>AdaptiveMonteCarloonmultivariatebinaryspaces: Class Members - Functions</title>
+<title>smcdss: Class Members - Functions</title>
 <link href="tabs.css" rel="stylesheet" type="text/css">
 <link href="doxygen.css" rel="stylesheet" type="text/css">
 </head><body>
@@ -62,12 +62,14 @@
 , <a class="el" href="classgen_1_1binary__ind.html#d0e8fc3004c8d408ee9fa3b6839aa42e">gen::binary_ind</a>
 , <a class="el" href="classgen_1_1binary__log.html#46e453f2e09cc74cba4d43a8622db45f">gen::binary_log</a>
 , <a class="el" href="classsampling_1_1sampler.html#1f14a8e3d0700779dcdac79def1c33d3">sampling::sampler</a>
+, <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#270728de2e3c2f407f9356e0fb019bca">binary::hnormal_model::hnormal_binary</a>
 , <a class="el" href="classgen_1_1binary__post__old.html#17a34493ef0f01b2fdc3fb1f0cdf7c27">gen::binary_post_old</a>
+, <a class="el" href="classbinary_1_1product__model_1_1product__binary.html#e045c3b870e5ef75eb827e5533a6afbb">binary::product_model::product_binary</a>
 , <a class="el" href="classgen_1_1binary__mn.html#b3ee86170c3b41948a15567440c68fac">gen::binary_mn</a>
 , <a class="el" href="classgen_1_1binary__post.html#7069c5816dfa311016a8ea94494ae99f">gen::binary_post</a>
 , <a class="el" href="classsampling_1_1data.html#c53c5f40743a4e9972bbea4814133163">sampling::data</a>
 <li>__W()
-: <a class="el" href="classbvnorm_1_1bvnorm__gen.html#5c395f39255b5b08cc050672e0094ca5">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#0f4d4184285ccf841ee6d05ff20e79aa">binary::bvnorm::_bvnorm</a>
 <li>_expand_01()
 : <a class="el" href="classgen_1_1binary.html#621bfe54add415f43a7b206b4eef4913">gen::binary</a>
 <li>_expand_logprob()
@@ -81,18 +83,17 @@
 <li>_lpmf_weave()
 : <a class="el" href="classgen_1_1binary__log.html#35aba5cb13973e4a87d5e1eb14cdb8c4">gen::binary_log</a>
 <li>_pmf()
-: <a class="el" href="classgen_1_1binary__post__old.html#8c38416d6a1e4cc27cc2c63f86328fb7">gen::binary_post_old</a>
-, <a class="el" href="classgen_1_1binary__ind.html#a3f4f58e3d2b548ba7a6c23bde46f76a">gen::binary_ind</a>
-, <a class="el" href="classgen_1_1binary__mn.html#a6f0dd2bcf5dc7087ce71b982408a963">gen::binary_mn</a>
+: <a class="el" href="classgen_1_1binary__ind.html#a3f4f58e3d2b548ba7a6c23bde46f76a">gen::binary_ind</a>
 , <a class="el" href="classgen_1_1binary__log.html#9cc5e523c3d8456841c5c6354c0836c9">gen::binary_log</a>
+, <a class="el" href="classgen_1_1binary__post__old.html#8c38416d6a1e4cc27cc2c63f86328fb7">gen::binary_post_old</a>
 , <a class="el" href="classgen_1_1binary__post.html#a599045ffd56b46eced7ebae979781ff">gen::binary_post</a>
+, <a class="el" href="classgen_1_1binary__mn.html#a6f0dd2bcf5dc7087ce71b982408a963">gen::binary_mn</a>
 <li>_rvs()
-: <a class="el" href="classgen_1_1binary__post.html#bc265fbdb0840423716d8a4904469ac8">gen::binary_post</a>
-, <a class="el" href="classgen_1_1binary__ind.html#dad1028ef36ee6b4263db54395168586">gen::binary_ind</a>
-, <a class="el" href="classgen_1_1binary__mn.html#281d5cb707dd1b6845c3aa9d63a5558e">gen::binary_mn</a>
-, <a class="el" href="classgen_1_1binary__log.html#49360ebc4d0614736e8592b67b57f3d9">gen::binary_log</a>
-, <a class="el" href="classbvnorm_1_1bvnorm__gen.html#1f85ab2898c7ce352de4eaa9b47d6817">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classgen_1_1binary__log.html#49360ebc4d0614736e8592b67b57f3d9">gen::binary_log</a>
+, <a class="el" href="classgen_1_1binary__post.html#bc265fbdb0840423716d8a4904469ac8">gen::binary_post</a>
 , <a class="el" href="classgen_1_1binary__post__old.html#8a67ce87638a15897ced3053c461e881">gen::binary_post_old</a>
+, <a class="el" href="classgen_1_1binary__mn.html#281d5cb707dd1b6845c3aa9d63a5558e">gen::binary_mn</a>
+, <a class="el" href="classgen_1_1binary__ind.html#dad1028ef36ee6b4263db54395168586">gen::binary_ind</a>
 <li>_rvs_python()
 : <a class="el" href="classgen_1_1binary__log.html#4278341c96c57b9029279a171df333ba">gen::binary_log</a>
 <li>_rvs_weave()
@@ -101,15 +102,26 @@
 <h3><a class="anchor" name="index_a">- a -</a></h3><ul>
 <li>append()
 : <a class="el" href="classsampling_1_1data.html#9276fda7f43c819a4bc405dafba8cb90">sampling::data</a>
+<li>autotest()
+: <a class="el" href="classbinary_1_1product__model_1_1product__binary.html#c42001e60687a9f78b6f8cb2f8b66e9e">binary::product_model::product_binary</a>
+, <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#f6904867efe49e76e4d9b293917d029c">binary::hnormal_model::hnormal_binary</a>
 </ul>
 <h3><a class="anchor" name="index_b">- b -</a></h3><ul>
 <li>bic()
 : <a class="el" href="classgen_1_1binary__post__old.html#9ff0bcd17b79b57d04fa262c34074ac7">gen::binary_post_old</a>
 , <a class="el" href="classgen_1_1binary__post.html#f34f5b3a16fe5f6b90b61feac26a759c">gen::binary_post</a>
+<li>bisectional()
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#619291294b11ca3cdd761589b69c60ef">binary::hnormal_model::hnormal_binary</a>
 </ul>
 <h3><a class="anchor" name="index_c">- c -</a></h3><ul>
+<li>calcLocalQ()
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#f0747ef34b03bc42b0cd8eacbd0478e0">binary::hnormal_model::hnormal_binary</a>
+<li>calcLocalq()
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#9dca3fcef71ee7b8a709bee81b83774c">binary::hnormal_model::hnormal_binary</a>
+<li>calcR()
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#2e9e44c6a71cfdb5237e738b57a03c4d">binary::hnormal_model::hnormal_binary</a>
 <li>cdf()
-: <a class="el" href="classbvnorm_1_1bvnorm__gen.html#628377c8e017c5314b8a5ef36db8d892">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#589d37ac6e039e42e797df9dd178742d">binary::bvnorm::_bvnorm</a>
 <li>clear()
 : <a class="el" href="classsampling_1_1data.html#c5d34a6d4c38963e9f61fca1fdfb214f">sampling::data</a>
 <li>copy()
@@ -122,6 +134,8 @@
 <h3><a class="anchor" name="index_d">- d -</a></h3><ul>
 <li>data()
 : <a class="el" href="classsampling_1_1data.html#6b0070f25fb05379d9ab4847e6d7d7ca">sampling::data</a>
+<li>decomposeQ()
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#325dbc6871c5079833abc6df60cfdd8b">binary::hnormal_model::hnormal_binary</a>
 <li>dim()
 : <a class="el" href="classsampling_1_1data.html#91e88ff11c431b763c1b073fc10ef9cc">sampling::data</a>
 <li>domcmc()
@@ -165,16 +179,18 @@
 <li>logprior()
 : <a class="el" href="classsmc_1_1smc.html#50453b83eb4dc3519a2be7cba5ae51c7">smc::smc</a>
 <li>lowerDI()
-: <a class="el" href="classbvnorm_1_1bvnorm__gen.html#00b5b765f63ca54c859717b98744d9dc">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#115f84a8904bd25cb6298fd16770224b">binary::bvnorm::_bvnorm</a>
 <li>lowerDW()
-: <a class="el" href="classbvnorm_1_1bvnorm__gen.html#eee6362a2e4206e66e79425e4f5431d5">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#40819ccb0e06f21690b0c672d53f52e6">binary::bvnorm::_bvnorm</a>
 <li>lowerMC()
-: <a class="el" href="classbvnorm_1_1bvnorm__gen.html#86b9c8b6b258da3a7eb66cd91b00416b">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#663e9e7b6afc24a38bb820a7d3cabf46">binary::bvnorm::_bvnorm</a>
 <li>lpmf()
-: <a class="el" href="classgen_1_1binary.html#0377b3ffdd44806d72453d0b8ead1758">gen::binary</a>
-, <a class="el" href="classgen_1_1binary__post.html#2ad20ce2b2b31381d879c8f83559f771">gen::binary_post</a>
-, <a class="el" href="classgen_1_1binary__post__old.html#4a2b39c9d4d59a01f64f0f593f5034c3">gen::binary_post_old</a>
+: <a class="el" href="classgen_1_1binary__post__old.html#4a2b39c9d4d59a01f64f0f593f5034c3">gen::binary_post_old</a>
 , <a class="el" href="classgen_1_1binary__log.html#aa047299f937b4c89ae2e1fa6b9e2eac">gen::binary_log</a>
+, <a class="el" href="classgen_1_1binary.html#0377b3ffdd44806d72453d0b8ead1758">gen::binary</a>
+, <a class="el" href="classbinary_1_1product__model_1_1product__binary.html#f693212bda70d0faabf68c7286a53295">binary::product_model::product_binary</a>
+, <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#561f83794b6b4887a04cf25b719e9ba9">binary::hnormal_model::hnormal_binary</a>
+, <a class="el" href="classgen_1_1binary__post.html#2ad20ce2b2b31381d879c8f83559f771">gen::binary_post</a>
 </ul>
 <h3><a class="anchor" name="index_m">- m -</a></h3><ul>
 <li>mean()
@@ -185,19 +201,24 @@
 <h3><a class="anchor" name="index_n">- n -</a></h3><ul>
 <li>nearestQ()
 : <a class="el" href="classgen_1_1binary__mn.html#98267c7b73f23c23331312345685bbee">gen::binary_mn</a>
+, <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#26d4d0e83e5e4e77df7a9c94c69dc38b">binary::hnormal_model::hnormal_binary</a>
+<li>newtonraphson()
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#fa4302963ca9181aa59ce4c64bbbf2a3">binary::hnormal_model::hnormal_binary</a>
 <li>normalize()
 : <a class="el" href="classsmc_1_1smc.html#495a950f5dc0aa66fdf5279ae8ca6242">smc::smc</a>
 </ul>
 <h3><a class="anchor" name="index_p">- p -</a></h3><ul>
 <li>pdf()
-: <a class="el" href="classbvnorm_1_1bvnorm__gen.html#e259683554c1efa1017f733f0824a38a">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#cf55bb9c0498d4459f6b31981312ea87">binary::bvnorm::_bvnorm</a>
 <li>plot()
 : <a class="el" href="classgen_1_1binary.html#07a67826e434eeb49aaef326d2e41805">gen::binary</a>
 <li>plotSteps()
 : <a class="el" href="classsmc_1_1smc.html#462f5030ead3c90a3d7be5419a0539b6">smc::smc</a>
 , <a class="el" href="classmcmc_1_1mcmc.html#61ddda03459f328c4190dd15041909a9">mcmc::mcmc</a>
 <li>pmf()
-: <a class="el" href="classgen_1_1binary.html#2a0d104e1d99419fa3c5e7bf5db96e9e">gen::binary</a>
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#5a582c520bb1dd89fa16afd127830402">binary::hnormal_model::hnormal_binary</a>
+, <a class="el" href="classgen_1_1binary.html#2a0d104e1d99419fa3c5e7bf5db96e9e">gen::binary</a>
+, <a class="el" href="classbinary_1_1product__model_1_1product__binary.html#625270950db7ed66c9e96d4bc1e5f3e9">binary::product_model::product_binary</a>
 <li>printMarginalProbs()
 : <a class="el" href="classmcmc_1_1mcmc.html#92084a28766545a03bc2b45c0e858a99">mcmc::mcmc</a>
 <li>printParticleStructure()
@@ -214,6 +235,9 @@
 : <a class="el" href="classgen_1_1binary__mn.html#f8d4b9ee7e9ed2ed06c4da3b2babaadf">gen::binary_mn</a>
 <li>R2Q()
 : <a class="el" href="classgen_1_1binary__mn.html#2e6f5771808178612aefbeebe6737f18">gen::binary_mn</a>
+<li>random()
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#915c91c6dc6317ca06b3cc8a3ccf9c83">binary::hnormal_model::hnormal_binary</a>
+, <a class="el" href="classbinary_1_1product__model_1_1product__binary.html#84b8657d6eff0f1ef9df5e4f48739d11">binary::product_model::product_binary</a>
 <li>randomQ()
 : <a class="el" href="classgen_1_1binary__mn.html#5c42384da221ad688d6e1a344606a017">gen::binary_mn</a>
 <li>resample_python()
@@ -226,6 +250,12 @@
 : <a class="el" href="classgen_1_1binary.html#8fd0271b697cfd36fc72a5e3dadbd908">gen::binary</a>
 <li>rvs()
 : <a class="el" href="classgen_1_1binary.html#02fc0fab1e701e3f02f564eb7577e0d2">gen::binary</a>
+, <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#7d687d6d96b58c804abaa159383e9bb3">binary::hnormal_model::hnormal_binary</a>
+, <a class="el" href="classbinary_1_1product__model_1_1product__binary.html#80a24f419c75243b4b6cb3803f23abc0">binary::product_model::product_binary</a>
+, <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#dca3f391e46b834133591c76e4a16f18">binary::bvnorm::_bvnorm</a>
+<li>rvslpmf()
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#b092106034b433e721a4fb7801ba6fa7">binary::hnormal_model::hnormal_binary</a>
+, <a class="el" href="classbinary_1_1product__model_1_1product__binary.html#cbfb04b5156e0530fda71a8e8aba9e78">binary::product_model::product_binary</a>
 <li>rvsplus()
 : <a class="el" href="classgen_1_1binary__ind.html#12b4f2b47589e167adfd9a96b6b522e3">gen::binary_ind</a>
 , <a class="el" href="classgen_1_1binary__log.html#653557415fb49db33e342720fc024c21">gen::binary_log</a>
@@ -235,6 +265,8 @@
 : <a class="el" href="classsampling_1_1sampler.html#a3908666fdfd325eb00c171a267fe650">sampling::sampler</a>
 <li>scaledQ()
 : <a class="el" href="classgen_1_1binary__mn.html#6e5ed2fe6e5b8c6540c797d4a49421bf">gen::binary_mn</a>
+<li>scaleQ()
+: <a class="el" href="classbinary_1_1hnormal__model_1_1hnormal__binary.html#78ed7e5d92cd6229a7ad6af95fc5df0e">binary::hnormal_model::hnormal_binary</a>
 <li>setweights()
 : <a class="el" href="classsampling_1_1data.html#ffd8218cbffd08dd6a5943e50dce29fb">sampling::data</a>
 <li>shrink()
@@ -251,21 +283,23 @@
 : <a class="el" href="classsampling_1_1data.html#ca31acb9a3f5ac73c6b578560f1d85c3">sampling::data</a>
 </ul>
 <h3><a class="anchor" name="index_u">- u -</a></h3><ul>
+<li>uniform()
+: <a class="el" href="classbinary_1_1product__model_1_1product__binary.html#2cc19869d97e130258cb90f09e986c3e">binary::product_model::product_binary</a>
 <li>updateLogWeights()
 : <a class="el" href="classsmc_1_1smc.html#698a2598642ff7f48f0b6ab87b0e81cc">smc::smc</a>
 <li>upperDI()
-: <a class="el" href="classbvnorm_1_1bvnorm__gen.html#a21b04c4ce48d3215ead047576149238">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#79058dd47765e8efe02c2118f64d03c8">binary::bvnorm::_bvnorm</a>
 <li>upperDW()
-: <a class="el" href="classbvnorm_1_1bvnorm__gen.html#bd58b5d4090258a364bcb50619b24b08">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#526c7d239eaa9ab3a75e18ff3393845c">binary::bvnorm::_bvnorm</a>
 <li>upperMC()
-: <a class="el" href="classbvnorm_1_1bvnorm__gen.html#65e19caa62c397d0e2de0e4d66a57d26">bvnorm::bvnorm_gen</a>
+: <a class="el" href="classbinary_1_1bvnorm_1_1__bvnorm.html#72c96a101dbdcee525de96d3159550a4">binary::bvnorm::_bvnorm</a>
 </ul>
 <h3><a class="anchor" name="index_w">- w -</a></h3><ul>
 <li>weights()
 : <a class="el" href="classsampling_1_1data.html#e59799438bbe2136d082d67e95a84afd">sampling::data</a>
 </ul>
 </div>
-<hr size="1"><address style="text-align: right;"><small>Generated on Mon Oct 25 15:54:52 2010 for AdaptiveMonteCarloonmultivariatebinaryspaces by&nbsp;
+<hr size="1"><address style="text-align: right;"><small>Generated on Tue Oct 26 18:23:28 2010 for smcdss by&nbsp;
 <a href="http://www.doxygen.org/index.html">
 <img src="doxygen.png" alt="doxygen" align="middle" border="0"></a> 1.5.8 </small></address>
 </body>

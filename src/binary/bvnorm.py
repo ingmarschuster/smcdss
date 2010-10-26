@@ -7,7 +7,7 @@ Created on 28 oct. 2009
 from scipy.stats import norm, rv_continuous
 from numpy import sqrt, random, exp, log, zeros, cos, sin, arcsin, arccos, arctan, pi
 
-class bvnorm_gen(rv_continuous):
+class _bvnorm(rv_continuous):
     
     def cdf(self, x, r=0):
         '''
@@ -24,7 +24,7 @@ class bvnorm_gen(rv_continuous):
         z = x[0] * x[0] - 2 * r * x[0] * x[1] + x[1] * x[1]
         return exp(-z / (2 * (1 - r * r))) / (2 * pi * sqrt(1 - r * r))
     
-    def _rvs(self, r=0):
+    def rvs(self, r=0):
         v = random.normal(0, 1)
         return r * v + sqrt(1 - r * r) * random.normal(0, 1)
     
@@ -195,7 +195,8 @@ class bvnorm_gen(rv_continuous):
             if v1 > dh and v2 > dk:p += 1
         return p / float(n)
     
-bvnorm = bvnorm_gen(name='bvnorm', longname='A bivariate normal', shapes='r', extradoc="""
+bvnorm = _bvnorm(name='bvnorm', longname='A bivariate normal', shapes='r', extradoc=\
+"""
 
 Bivariate normal distribution with correlation r.
 
