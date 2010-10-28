@@ -16,13 +16,17 @@ class data(object):
             @param X data
             @param w weights  
         '''
-        
+
         ## data
         self.__X = list(X)
         ## weights
         self.__w = list(w)
         ## index set
         self.__order = None
+
+    def __str__(self):
+        return format(self.getMean(weight=True), 'mean') + '\n' + \
+               format(self.getCor(weight=True), 'correlation')
 
     def getData(self):
         '''
@@ -230,7 +234,15 @@ class data(object):
             @param index column index set 
         '''
         self.__X = self.X[:, index]
-        if not self.__w == None: self.__w = self.w[:, index]
+
+    def getSubData(self, index):
+        '''
+            Returns a shrinked version of the data class.
+            @param index column index set 
+        '''
+        data = self.copy()
+        data.shrink(index)
+        return data
 
     def copy(self):
         '''
@@ -277,7 +289,6 @@ class data(object):
         data = load(open(filename))
         self.__init__(data.X, data.w)
 
-
     X = property(fget=getData, fset=setData, doc="data")
     w = property(fget=getWeights, fset=setWeights, doc="weights")
     mean = property(fget=getMean, doc="mean")
@@ -297,7 +308,7 @@ def calcMean(X, w=None):
         @return mean
     '''
     if w == None:
-        return X.sum(axis=0) / float(len(X))
+        return X.sum(axis=0) / float(X.shape[0])
     else:
         return (w[:, newaxis] * X).sum(axis=0)
 
@@ -309,7 +320,7 @@ def calcCov(X, w=None):
         @return covariance matrix
     '''
     if w == None:
-        n = float(len(X))
+        n = float(X.shape[0])
         mean = calcMean(X)[newaxis, :]
         return (dot(X.T, X) - n * dot(mean.T, mean)) / float(n - 1)
     else:
@@ -323,10 +334,13 @@ def calcCor(X, w=None):
         @param w positive weights
         @return correlation matrix
     '''
-    d = len(X[0])
+    d = X.shape[1]
     cov = calcCov(X, w) + exp(-10) * eye(d)
     var = cov.diagonal()[newaxis, :]
     return cov / sqrt(dot(var.T, var))
+
+def calcNorm(v, p=2.0):
+    return pow(pow(abs(v), p).sum(axis=0), 1.0 / p)
 
 def format(X, name=''):
     '''
@@ -355,12 +369,19 @@ def format_matrix(M, name=''):
     if not name == '': name = name + ' =\n'
     return name + ''.join([format_vector(x) for x in M])
 
-def bin2dec(b):
+def bin2str(bin):
+    '''
+        Converts a boolean array to a string representation.
+        @param bin boolean array 
+    '''
+    return ''.join([str(i) for i in array(bin, dtype=int)])
+
+def bin2dec(bin):
     '''
         Converts a boolean array into an integer.
-        @param b boolean array 
+        @param bin boolean array 
     '''
-    return long(bin2str(b), 2)
+    return long(bin2str(bin), 2)
 
 def dec2bin(n, d=0):
     '''
@@ -368,11 +389,11 @@ def dec2bin(n, d=0):
         @param n integer
         @param d dimension of boolean vector
     '''
-    b = []
+    bin = []
     while n > 0:
-        if n % 2: b.append(True)
-        else: b.append(False)
+        if n % 2: bin.append(True)
+        else: bin.append(False)
         n = n >> 1
-    while len(b) < d: b.append(False)
-    b.reverse()
-    return array(b)
+    while len(bin) < d: bin.append(False)
+    bin.reverse()
+    return array(bin)

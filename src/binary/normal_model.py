@@ -3,7 +3,7 @@
 '''
 
 from time import clock
-from binary import product_binary
+from binary import productBinary
 from auxpy.data import *
 from numpy import *
 from scipy.linalg import cholesky, eigvalsh, eigh
@@ -14,7 +14,7 @@ CONST_PRECISION = 0.00001
 CONST_ITERATIONS = 30
 
 
-class hnormal_binary(product_binary):
+class hiddenNormalBinary(productBinary):
     '''
         A multivariate Bernoulli as function of a hidden multivariate normal distribution.
     '''
@@ -25,62 +25,16 @@ class hnormal_binary(product_binary):
             @param p mean
             @param R correlation matrix
         '''
-        product_binary.__init__(self, p, name='hidden-normal-binary', longname='A multivariate Bernoulli as function of a hidden multivariate normal distribution.')
-        
+        productBinary.__init__(self, p, name='hidden-normal-binary', longname='A multivariate Bernoulli as function of a hidden multivariate normal distribution.')
+
         ## correlation matrix of the binary distribution
         self.R = R
         ## mean of hidden normal distribution
         self.mu = norm.ppf(self.p)
-        
+
         localQ = calcLocalQ(R, self.mu, self.p)
         ## correlation matrix of the hidden normal distribution
         self.C, self.Q = decomposeQ(localQ, mode='scaled', verbose=False)
-
-    def pmf(self, gamma):
-        '''
-            Probability mass function. Not available.
-            @param gamma binary vector
-        '''
-        raise ValueError("No evaluation of the pmf for the normal-binary model.")
-
-    def lpmf(self, gamma):
-        '''
-            Log-probability mass function. Not available.
-            @param gamma binary vector    
-        '''
-        raise ValueError("No evaluation of the pmf for the normal-binary model.")
-
-    def rvs(self):
-        '''
-            Samples from the model.
-            @return random variate
-        '''
-        if self.d == 0: return
-        v = random.normal(size=self.d)
-        return dot(self.C, v) < self.mu
-
-    def rvslpmf(self):
-        '''
-            Samples from the model and evaluates the likelihood of the sample. Not available.
-            @return random variate
-            @return likelihood
-        '''
-        rv = self.rvs()
-        return rv, None
-
-    def rvstest(self, n):
-        '''
-            Compares the empirical and the true mean and correlation.
-            @param n sample size
-        '''
-        sample = data()
-        sample.sample(self, n)
-        print str(self)
-        print format(sample.mean, 'sample mean')
-        print format(sample.cor, 'sample cor')
-
-    def __str__(self):
-        return format_vector(self.p, 'p') + '\n' + format_matrix(self.R, 'R')
 
     @classmethod
     def random(cls, d):
@@ -108,7 +62,7 @@ class hnormal_binary(product_binary):
             @param p mean
         '''
         return cls(p, eye(len(p)))
-    
+
     @classmethod
     def fromData(cls, sample):
         '''
@@ -117,6 +71,42 @@ class hnormal_binary(product_binary):
             @param sample a sample of binary data
         '''
         return cls(sample.mean, sample.cor)
+
+
+    def __pmf(self, gamma):
+        '''
+            Probability mass function. Not available.
+            @param gamma binary vector
+        '''
+        raise ValueError("No evaluation of the pmf for the normal-binary model.")
+
+    def __lpmf(self, gamma):
+        '''
+            Log-probability mass function. Not available.
+            @param gamma binary vector    
+        '''
+        raise ValueError("No evaluation of the pmf for the normal-binary model.")
+
+    def __rvs(self):
+        '''
+            Samples from the model.
+            @return random variate
+        '''
+        if self.d == 0: return
+        v = random.normal(size=self.d)
+        return dot(self.C, v) < self.mu
+
+    def __rvslpmf(self):
+        '''
+            Samples from the model and evaluates the likelihood of the sample. Not available.
+            @return random variate
+            @return likelihood
+        '''
+        rv = self.rvs()
+        return rv, 0
+
+    def __str__(self):
+        return format_vector(self.p, 'p') + '\n' + format_matrix(self.R, 'R')
 
 
 

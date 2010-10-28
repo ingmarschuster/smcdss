@@ -4,7 +4,7 @@
 
 from time import clock
 from auxpy.data import *
-from binary import product_binary
+from binary import productBinary
 from numpy import *
 from scipy.weave import inline, converters
 from platform import system
@@ -18,7 +18,7 @@ if system() == 'Linux':    hasWeave = True
 else:                      hasWeave = False
 
 
-class logistic_binary(product_binary):
+class logisticRegrBinary(productBinary):
     '''
         A multivariate Bernoulli with conditionals based on logistic regression models.
     '''
@@ -31,49 +31,8 @@ class logistic_binary(product_binary):
 
         ## matrix of regression coefficients 
         self.Beta = Beta
-        ## dimension
-        self.d = Beta.shape[0]
-        
-        product_binary.__init__(self, name='logistic-regression-binary', longname='A multivariate Bernoulli with conditionals based on logistic regression models.')
 
-    def pmf(self, gamma):
-        '''
-            Probability mass function.
-            @param gamma binary vector
-        '''
-        return exp(self.lpmf(gamma))
-
-    def lpmf(self, gamma):
-        '''
-            Log-probability mass function.
-            @param gamma binary vector    
-        '''
-        if hasWeave:
-            return self.__lpmf_weave(gamma)
-        else:
-            return self.__lpmf_python(gamma)
-
-    def rvs(self):
-        '''
-            Samples from the model.
-            @return random variate
-        '''
-        if hasWeave:
-            return self.__rvs_weave()[0]
-        else:
-            return self.__rvs_python()[0]
-
-    def rvslpmf(self):
-        '''
-            Samples from the model and evaluates the likelihood of the sample.
-            @return random variate
-            @return likelihood
-        '''
-        if hasWeave:
-            return self.__rvs_weave()
-        else:
-            return self.__rvs_python()
-
+        productBinary.__init__(self, name='logistic-regression-binary', longname='A multivariate Bernoulli with conditionals based on logistic regression models.')
 
     @classmethod
     def independent(cls, p):
@@ -88,31 +47,73 @@ class logistic_binary(product_binary):
         Beta[:, 0] = p
         return cls(Beta)
 
-    def rvstest(self, n):
+    @classmethod
+    def random(cls, d):
         '''
-            Prints the empirical mean and correlation to stdout.
-            @param n sample size
+            Constructs a random logistic-regression-binary model for testing.
+            @param cls class 
+            @param d dimension
         '''
-        sample = data()
-        sample.sample(self, n)
-        print format(sample.mean, 'sample mean')
-        print format(sample.cor, 'sample cor')
+        cls = logisticRegrBinary.independent(random.random(d))
+        cls.Beta[:, 1:] = random.normal(scale=3.0, size=(d, d - 1))
+        return cls
+
+    @classmethod
+    def fromData(cls, sample):
+        '''
+            Construct a product-binary model from data.
+            @param cls class
+            @param sample a sample of binary data
+        '''
+        return cls(calcBeta(sample))
+
+    def _pmf(self, gamma):
+        '''
+            Probability mass function.
+            @param gamma: binary vector
+        '''
+        return exp(self._lpmf(gamma))
+
+    def _lpmf(self, gamma):
+        '''
+            Log-probability mass function.
+            @param gamma binary vector    
+        '''
+        if hasWeave:
+            return self.__lpmf_weave(gamma)
+        else:
+            return self.__lpmf_python(gamma)
+
+    def _rvs(self):
+        '''
+            Samples from the model.
+            @return random variate
+        '''
+        if hasWeave:
+            return self.__rvs_weave()[0]
+        else:
+            return self.__rvs_python()[0]
+
+    def _rvslpmf(self):
+        '''
+            Samples from the model and evaluates the likelihood of the sample.
+            @return random variate
+            @return likelihood
+        '''
+        if hasWeave:
+            return self.__rvs_weave()
+        else:
+            return self.__rvs_python()
+
+    def getD(self):
+        '''
+            Get dimension.
+            @return dimension 
+        '''
+        return self.Beta.shape[0]
 
     def __str__(self):
         return format_matrix(self.Beta, 'Beta')
-
-    def marginals(self):
-        '''
-            Get string representation of the marginals. 
-            @remark Evaluation of the marginals requires exponential time. Do not do it.
-            @return a string representation of the marginals 
-        '''
-        sample = data()
-        for dec in range(2 ** self.d):
-            bin = dec2bin(dec, self.d)
-            sample.append(bin, self.lpmf(bin))
-        return format(sample.getMean(weight=True), 'mean') + '\n' + \
-               format(sample.getCor(weight=True), 'correlation')
 
     def __lpmf_weave(self, gamma):
         Beta = self.Beta
@@ -225,20 +226,9 @@ class logistic_binary(product_binary):
 
         return gamma, logvprob
 
+    d = property(fget=getD, doc="dimension")
 
-    @classmethod
-    def fromData(cls, sample):
-        '''
-            Construct a product-binary model from data.
-            @param cls class
-            @param sample a sample of binary data
-        '''
-        return cls(calcBeta(sample))
-
-
-
-
-def calcBeta(sample, Init=None, verbose=True):
+def calcBeta(sample, Init=None, verbose=False):
     '''
         Computes the logistic regression coefficients of all conditionals. 
         @param sample binary data
@@ -247,15 +237,17 @@ def calcBeta(sample, Init=None, verbose=True):
         @return matrix of regression coefficients
     '''
 
+    if sample.d == 0: return array([])
+    
     t = clock()
     n = sample.size
     d = sample.d
-    
+
     # Add constant column.
     X = column_stack((ones(n, dtype=bool)[:, newaxis], sample.procData(dtype=bool)))
     if sample.isWeighted: XW = sample.w[:, newaxis] * X
     else: XW = X
-    
+
     if Init == None: Init = zeros((d, d))
     Beta = zeros((d, d), dtype=float)
     Beta[0][0] = sum(X[:, 1]) / float(n)

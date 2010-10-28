@@ -5,14 +5,7 @@
 import binary
 from numpy import zeros, array, diag, log, random
 from auxpy.data import *
+from auxpy.plotting import *
 
-sample=data()
-sample.load('/home/cschafer/Bureau/testfile.dump')
-
-x = binary.logistic_binary.fromData(sample)
-print sample.mean
-print sample.cor
-print
-print x.marginals()
-
-# [ 0.638  0.488  0.388  0.614  0.474]
+x=binary.posteriorBinary('../data/datasets/test_dat.csv','hb')
+plot4(x)
