@@ -1,6 +1,10 @@
 '''
-@author cschafer
+    
+    @author Christian Schäfer
 '''
+
+# $Date$
+__version__ = "$Revision$"
 
 import binary
 from numpy import zeros, array, diag, log, random

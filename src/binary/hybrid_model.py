@@ -1,17 +1,10 @@
 '''
-@author Christian Schäfer
-$Date$
-$Revision$
-$Source$
+    
+    @author Christian Schäfer
 '''
 
-# $LastChangedDate$
-# $LastChangedRevision$
-# $Source$
-
-__version__ = "$LastChangedRevision$$"
-
-
+# $Date$
+__version__ = "$Revision$"
 
 from auxpy.data import *
 from binary import *

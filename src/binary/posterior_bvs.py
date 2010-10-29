@@ -1,6 +1,10 @@
 '''
-@author: cschafer
+    
+    @author Christian Schäfer
 '''
+
+# $Date$
+__version__ = "$Revision$"
 
 from binary import *
 from csv import reader

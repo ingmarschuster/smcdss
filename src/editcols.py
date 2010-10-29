@@ -1,4 +1,6 @@
 '''
+@author Christian Schäfer
+
 USAGE: editcols [options] dataset [output]
 
     -h, --help
@@ -20,6 +22,9 @@ REMARK: If the same variate is given several times or a binary variable is squar
 some Gaussian noise is automatically added to keep the columns distict.
     
 '''
+
+# $Date$
+__version__ = "$Revision$"
 
 import csv, os, glob, sys, getopt, copy
 from numpy import array, vstack, zeros, newaxis, empty, random, abs

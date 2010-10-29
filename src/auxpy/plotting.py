@@ -1,8 +1,10 @@
 '''
-Created on 18 fevr. 2010
-
-@author: cschafer
+    
+    @author Christian Schäfer
 '''
+
+# $Date$
+__version__ = "$Revision$"
 
 from rpy import *
 from data import *

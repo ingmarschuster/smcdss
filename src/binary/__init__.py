@@ -1,3 +1,11 @@
+'''
+    
+    @author Christian Schäfer
+'''
+
+# $Date$
+__version__ = "$Revision$"
+
 from product_model import *
 from normal_model import *
 from logistic_model import *

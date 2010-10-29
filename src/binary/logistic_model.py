@@ -1,6 +1,10 @@
 '''
-@author cschafer
+    
+    @author Christian Schäfer
 '''
+
+# $Date$
+__version__ = "$Revision$"
 
 from time import clock
 from auxpy.data import *

@@ -1,6 +1,10 @@
 '''
-@author cschafer
+    
+    @author Christian Schäfer
 '''
+
+# $Date$
+__version__ = "$Revision$"
 
 from auxpy.data import *
 from numpy import array, ones, zeros, log
