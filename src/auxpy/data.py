@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 '''
     @author Christian Schäfer
     $Date$
@@ -178,8 +181,8 @@ class data(object):
             Get order.
             @return index set for the data in ascending order according to the weights.
         '''
-        if self.__order == None: self.__sort()
-        if self.__order == None: self.__order = range(size)
+        if self.__order is None: self.__sort()
+        if self.__order is None: self.__order = range(size)
         return self.__order
 
     def __sort(self):
@@ -230,7 +233,7 @@ class data(object):
         if not isinstance(self.__X, list): self.__X.tolist()
         if not isinstance(self.__w, list): self.__w.tolist()
         self.__X.append(x)
-        if not w == None: self.__w.append(float(w))
+        if not w is None: self.__w.append(float(w))
 
     def shrink(self, index):
         '''
@@ -276,7 +279,7 @@ class data(object):
                     stdout.write(n * "-")
                     stdout.flush()
                     drawn += n
-        if verbose: print ']\nDone. %i variates sampled in %.2f seconds.\n' % (size, clock() - t)
+        if verbose: print ']\nDone. %i variables sampled in %.2f seconds.\n' % (size, clock() - t)
 
     def save(self, filename):
         '''
@@ -311,7 +314,7 @@ def calc_mean(X, w=None):
         @param w positive weights
         @return mean
     '''
-    if w == None:
+    if w is None:
         return X.sum(axis=0) / float(X.shape[0])
     else:
         return (w[:, newaxis] * X).sum(axis=0)
@@ -323,7 +326,7 @@ def calc_cov(X, w=None):
         @param w positive weights
         @return covariance matrix
     '''
-    if w == None:
+    if w is None:
         n = float(X.shape[0])
         mean = calc_mean(X)[newaxis, :]
         return (dot(X.T, X) - n * dot(mean.T, mean)) / float(n - 1)

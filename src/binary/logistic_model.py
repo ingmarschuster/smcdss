@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 '''
     @author Christian Schäfer
     $Date$
@@ -24,7 +27,7 @@ else:                      hasWeave = False
 
 class LogisticRegrBinary(ProductBinary):
     '''
-        A multivariate Bernoulli with conditionals based on logistic regression models.
+        A multivariable Bernoulli with conditionals based on logistic regression models.
     '''
 
     def __init__(self, Beta):
@@ -36,7 +39,7 @@ class LogisticRegrBinary(ProductBinary):
         ## matrix of regression coefficients 
         self.Beta = Beta
 
-        ProductBinary.__init__(self, name='logistic-regression-binary', longname='A multivariate Bernoulli with conditionals based on logistic regression models.')
+        ProductBinary.__init__(self, name='logistic-regression-binary', longname='A multivariable Bernoulli with conditionals based on logistic regression models.')
 
     @classmethod
     def independent(cls, p):
@@ -91,7 +94,7 @@ class LogisticRegrBinary(ProductBinary):
     def _rvs(self):
         '''
             Samples from the model.
-            @return random variate
+            @return random variable
         '''
         if hasWeave:
             return self.__rvs_weave()[0]
@@ -101,7 +104,7 @@ class LogisticRegrBinary(ProductBinary):
     def _rvslpmf(self):
         '''
             Samples from the model and evaluates the likelihood of the sample.
-            @return random variate
+            @return random variable
             @return likelihood
         '''
         if hasWeave:
@@ -248,11 +251,11 @@ def calc_Beta(sample, Init=None, verbose=False):
     d = sample.d
 
     # Add constant column.
-    X = column_stack((ones(n, dtype=bool)[:, newaxis], sample.procData(dtype=bool)))
+    X = column_stack((ones(n, dtype=bool)[:, newaxis], sample.proc_data(dtype=bool)))
     if sample.isWeighted: XW = sample.w[:, newaxis] * X
     else: XW = X
 
-    if Init == None: Init = zeros((d, d))
+    if Init is None: Init = zeros((d, d))
     Beta = zeros((d, d), dtype=float)
     Beta[0][0] = sum(X[:, 1]) / float(n)
 
@@ -271,15 +274,15 @@ def calc_log_regr(y, X, XW=None, init=None):
     '''
         Computes the logistic regression coefficients.. 
         @param y explained variable
-        @param X covariates
-        @param X weighted covariates
+        @param X covariables
+        @param X weighted covariables
         @param init initial value
         @return vector of regression coefficients
     '''
     n = X.shape[0]
     d = X.shape[1]
 
-    if init == None: beta = zeros(d)
+    if init is None: beta = zeros(d)
     else:            beta = init
 
     for iter in range(CONST_ITERATIONS):

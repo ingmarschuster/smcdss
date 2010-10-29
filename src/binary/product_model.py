@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 '''
     @author Christian Schäfer
     $Date$
@@ -13,9 +16,9 @@ from scipy.stats import rv_discrete
 
 class ProductBinary(rv_discrete):
     '''
-        A multivariate Bernoulli with independent components.
+        A multivariable Bernoulli with independent components.
     '''
-    def __init__(self, p=None, name='product-binary', longname='A multivariate Bernoulli with independent components.'):
+    def __init__(self, p=None, name='product-binary', longname='A multivariable Bernoulli with independent components.'):
         '''
             Constructor.
             @param p mean vector
@@ -23,11 +26,10 @@ class ProductBinary(rv_discrete):
             @param longname longname
         '''
         rv_discrete.__init__(self, name=name, longname=longname)
-        if not p == None:
-            try:
-                ## mean vector
+        if not p is None:
+            if isinstance(p, (ndarray, list)):
                 self.p = array(p, dtype=float)
-            except:
+            else:
                 self.p = array([p])
 
     def __str__(self):
@@ -78,14 +80,14 @@ class ProductBinary(rv_discrete):
 
     def rvs(self):
         '''
-            Generates a random variate.
+            Generates a random variable.
         '''
         if self.d == 0: return array([])
         return self._rvs()
 
     def rvslpmf(self):
         '''
-            Generates a random variate and computes its likelihood.
+            Generates a random variable and computes its likelihood.
         '''
         if self.d == 0: return array([]), 0.0
         return self._rvslpmf()
@@ -111,14 +113,14 @@ class ProductBinary(rv_discrete):
 
     def _rvs(self):
         '''
-            Generates a random variate.
+            Generates a random variable.
         '''
         if self.d == 0: return []
         return self.p > rand(self.d)
 
     def _rvslpmf(self):
         '''
-            Generates a random variate and computes its likelihood.
+            Generates a random variable and computes its likelihood.
         '''
         rv = self.rvs()
         return rv, self.lpmf(rv)

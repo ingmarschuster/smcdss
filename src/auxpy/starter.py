@@ -11,15 +11,10 @@ USAGE: editcols [options] inifile [output]
 
 import getopt, sys
 import ConfigParser
+from default import *
 
 def starter(args):
-    cp = ConfigParser.RawConfigParser()
-    cp.read("default.ini")
-    #cp.read("/home/cschafer/Documents/Python/workspace/data/datasets/test.ini")
-    print cp.sections()
-    print cp.options('eval')
-    print eval(cp.get('eval', 'outer_margin'))
-    print cp.get('eval', 'title_line')
+    print dicMC
 
 def main():
     

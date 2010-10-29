@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 '''
     @author Christian Schäfer
     $Date$
@@ -22,8 +25,8 @@ def plot4(f, outfile=None, models=None):
     m = 10000 # number of pseudo samples from f
     n = 10000 # number of random draws from models
     d = f.d
-    if outfile == None: outfile = f.dataFile[:-3] + 'pdf'
-    if models == None: models = [ProductBinary, LogisticRegrBinary, HiddenNormalBinary]
+    if outfile is None: outfile = f.dataFile[:-3] + 'pdf'
+    if models is None: models = [LogisticRegrBinary, ProductBinary, HiddenNormalBinary]
 
     names = []
     hist = array(4 * [zeros(2 ** d)])
@@ -40,12 +43,13 @@ def plot4(f, outfile=None, models=None):
     hist[0] /= hist[0].sum()
 
     # init approximations
-    models = [f, ProductBinary.fromData(sample), LogisticRegrBinary.fromData(sample), HiddenNormalBinary.fromData(sample)]
+    models = [model.from_data(sample) for model in models]
+    models.insert(0, f)
     for k in range(n):
         for index in range(1, 4):
             dec = bin2dec(models[index].rvs())
             hist[index][dec] += 1
-    hist[[1, 2, 3]] /= float(n)
+    hist[1:] /= float(n)
     ymax = hist.max()
 
     color = ['grey85', 'grey65', 'grey45', 'grey25']

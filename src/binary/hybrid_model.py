@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 '''
     @author Christian Schäfer
     $Date$
@@ -67,7 +70,7 @@ class HybridBinary(ProductBinary):
         boolDep = (acor > delta) * boolRand
         boolProd = (boolDep ^ True) * boolRand
 
-        # init sub-models
+        # initialize sub-models
         iProd = list(where(boolProd == True)[0])
         iDep = list(where(boolDep == True)[0])
         dProd = ProductBinary(mean[iProd])
@@ -93,7 +96,7 @@ class HybridBinary(ProductBinary):
 
     def _rvs(self):
         '''
-            Generates a random variate.
+            Generates a random variable.
         '''
         rv = self.__cBase.copy()
         rv[self.iProd] = self.dProd.rvs()
@@ -103,7 +106,7 @@ class HybridBinary(ProductBinary):
 
     def _rvslpmf(self):
         '''
-            Generates a random variate and computes its likelihood.
+            Generates a random variable and computes its likelihood.
         '''
         rv = self.__cBase.copy()
         rvProd, lmpfProd = self.dProd.rvsplus()

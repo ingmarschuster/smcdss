@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 '''
     @author Christian Schäfer
     $Date$
@@ -12,7 +15,7 @@ from csv import reader
 class PosteriorBinary(ProductBinary):
     '''
         Reads a dataset and construct the posterior probabilities of all linear models
-        with variates regressed on the first column.
+        with variables regressed on the first column.
     '''
     def __init__(self, dataFile, modelType='hb'):
         '''
@@ -27,8 +30,7 @@ class PosteriorBinary(ProductBinary):
         dataReader = reader(open(dataFile), delimiter=';')
         X = []; Y = []
         for row in dataReader:
-            # TODO: Open for all columns
-            X.append(array([float(entry) for entry in row[74:78]]))
+            X.append(array([float(entry) for entry in row[1:]]))
             Y.append(float(row[0]))
         X = array(X); Y = array(Y)
         ## data file
@@ -98,8 +100,8 @@ class PosteriorBinary(ProductBinary):
         else:
             try:
                 beta = solve(self.XtX[gamma, :][:, gamma], self.XtY[gamma, :], sym_pos=True)
-            except:
-                beta = solve(self.XtX[gamma, :][:, gamma] + 10 ** -8 * eye(p), self.XtY[gamma, :], sym_pos=True)
+            except LinAlgError:
+                beta = solve(self.XtX[gamma, :][:, gamma] + exp(-10) * eye(p), self.XtY[gamma, :], sym_pos=True)
         return - 0.5 * self.n * log(self.c1 - dot(self.c2[gamma], beta)) - self.c3 * p
 
     def getD(self):

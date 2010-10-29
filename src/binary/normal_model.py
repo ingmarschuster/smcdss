@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
 '''
     @author Christian Schäfer
     $Date$
@@ -10,7 +13,7 @@ from time import clock
 from binary import ProductBinary
 from auxpy.data import *
 from numpy import *
-from scipy.linalg import cholesky, eigvalsh, eigh
+from scipy.linalg import cholesky, LinAlgError, eigvalsh, eigh
 from scipy.stats import norm, rv_continuous
 
 
@@ -20,7 +23,7 @@ CONST_ITERATIONS = 30
 
 class HiddenNormalBinary(ProductBinary):
     '''
-        A multivariate Bernoulli as function of a hidden multivariate normal distribution.
+        A multivariable Bernoulli as function of a hidden multivariable normal distribution.
     '''
 
     def __init__(self, p, R):
@@ -29,10 +32,12 @@ class HiddenNormalBinary(ProductBinary):
             @param p mean
             @param R correlation matrix
         '''
-        ProductBinary.__init__(self, p, name='hidden-normal-binary', longname='A multivariate Bernoulli as function of a hidden multivariate normal distribution.')
+        ProductBinary.__init__(self, p, name='hidden-normal-binary', longname='A multivariable Bernoulli as function of a hidden multivariable normal distribution.')
+        if self.d == 0: return
 
         ## correlation matrix of the binary distribution
         self.R = R
+
         ## mean of hidden normal distribution
         self.mu = norm.ppf(self.p)
 
@@ -57,6 +62,9 @@ class HiddenNormalBinary(ProductBinary):
         R = calc_R(Q, norm.ppf(p), p)
 
         return cls(p, R)
+
+    def __str__(self):
+        return format_vector(self.p, 'p') + '\n' + format_matrix(self.R, 'R')
 
     @classmethod
     def independent(cls, p):
@@ -94,7 +102,7 @@ class HiddenNormalBinary(ProductBinary):
     def __rvs(self):
         '''
             Samples from the model.
-            @return random variate
+            @return random variable
         '''
         if self.d == 0: return
         v = random.normal(size=self.d)
@@ -103,14 +111,11 @@ class HiddenNormalBinary(ProductBinary):
     def __rvslpmf(self):
         '''
             Samples from the model and evaluates the likelihood of the sample. Not available.
-            @return random variate
+            @return random variable
             @return likelihood
         '''
         rv = self.rvs()
         return rv, 0
-
-    def __str__(self):
-        return format_vector(self.p, 'p') + '\n' + format_matrix(self.R, 'R')
 
 
 
@@ -137,7 +142,7 @@ def calc_R(Q, mu, p):
 def calc_local_Q(R, mu, p, verbose=False):
     '''
         Computes the hidden-normal correlation matrix Q necessary to generate
-        bivariate bernoulli samples with a certain local correlation matrix R.
+        bivariable bernoulli samples with a certain local correlation matrix R.
         @param R correlation matrix of the binary
         @param mu mean of the hidden normal
         @param p mean of the binary
@@ -163,7 +168,7 @@ def calc_local_Q(R, mu, p, verbose=False):
 def calc_local_q(mu, p, r, init=0, verbose=False):
     '''
         Computes the hidden-normal correlation q necessary to generate
-        bivariate bernoulli samples with a certain correlation r.
+        bivariable bernoulli samples with a certain correlation r.
         @param mu mean of the hidden normal
         @param p mean of the binary            
         @param r correlation between the binary
@@ -267,10 +272,10 @@ def decompose_Q(Q, mode='scaled', verbose=False):
         @param verbose print to stdout 
     '''
     t = clock()
-    d = len(Q[0])
+    d = Q.shape[0]
     try:
         C = cholesky(Q, True)
-    except:
+    except (LinAlgError, ValueError):
         if mode == 'independent':
             return eye(d), eye(d)
         if mode == 'scaled':
@@ -280,7 +285,7 @@ def decompose_Q(Q, mode='scaled', verbose=False):
 
     try:
         C = cholesky(Q, True)
-    except:
+    except LinAlgError:
         print "WARNING: Set matrix to identity."
         C, Q = eye(d), eye(d)
 
@@ -296,7 +301,7 @@ def scale_Q(Q, verbose=False):
         @param verbose print to stdout 
     '''
     t = clock()
-    d = len(Q[0])
+    d = Q.shape[0]
     try:
         n = abs(Q).sum() - d
     except:
@@ -324,11 +329,7 @@ def nearest_Q(Q, verbose=False):
     '''
     t = clock()
     d = len(Q[0])
-    try:
-        n = abs(Q).sum() - d
-    except:
-        print "WARNING: Could not evaluate norm."
-        n = 1.0
+    n = abs(Q).sum() - d
 
     # run alternating projections
     S = zeros((d, d))
@@ -364,13 +365,13 @@ def nearest_Q(Q, verbose=False):
 
 class _bvnorm(rv_continuous):
     '''
-        Bivariate normal distribution with correlation r.
+        Bivariable normal distribution with correlation r.
         normal.pdf(x,y) = exp(-(x*x-2*r*x*y+y*y)/(2*(1-r*r))) / (2*pi*sqrt(1-r*r))
     '''
 
     def cdf(self, x, r=0):
         '''
-            Computes the bivariate normal cumulative distribution function,
+            Computes the bivariable normal cumulative distribution function,
             i.e. the probability that X < x and Y < y. The function only calls lowerDW(x, y, r).
             @param x value
             @param r correlation coefficient 
@@ -379,7 +380,7 @@ class _bvnorm(rv_continuous):
 
     def pdf(self, x, r=0):
         '''
-            Computes the bivariate normal probability distribution function, i.e. the density at (x, y)
+            Computes the bivariable normal probability distribution function, i.e. the density at (x, y)
             @param x value
             @param r correlation coefficient 
         '''
@@ -389,14 +390,14 @@ class _bvnorm(rv_continuous):
     def rvs(self, r=0):
         '''
             @param r correlation coefficient 
-            @return random bivariate normal
+            @return random bivariable normal
         '''
         v = random.normal(0, 1)
         return r * v + sqrt(1 - r * r) * random.normal(0, 1)
 
     def lower_DW(self, dh, dk, r):
         '''
-            Computes bivariate normal probabilities; lowerDW calculates the probability
+            Computes bivariable normal probabilities; lowerDW calculates the probability
             that x < dh and y < dk using the Drezner-Wesolowsky approximation.
             The function only calls upperDW(-dh, -dk, r).
             
@@ -408,10 +409,10 @@ class _bvnorm(rv_continuous):
 
     def upper_DW(self, dh, dk, r):
         '''
-            Computes bivariate normal probabilities; upperDW calculates the probability that x > dh and y > dk. 
+            Computes bivariable normal probabilities; upperDW calculates the probability that x > dh and y > dk. 
               
             This function is based on the method described by Z. Drezner and G.O. Wesolowsky, (1989),
-            "On the computation of the bivariate normal integral", Journal of Statist.
+            "On the computation of the bivariable normal integral", Journal of Statist.
             Comput. Simul. 35, pp. 101-107, with major modifications for double precision, for |r| close to 1.
         
             The code was adapted for python from the matlab routine by Alan Genz.
@@ -483,7 +484,7 @@ class _bvnorm(rv_continuous):
 
     def lower_MC(self, dh, dk, r, n=100000):
         '''
-            Computes bivariate normal probabilities; lowerMC calculates the probability that x < dh and y < dk
+            Computes bivariable normal probabilities; lowerMC calculates the probability that x < dh and y < dk
             using a Monte Carlo approximation of n samples. The function only calls upperMC(-dh, -dk, r, n).
 
             @param dh 1st lower integration limit
@@ -495,7 +496,7 @@ class _bvnorm(rv_continuous):
 
     def upper_MC(self, dh, dk, r, n=100000):
         '''
-            Computes bivariate normal probabilities; upperMC calculates the probability that x > dh and y > dk. 
+            Computes bivariable normal probabilities; upperMC calculates the probability that x > dh and y > dk. 
             This function is a simple MC evaluation used to cross-check the DW approximation algorithms.
         
             @param dh 1st lower integration limit
@@ -511,4 +512,4 @@ class _bvnorm(rv_continuous):
             if v1 > dh and v2 > dk:p += 1
         return p / float(n)
 
-bvnorm = _bvnorm(name='bvnorm', longname='A bivariate normal', shapes='r')
+bvnorm = _bvnorm(name='bvnorm', longname='A bivariable normal', shapes='r')
