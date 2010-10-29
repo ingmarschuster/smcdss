@@ -3,6 +3,9 @@
 '''
 
 __version__ = "$Revision: 84354$"
+
+# $LastChangedDate: 2006-07-22 21:42:37 -0700 (Sat, 22 Jul 2006) $
+# $Rev$
 # $Source$
 
 from auxpy.data import *
