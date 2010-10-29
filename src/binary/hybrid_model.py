@@ -1,6 +1,9 @@
 '''
-@author: cschafer
+@author Christian Schäfer
 '''
+
+__version__ = "$Revision: 84354$"
+# $Source$
 
 from auxpy.data import *
 from binary import *
@@ -10,9 +13,6 @@ class hybridBinary(productBinary):
         A hybrid model having constant, independent and dependent components.
     '''
     
-    __version__ = "$Revision: 84354 $"
-    # $Source$
-
     def __init__(self, cBase, iProd, iDep, dProd, dDep):
         '''
             Constructor.
