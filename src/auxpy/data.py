@@ -42,7 +42,7 @@ class data(object):
         else:
             return self.__X
 
-    def procData(self, order=False, fraction=1.0, dtype=int):
+    def proc_data(self, order=False, fraction=1.0, dtype=int):
         '''
             Get processed data.
             @param order weights in ascending order
@@ -70,7 +70,7 @@ class data(object):
         if max < 0: w = exp(self.__w - max)
         return w / w.sum()
 
-    def procWeights(self, order=False, fraction=1.0):
+    def proc_weights(self, order=False, fraction=1.0):
         '''
             Get processed weights.
             @param order weights in ascending order
@@ -139,9 +139,9 @@ class data(object):
             @param fraction use only upper fraction of the ordered data
         '''
         if weight:
-            return calcMean(self.procData(fraction=fraction, dtype=float), w=self.procWeights(fraction=fraction))
+            return calc_mean(self.proc_data(fraction=fraction, dtype=float), w=self.proc_weights(fraction=fraction))
         else:
-            return calcMean(self.procData(fraction=fraction, dtype=float))
+            return calc_mean(self.proc_data(fraction=fraction, dtype=float))
 
     def getCov(self, weight=False, fraction=1.0):
         '''
@@ -150,9 +150,9 @@ class data(object):
             @param fraction use only upper fraction of the ordered data
         '''
         if weight:
-            return calcCov(X=self.procData(fraction=fraction, dtype=float), w=self.procWeights(fraction=fraction))
+            return calc_cov(X=self.proc_data(fraction=fraction, dtype=float), w=self.proc_weights(fraction=fraction))
         else:
-            return calcCov(X=self.procData(fraction=fraction, dtype=float))
+            return calc_cov(X=self.proc_data(fraction=fraction, dtype=float))
 
     def getCor(self, weight=False, fraction=1.0):
         '''
@@ -161,9 +161,9 @@ class data(object):
             @param fraction use only upper fraction of the ordered data
         '''
         if weight:
-            return calcCor(X=self.procData(fraction=fraction, dtype=float), w=self.procWeights(fraction=fraction))
+            return calc_cor(X=self.proc_data(fraction=fraction, dtype=float), w=self.proc_weights(fraction=fraction))
         else:
-            return calcCor(X=self.procData(fraction=fraction, dtype=float))
+            return calc_cor(X=self.proc_data(fraction=fraction, dtype=float))
 
     def getVar(self, weight=False, fraction=1.0):
         '''
@@ -196,7 +196,7 @@ class data(object):
         '''
         return argsort(array([str(array(x, int)) for x in self.X]))
 
-    def assignWeights(self, f):
+    def assign_weights(self, f):
         '''
             Evaluates the value of c*exp(f(x)) for each sample x.
             @param f a real-valued function on the sampling space 
@@ -239,7 +239,7 @@ class data(object):
         '''
         self.__X = self.X[:, index]
 
-    def getSubData(self, index):
+    def get_sub_data(self, index):
         '''
             Returns a shrinked version of the data class.
             @param index column index set 
@@ -304,7 +304,7 @@ class data(object):
     order = property(fget=getOrder, doc="index of data in ascending order according to the weights")
 
 
-def calcMean(X, w=None):
+def calc_mean(X, w=None):
     '''
         Mean.
         @param X array
@@ -316,7 +316,7 @@ def calcMean(X, w=None):
     else:
         return (w[:, newaxis] * X).sum(axis=0)
 
-def calcCov(X, w=None):
+def calc_cov(X, w=None):
     '''
         Covariance.
         @param X array
@@ -325,13 +325,13 @@ def calcCov(X, w=None):
     '''
     if w == None:
         n = float(X.shape[0])
-        mean = calcMean(X)[newaxis, :]
+        mean = calc_mean(X)[newaxis, :]
         return (dot(X.T, X) - n * dot(mean.T, mean)) / float(n - 1)
     else:
-        mean = calcMean(X, w)[newaxis, :]
+        mean = calc_mean(X, w)[newaxis, :]
         return (dot(X.T, w[:, newaxis] * X) - dot(mean.T, mean)) / (1 - pow(w, 2).sum())
 
-def calcCor(X, w=None):
+def calc_cor(X, w=None):
     '''
         Correlation.
         @param X array
@@ -339,11 +339,11 @@ def calcCor(X, w=None):
         @return correlation matrix
     '''
     d = X.shape[1]
-    cov = calcCov(X, w) + exp(-10) * eye(d)
+    cov = calc_cov(X, w) + exp(-10) * eye(d)
     var = cov.diagonal()[newaxis, :]
     return cov / sqrt(dot(var.T, var))
 
-def calcNorm(v, p=2.0):
+def calc_norm(v, p=2.0):
     return pow(pow(abs(v), p).sum(axis=0), 1.0 / p)
 
 def format(X, name=''):

@@ -8,7 +8,7 @@ __version__ = "$Revision$"
 
 from time import clock
 from auxpy.data import *
-from binary import productBinary
+from binary import ProductBinary
 from numpy import *
 from scipy.weave import inline, converters
 from platform import system
@@ -22,7 +22,7 @@ if system() == 'Linux':    hasWeave = True
 else:                      hasWeave = False
 
 
-class logisticRegrBinary(productBinary):
+class LogisticRegrBinary(ProductBinary):
     '''
         A multivariate Bernoulli with conditionals based on logistic regression models.
     '''
@@ -36,7 +36,7 @@ class logisticRegrBinary(productBinary):
         ## matrix of regression coefficients 
         self.Beta = Beta
 
-        productBinary.__init__(self, name='logistic-regression-binary', longname='A multivariate Bernoulli with conditionals based on logistic regression models.')
+        ProductBinary.__init__(self, name='logistic-regression-binary', longname='A multivariate Bernoulli with conditionals based on logistic regression models.')
 
     @classmethod
     def independent(cls, p):
@@ -58,18 +58,18 @@ class logisticRegrBinary(productBinary):
             @param cls class 
             @param d dimension
         '''
-        cls = logisticRegrBinary.independent(random.random(d))
+        cls = LogisticRegrBinary.independent(random.random(d))
         cls.Beta[:, 1:] = random.normal(scale=3.0, size=(d, d - 1))
         return cls
 
     @classmethod
-    def fromData(cls, sample):
+    def from_data(cls, sample):
         '''
             Construct a product-binary model from data.
             @param cls class
             @param sample a sample of binary data
         '''
-        return cls(calcBeta(sample))
+        return cls(calc_Beta(sample))
 
     def _pmf(self, gamma):
         '''
@@ -232,7 +232,7 @@ class logisticRegrBinary(productBinary):
 
     d = property(fget=getD, doc="dimension")
 
-def calcBeta(sample, Init=None, verbose=False):
+def calc_Beta(sample, Init=None, verbose=False):
     '''
         Computes the logistic regression coefficients of all conditionals. 
         @param sample binary data
@@ -260,14 +260,14 @@ def calcBeta(sample, Init=None, verbose=False):
     resp = array([0, 0])
     for m in range(1, d):
 
-        Beta[m, :m + 1], r = calcLogRegr(y=X[:, m + 1], X=X[:, :m + 1], XW=XW[:, :m + 1], init=Init[m, :m + 1])
+        Beta[m, :m + 1], r = calc_log_regr(y=X[:, m + 1], X=X[:, :m + 1], XW=XW[:, :m + 1], init=Init[m, :m + 1])
         resp += r
 
     if verbose: print 'loops %.3f, failures %i, time %.3f' % (resp[0] / float(d - 1), resp[1], clock() - t)
 
     return Beta
 
-def calcLogRegr(y, X, XW=None, init=None):
+def calc_log_regr(y, X, XW=None, init=None):
     '''
         Computes the logistic regression coefficients.. 
         @param y explained variable

@@ -23,7 +23,7 @@ def plot4(f, outfile=None, models=None):
     n = 10000 # number of random draws from models
     d = f.d
     if outfile == None: outfile = f.dataFile[:-3] + 'pdf'
-    if models == None: models = [productBinary, logisticRegrBinary, hiddenNormalBinary]
+    if models == None: models = [ProductBinary, LogisticRegrBinary, HiddenNormalBinary]
 
     names = []
     hist = array(4 * [zeros(2 ** d)])
@@ -40,7 +40,7 @@ def plot4(f, outfile=None, models=None):
     hist[0] /= hist[0].sum()
 
     # init approximations
-    models = [f, productBinary.fromData(sample), logisticRegrBinary.fromData(sample), hiddenNormalBinary.fromData(sample)]
+    models = [f, ProductBinary.fromData(sample), LogisticRegrBinary.fromData(sample), HiddenNormalBinary.fromData(sample)]
     for k in range(n):
         for index in range(1, 4):
             dec = bin2dec(models[index].rvs())

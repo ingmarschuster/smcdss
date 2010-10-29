@@ -9,7 +9,7 @@ __version__ = "$Revision$"
 from auxpy.data import *
 from binary import *
 
-class hybridBinary(productBinary):
+class HybridBinary(ProductBinary):
     '''
         A hybrid model having constant, independent and dependent components.
     '''
@@ -43,7 +43,7 @@ class hybridBinary(productBinary):
                'dependency model: ' + str(self.iDep) + '\n' + str(self.dDep) + '\n'
 
     @classmethod
-    def fromData(cls, sample, eps=0.05, delta=0.1, model=logisticRegrBinary):
+    def from_data(cls, sample, eps=0.05, delta=0.1, model=LogisticRegrBinary):
         '''
             Construct a hybrid-binary model from data.
             @param cls class
@@ -61,7 +61,7 @@ class hybridBinary(productBinary):
         boolRand = (mean > eps) * (mean < 1 - eps)
 
         # compute 1/2-norm of correlation coefficients
-        acor = calcNorm(sample.cor - eye(mean.shape[0]), 0.5) / float(boolRand.sum())
+        acor = calc_norm(sample.cor - eye(mean.shape[0]), 0.5) / float(boolRand.sum())
 
         # classify random components
         boolDep = (acor > delta) * boolRand
@@ -70,7 +70,7 @@ class hybridBinary(productBinary):
         # init sub-models
         iProd = list(where(boolProd == True)[0])
         iDep = list(where(boolDep == True)[0])
-        dProd = productBinary(mean[iProd])
+        dProd = ProductBinary(mean[iProd])
         dDep = model.fromData(sample.getSubData(iDep))
 
         return cls(cBase, iProd, iDep, dProd, dDep)

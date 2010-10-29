@@ -7,7 +7,7 @@
 __version__ = "$Revision$"
 
 from time import clock
-from binary import productBinary
+from binary import ProductBinary
 from auxpy.data import *
 from numpy import *
 from scipy.linalg import cholesky, eigvalsh, eigh
@@ -18,7 +18,7 @@ CONST_PRECISION = 0.00001
 CONST_ITERATIONS = 30
 
 
-class hiddenNormalBinary(productBinary):
+class HiddenNormalBinary(ProductBinary):
     '''
         A multivariate Bernoulli as function of a hidden multivariate normal distribution.
     '''
@@ -29,16 +29,16 @@ class hiddenNormalBinary(productBinary):
             @param p mean
             @param R correlation matrix
         '''
-        productBinary.__init__(self, p, name='hidden-normal-binary', longname='A multivariate Bernoulli as function of a hidden multivariate normal distribution.')
+        ProductBinary.__init__(self, p, name='hidden-normal-binary', longname='A multivariate Bernoulli as function of a hidden multivariate normal distribution.')
 
         ## correlation matrix of the binary distribution
         self.R = R
         ## mean of hidden normal distribution
         self.mu = norm.ppf(self.p)
 
-        localQ = calcLocalQ(R, self.mu, self.p)
+        localQ = calc_local_Q(R, self.mu, self.p)
         ## correlation matrix of the hidden normal distribution
-        self.C, self.Q = decomposeQ(localQ, mode='scaled', verbose=False)
+        self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=False)
 
     @classmethod
     def random(cls, d):
@@ -54,7 +54,7 @@ class hiddenNormalBinary(productBinary):
         Q = dot(X, X.T) + exp(-10) * eye(d)
         q = Q.diagonal()[newaxis, :]
         Q = Q / sqrt(dot(q.T, q))
-        R = calcR(Q, norm.ppf(p), p)
+        R = calc_R(Q, norm.ppf(p), p)
 
         return cls(p, R)
 
@@ -68,7 +68,7 @@ class hiddenNormalBinary(productBinary):
         return cls(p, eye(len(p)))
 
     @classmethod
-    def fromData(cls, sample):
+    def from_data(cls, sample):
         '''
             Construct a product-binary model from data.
             @param cls class
@@ -115,7 +115,7 @@ class hiddenNormalBinary(productBinary):
 
 
 
-def calcR(Q, mu, p):
+def calc_R(Q, mu, p):
     '''
         Computes the hidden-normal-binary correlation matrix R induced by
         the hidden-normal correlation matrix Q.
@@ -134,7 +134,7 @@ def calcR(Q, mu, p):
     return R
 
 
-def calcLocalQ(R, mu, p, verbose=False):
+def calc_local_Q(R, mu, p, verbose=False):
     '''
         Computes the hidden-normal correlation matrix Q necessary to generate
         bivariate bernoulli samples with a certain local correlation matrix R.
@@ -151,7 +151,7 @@ def calcLocalQ(R, mu, p, verbose=False):
     for i in range(d):
         for j in range(i):
             localQ[i][j], n = \
-                calcLocalq(mu=[mu[i], mu[j]], p=[p[i], p[j]], r=R[i][j], init=R[i][j])
+                calc_local_q(mu=[mu[i], mu[j]], p=[p[i], p[j]], r=R[i][j], init=R[i][j])
             iter += n
         localQ[0:i, i] = localQ[i, 0:i].T
 
@@ -160,7 +160,7 @@ def calcLocalQ(R, mu, p, verbose=False):
     return localQ
 
 
-def calcLocalq(mu, p, r, init=0, verbose=False):
+def calc_local_q(mu, p, r, init=0, verbose=False):
     '''
         Computes the hidden-normal correlation q necessary to generate
         bivariate bernoulli samples with a certain correlation r.
@@ -258,7 +258,7 @@ def bisectional(mu, p, r, l= -1, u=1, init=0, verbose=False):
     return q, iter
 
 
-def decomposeQ(Q, mode='scaled', verbose=False):
+def decompose_Q(Q, mode='scaled', verbose=False):
     '''
         Computes the Cholesky decompostion of Q. If Q is not positive definite, either the
         identity matrix, a scaled version of Q or the correlation matrix nearest to Q is used.
@@ -274,9 +274,9 @@ def decomposeQ(Q, mode='scaled', verbose=False):
         if mode == 'independent':
             return eye(d), eye(d)
         if mode == 'scaled':
-            Q = scaleQ(Q, verbose=verbose)
+            Q = scale_Q(Q, verbose=verbose)
         if mode == 'nearest':
-            Q = nearestQ(Q, verbose=verbose)
+            Q = nearest_Q(Q, verbose=verbose)
 
     try:
         C = cholesky(Q, True)
@@ -289,7 +289,7 @@ def decomposeQ(Q, mode='scaled', verbose=False):
     return C, Q
 
 
-def scaleQ(Q, verbose=False):
+def scale_Q(Q, verbose=False):
     '''
         Rescales the locally adjusted matrix Q to make it positive definite.
         @param Q summetric matrix 
@@ -314,7 +314,7 @@ def scaleQ(Q, verbose=False):
     return Q
 
 
-def nearestQ(Q, verbose=False):
+def nearest_Q(Q, verbose=False):
     '''
         Computes the nearest (Frobenius norm) correlation matrix for the locally adjusted matrix Q.
         The nearest correlation matrix problem is solved using the alternating projection method proposed
@@ -375,7 +375,7 @@ class _bvnorm(rv_continuous):
             @param x value
             @param r correlation coefficient 
         '''
-        return self.lowerDW(x[0], x[1], r)
+        return self.lower_DW(x[0], x[1], r)
 
     def pdf(self, x, r=0):
         '''
@@ -394,7 +394,7 @@ class _bvnorm(rv_continuous):
         v = random.normal(0, 1)
         return r * v + sqrt(1 - r * r) * random.normal(0, 1)
 
-    def lowerDW(self, dh, dk, r):
+    def lower_DW(self, dh, dk, r):
         '''
             Computes bivariate normal probabilities; lowerDW calculates the probability
             that x < dh and y < dk using the Drezner-Wesolowsky approximation.
@@ -404,9 +404,9 @@ class _bvnorm(rv_continuous):
             @param dk 2nd lower integration limit
             @param r correlation coefficient
         '''
-        return self.upperDW(-dh, -dk, r)
+        return self.upper_DW(-dh, -dk, r)
 
-    def upperDW(self, dh, dk, r):
+    def upper_DW(self, dh, dk, r):
         '''
             Computes bivariate normal probabilities; upperDW calculates the probability that x > dh and y > dk. 
               
@@ -481,7 +481,7 @@ class _bvnorm(rv_continuous):
         p = max(0, min(1, bvn));
         return p
 
-    def lowerMC(self, dh, dk, r, n=100000):
+    def lower_MC(self, dh, dk, r, n=100000):
         '''
             Computes bivariate normal probabilities; lowerMC calculates the probability that x < dh and y < dk
             using a Monte Carlo approximation of n samples. The function only calls upperMC(-dh, -dk, r, n).
@@ -491,9 +491,9 @@ class _bvnorm(rv_continuous):
             @param r   correlation coefficient
             @param n   sample size
         '''
-        return self.upperMC(-dh, -dk, r, n)
+        return self.upper_MC(-dh, -dk, r, n)
 
-    def upperMC(self, dh, dk, r, n=100000):
+    def upper_MC(self, dh, dk, r, n=100000):
         '''
             Computes bivariate normal probabilities; upperMC calculates the probability that x > dh and y > dk. 
             This function is a simple MC evaluation used to cross-check the DW approximation algorithms.

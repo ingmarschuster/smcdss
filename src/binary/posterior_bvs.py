@@ -9,7 +9,7 @@ __version__ = "$Revision$"
 from binary import *
 from csv import reader
 
-class posteriorBinary(productBinary):
+class PosteriorBinary(ProductBinary):
     '''
         Reads a dataset and construct the posterior probabilities of all linear models
         with variates regressed on the first column.
@@ -21,7 +21,7 @@ class posteriorBinary(productBinary):
             @param modelType Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
         '''
 
-        productBinary.__init__(self, name='posterior-binary', longname='A posterior distribution of a Bayesian variable selection problem.')
+        ProductBinary.__init__(self, name='posterior-binary', longname='A posterior distribution of a Bayesian variable selection problem.')
 
         # import dataset
         dataReader = reader(open(dataFile), delimiter=';')

@@ -11,7 +11,7 @@ from numpy import array, ones, zeros, log
 from numpy.random import rand
 from scipy.stats import rv_discrete
 
-class productBinary(rv_discrete):
+class ProductBinary(rv_discrete):
     '''
         A multivariate Bernoulli with independent components.
     '''
@@ -52,7 +52,7 @@ class productBinary(rv_discrete):
         return cls(0.5 * ones(d))
 
     @classmethod
-    def fromData(cls, sample):
+    def from_data(cls, sample):
         '''
             Construct a product-binary model from data.
             @param cls class
