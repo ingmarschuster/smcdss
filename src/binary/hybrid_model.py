@@ -1,15 +1,15 @@
 '''
 @author Christian Schäfer
-$LastChangedDate$
-$Rev$
+$Date$
+$Revision$
 $Source$
 '''
 
 # $LastChangedDate$
-# $Rev$
+# $LastChangedRevision$
 # $Source$
 
-__version__ = "$Revision: 84354 $"
+__version__ = "$LastChangedRevision$$"
 
 
 
