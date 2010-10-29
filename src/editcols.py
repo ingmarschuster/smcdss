@@ -1,5 +1,7 @@
 '''
-@author Christian Schäfer
+    @author Christian Schäfer
+    $Date$
+    $Revision$
 
 USAGE: editcols [options] dataset [output]
 
@@ -23,7 +25,6 @@ some Gaussian noise is automatically added to keep the columns distict.
     
 '''
 
-# $Date$
 __version__ = "$Revision$"
 
 import csv, os, glob, sys, getopt, copy

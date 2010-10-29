@@ -1,9 +1,9 @@
 '''
-    
     @author Christian Schäfer
+    $Date$
+    $Revision$
 '''
 
-# $Date$
 __version__ = "$Revision$"
 
 from time import clock

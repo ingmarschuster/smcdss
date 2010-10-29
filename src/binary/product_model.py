@@ -1,9 +1,9 @@
 '''
-    
     @author Christian Schäfer
+    $Date$
+    $Revision$
 '''
 
-# $Date$
 __version__ = "$Revision$"
 
 from auxpy.data import *
