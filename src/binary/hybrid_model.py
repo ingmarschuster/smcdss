@@ -9,6 +9,9 @@ class hybridBinary(productBinary):
     '''
         A hybrid model having constant, independent and dependent components.
     '''
+    
+    __version__ = "$Revision: 84354 $"
+    # $Source$
 
     def __init__(self, cBase, iProd, iDep, dProd, dDep):
         '''
@@ -34,7 +37,7 @@ class hybridBinary(productBinary):
         self.dDep = dDep
 
     def __str__(self):
-        return 'constant: ' + str(self.iConst) + '\n' + format(self.__cBase[self.iConst],'base vector') + '\n' + \
+        return 'constant: ' + str(self.iConst) + '\n' + format(self.__cBase[self.iConst], 'base vector') + '\n' + \
                'product model: ' + str(self.iProd) + '\n' + str(self.dProd) + '\n' + \
                'dependency model: ' + str(self.iDep) + '\n' + str(self.dDep) + '\n'
 
@@ -52,13 +55,13 @@ class hybridBinary(productBinary):
         # compute mean
         mean = sample.getMean(weight=True)
         cBase = mean > 0.5
-        
+
         # random components
         boolRand = (mean > eps) * (mean < 1 - eps)
 
         # compute 1/2-norm of correlation coefficients
         acor = calcNorm(sample.cor - eye(mean.shape[0]), 0.5) / float(boolRand.sum())
-        
+
         # classify random components
         boolDep = (acor > delta) * boolRand
         boolProd = (boolDep ^ True) * boolRand
