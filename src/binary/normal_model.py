@@ -23,7 +23,7 @@ CONST_ITERATIONS = 30
 
 class HiddenNormalBinary(ProductBinary):
     '''
-        A multivariable Bernoulli as function of a hidden multivariable normal distribution.
+        A multivariate Bernoulli as function of a hidden multivariate normal distribution.
     '''
 
     def __init__(self, p, R):
@@ -32,7 +32,7 @@ class HiddenNormalBinary(ProductBinary):
             @param p mean
             @param R correlation matrix
         '''
-        ProductBinary.__init__(self, p, name='hidden-normal-binary', longname='A multivariable Bernoulli as function of a hidden multivariable normal distribution.')
+        ProductBinary.__init__(self, p, name='hidden-normal-binary', longname='A multivariate Bernoulli as function of a hidden multivariate normal distribution.')
         if self.d == 0: return
 
         ## correlation matrix of the binary distribution

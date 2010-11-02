@@ -27,7 +27,7 @@ else:                      hasWeave = False
 
 class LogisticRegrBinary(ProductBinary):
     '''
-        A multivariable Bernoulli with conditionals based on logistic regression models.
+        A multivariate Bernoulli with conditionals based on logistic regression models.
     '''
 
     def __init__(self, Beta):
@@ -39,7 +39,7 @@ class LogisticRegrBinary(ProductBinary):
         ## matrix of regression coefficients 
         self.Beta = Beta
 
-        ProductBinary.__init__(self, name='logistic-regression-binary', longname='A multivariable Bernoulli with conditionals based on logistic regression models.')
+        ProductBinary.__init__(self, name='logistic-regression-binary', longname='A multivariate Bernoulli with conditionals based on logistic regression models.')
 
     @classmethod
     def independent(cls, p):

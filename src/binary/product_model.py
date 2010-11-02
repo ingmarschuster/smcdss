@@ -12,20 +12,20 @@ __version__ = "$Revision$"
 from auxpy.data import *
 from numpy import array, ones, zeros, log
 from numpy.random import rand
-from scipy.stats import rv_discrete
+from binary import Binary
 
-class ProductBinary(rv_discrete):
+class ProductBinary(Binary):
     '''
-        A multivariable Bernoulli with independent components.
+        A multivariate Bernoulli with independent components.
     '''
-    def __init__(self, p=None, name='product-binary', longname='A multivariable Bernoulli with independent components.'):
+    def __init__(self, p=None, name='product-binary', longname='A multivariate Bernoulli with independent components.'):
         '''
             Constructor.
             @param p mean vector
             @param name name
             @param longname longname
         '''
-        rv_discrete.__init__(self, name=name, longname=longname)
+        Binary.__init__(self, name=name, longname=longname)
         if not p is None:
             if isinstance(p, (ndarray, list)):
                 self.p = array(p, dtype=float)
@@ -153,5 +153,5 @@ class ProductBinary(rv_discrete):
             bin = dec2bin(dec, self.d)
             sample.append(bin, self.pmf(bin))
         return str(sample)
-
+    
     d = property(fget=getD, doc="dimension")

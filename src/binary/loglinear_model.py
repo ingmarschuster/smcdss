@@ -9,66 +9,85 @@
 
 from numpy import *
 from auxpy.data import *
+from binary import ProductBinary
 
-tau = lambda i, j: j * (j + 1) / 2 + i
+class LogLinearBinary(ProductBinary):
 
-def m2v(A):
-    d = A.shape[0]
-    a = zeros(d * (d + 1) / 2)
-    for i in range(d):
-        for j in range(i, d):
-            a[tau(i, j)] = A[i, j]
-    return a
+    def __init__(self, Beta):
+        self.Beta = Beta
 
-def v2m(a):
-    d = a.shape[0]
-    d = int((sqrt(1 + 8 * d) - 1) / 2)
-    A = zeros((d, d))
-    for i in range(d):
-        for j in range(i, d):
-            A[i, j] = a[tau(i, j)]
-            A[j, i] = A[i, j]
-    return A
+    @classmethod
+    def independent(cls, p):
+        '''
+            Constructs a log-linear-binary model with independent components.
+            @param cls class 
+            @param p mean
+        '''
+        d = p.shape[0]
+        logOdds = log(p / (ones(d) - p))
+        return cls(diag(logOdds))
 
-def calc_A(S):
-    d = S.shape[0]
-    dd = d * (d + 1) / 2 + 1;
-    x_tau = ones((dd, dd))
-    for i in range(d):
-        for j in range(i, d):
-            for k in range(d):
-                for l in range(k, d):
-                    x_tau[tau(i, j), tau(k, l)] = 2 * (
-    (1 + (k == i | k == j)) * (1 + (l == i | l == j)) * (l != k) + (1 + (k == i | k == j)) * (l == k))
+    @classmethod
+    def random(cls, d):
+        '''
+            Constructs a random log-linear-binary model for testing.
+            @param cls class 
+            @param d dimension
+        '''
+        Beta = random.normal(scale=1.0, size=(d, d))
+        for i in range(d):
+            Beta[i, :i] = Beta[:i, i]
+        return LogLinearBinary(Beta)
 
-    s = m2v(S);
-    s = 2 * array(list(s) + [1.0])
+    def _pmf(self, gamma):
+        '''
+            Probability mass function.
+            @param gamma: binary vector
+        '''
+        return exp(self._lpmf(gamma))
 
-    x_tau[:dd - 1, :dd - 1] /= 4.0
-    x_tau[dd - 1, dd - 1] = 2.0
+    def _lpmf(self, gamma):
+        '''
+            Log-probability mass function.
+            @param gamma binary vector    
+        '''
+        return float(dot(dot(gamma[newaxis, :], self.Beta), gamma[:, newaxis]))
 
-    print format(x_tau)
+    def getD(self):
+        '''
+            Get dimension.
+            @return dimension 
+        '''
+        return self.Beta.shape[0]
 
-    a = linalg.solve(x_tau, s)
+    d = property(fget=getD, doc="dimension")
 
-    pi0 = a[dd - 1]
-    a = a[:dd - 1]
-    A = v2m(a)
-    c = 2 ** (d - 1)
+# Computes the log-linear approximately marginalized over the dim - len(b) components.
+def marginal_loglinear(b):
+    B = range(len(b))
+    C = range(len(b), DIM)
+    
+    mu = MU + len(C) * log(2)
+    for r in C:
+        mu += log(cosh(ALPHA[r, r]))
+        for j in B:
+              mu += .5 * ALPHA[j, r] ** 2 * cosh(ALPHA[r, r]) ** -2
 
-    print A
-
-
-d = 2
-mean = ones(d) * 0.01
-R = eye(d)
-
-#R = random.random((d, d)) 
-#R = dot(R.T, R)
-#r = diag(R)
-#R /= sqrt(dot(r[:, newaxis], r[newaxis, :]))
-
-var = mean * (1 - mean)
-S = R * sqrt(dot(var[:, newaxis], var[newaxis, :])) + dot(mean[:, newaxis], mean[newaxis, :])
-
-calc_A(S)
+    alpha = copy(ALPHA)[:len(B), :len(B)]
+    for j in B:
+        for r in C:
+            alpha[j, j] += ALPHA[j, r] * tanh(ALPHA[r, r]) 
+            for s in C:
+                  if r > s:
+                      alpha[j, j] += ALPHA[j, r] * ALPHA[r, s] * tanh(ALPHA[s, s]) * cosh(ALPHA[r, r]) ** -2
+    for j in B:
+        for k in B:
+            if j > k:
+                for r in C:
+                    alpha[j, k] += ALPHA[j, r] * ALPHA[k, r] * cosh(ALPHA[r, r]) ** -2
+    
+    sum = dot(diag(alpha), b)
+    for i in B:
+        for j in range(i):
+            sum += b[i] * b[j] * alpha[i, j]
+    return exp(MU + sum)

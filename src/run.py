@@ -14,5 +14,5 @@ from numpy import zeros, array, diag, log, random
 from auxpy.data import *
 from auxpy.plotting import *
 
-x=binary.PosteriorBinary('../data/datasets/test_dat.csv','bic')
-plot4(x)
+#x=binary.PosteriorBinary('../data/datasets/test_dat.csv','bic')
+#plot4(x)
