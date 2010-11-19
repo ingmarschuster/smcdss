@@ -11,11 +11,13 @@ __version__ = "$Revision$"
 
 from time import clock
 from auxpy.data import *
-from binary import ProductBinary
 from numpy import *
 from scipy.weave import inline, converters
 from platform import system
 from scipy.linalg import solve
+
+from binary import ProductBinary
+from binary.loglinear_model import calc_marginal
 
 CONST_PRECISION = 0.00001
 CONST_ITERATIONS = 30
@@ -68,11 +70,33 @@ class LogisticRegrBinary(ProductBinary):
     @classmethod
     def from_data(cls, sample):
         '''
-            Construct a product-binary model from data.
+            Construct a logistic-regression binary model from data.
             @param cls class
             @param sample a sample of binary data
         '''
         return cls(calc_Beta(sample))
+
+
+    @classmethod
+    def from_loglinear_model(cls, llmodel):
+        '''
+            Constructs a random log-linear-binary model for testing.
+            @param cls class 
+            @param d dimension
+            @param scale standard deviation of the off-diagonal elements
+        '''
+        d = llmodel.d
+        Beta = zeros((d, d))
+        Beta[0, 0] = llmodel.p_0
+
+        A = copy(llmodel.A)
+        for i in xrange(d - 1, 0, -1):
+            Beta[i, 1:i + 1] = A[i, :i]
+            Beta[i, 1:i + 1] *= 2.0
+            Beta[i, 0] = A[i, i]
+            A, logc = calc_marginal(A)
+
+        return cls(Beta)
 
     def _pmf(self, gamma):
         '''
@@ -245,7 +269,7 @@ def calc_Beta(sample, Init=None, verbose=False):
     '''
 
     if sample.d == 0: return array([])
-    
+
     t = clock()
     n = sample.size
     d = sample.d

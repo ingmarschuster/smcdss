@@ -7,14 +7,20 @@
     $Revision: 29 $
 '''
 
+from rpy import *
 from numpy import *
 from auxpy.data import *
 from binary import ProductBinary
 
 class LogLinearBinary(ProductBinary):
 
-    def __init__(self, Beta):
-        self.Beta = Beta
+    def __init__(self, A, p_0):
+        '''
+            Constructor.
+            @param A coefficient matrix
+        '''
+        self.A = A
+        self.p_0 = p_0
 
     @classmethod
     def independent(cls, p):
@@ -25,69 +31,99 @@ class LogLinearBinary(ProductBinary):
         '''
         d = p.shape[0]
         logOdds = log(p / (ones(d) - p))
-        return cls(diag(logOdds))
+        return cls(diag(logOdds), p[0])
 
     @classmethod
-    def random(cls, d):
+    def random(cls, d, scale=0.5):
         '''
             Constructs a random log-linear-binary model for testing.
             @param cls class 
             @param d dimension
+            @param scale standard deviation of the off-diagonal elements
         '''
-        Beta = random.normal(scale=1.0, size=(d, d))
+        p = random.random(d)
+        logratio = log(p / (1 - p))
+        A = diag(logratio)
         for i in range(d):
-            Beta[i, :i] = Beta[:i, i]
-        return LogLinearBinary(Beta)
+            if scale > 0.0: A[i, :i] = random.normal(scale=scale, size=i)
+            A[:i, i] = A[i, :i]
+
+        # compute expected value of first component
+        sample = data()
+        for dec in range(2 ** d):
+            bin = dec2bin(dec, d)
+            prob = exp(float(dot(dot(bin[newaxis, :], A), bin[:, newaxis])))
+            sample.append(bin, prob)
+        p_0 = sample.getMean(weight=True)[0]
+
+        return LogLinearBinary(A, p_0)
+
+    @classmethod
+    def from_data(cls, sample):
+        '''
+            Construct a log-linear-binary model from data.
+            @param cls class
+            @param sample a sample of binary data
+        '''
+        return cls(calc_A(sample), sample.getMean(weight=True)[0])
 
     def _pmf(self, gamma):
         '''
-            Probability mass function.
-            @param gamma: binary vector
+            Probability mass function of the underlying log-linear model.
+            @return random variable
         '''
         return exp(self._lpmf(gamma))
 
     def _lpmf(self, gamma):
         '''
-            Log-probability mass function.
-            @param gamma binary vector    
+            Log probability mass function of the underlying log-linear model.
+            @return random variable
         '''
-        return float(dot(dot(gamma[newaxis, :], self.Beta), gamma[:, newaxis]))
+        gamma = gamma[newaxis, :]
+        return float(dot(dot(gamma, self.A), gamma.T))
 
     def getD(self):
         '''
             Get dimension.
             @return dimension 
         '''
-        return self.Beta.shape[0]
+        return self.A.shape[0]
 
     d = property(fget=getD, doc="dimension")
 
-# Computes the log-linear approximately marginalized over the dim - len(b) components.
-def marginal_loglinear(b):
-    B = range(len(b))
-    C = range(len(b), DIM)
-    
-    mu = MU + len(C) * log(2)
-    for r in C:
-        mu += log(cosh(ALPHA[r, r]))
-        for j in B:
-              mu += .5 * ALPHA[j, r] ** 2 * cosh(ALPHA[r, r]) ** -2
 
-    alpha = copy(ALPHA)[:len(B), :len(B)]
-    for j in B:
-        for r in C:
-            alpha[j, j] += ALPHA[j, r] * tanh(ALPHA[r, r]) 
-            for s in C:
-                  if r > s:
-                      alpha[j, j] += ALPHA[j, r] * ALPHA[r, s] * tanh(ALPHA[s, s]) * cosh(ALPHA[r, r]) ** -2
-    for j in B:
-        for k in B:
-            if j > k:
-                for r in C:
-                    alpha[j, k] += ALPHA[j, r] * ALPHA[k, r] * cosh(ALPHA[r, r]) ** -2
+def calc_A(sample):
+    cor = sample.getCor(weight=True)
     
-    sum = dot(diag(alpha), b)
-    for i in B:
-        for j in range(i):
-            sum += b[i] * b[j] * alpha[i, j]
-    return exp(MU + sum)
+    return A
+
+def sech(x):
+    '''
+        Hyperbolic secant.
+        @param x value
+        @return sech(x)
+    '''
+    return 1 / cosh(x)
+
+def calc_marginal(A, logc=0.0):
+    '''
+        Computes the parameters of a loglinear model where the last component has been marginalized.
+        The marginalization is not exact but relies on an approximation idea by Cox and Wermuth
+        [A note on the quadratic exponential binary distribution, Biometrika 1994, 81, 2, pp. 403-8].
+        @param A coefficient matrix
+        @param logc log normalization constant
+        @return coefficient matrix the approximate marginal distribution
+        @return log normalization constant of the approximate marginal distribution
+        '''
+    d = A.shape[0]
+
+    # normalization constant
+    logc += log(1 + exp(A[d - 1, d - 1]))
+
+    # coefficient matrix
+    b = A[d - 1, :d - 1]
+    A = (A[:d - 1, :d - 1] +
+         (1 + tanh(0.5 * A[d - 1, d - 1])) * diag(b) +
+          0.5 * sech(0.5 * A[d - 1, d - 1]) ** 2 * dot(b[:, newaxis], b[newaxis, :]))
+
+    return A, logc

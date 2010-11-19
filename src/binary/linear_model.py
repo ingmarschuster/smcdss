@@ -82,7 +82,7 @@ class LinearBinary(Binary):
             Samples from the model.
             @return random variable
         '''
-        gamma = ones(self.d, dtype=bool)
+        gamma = zeros(self.d, dtype=bool)
         gamma[0] = self.p[0] > random.random()
 
         # initialize

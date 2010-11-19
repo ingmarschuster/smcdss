@@ -16,3 +16,10 @@ from auxpy.plotting import *
 
 #x=binary.PosteriorBinary('../data/datasets/test_dat.csv','bic')
 #plot4(x)
+
+x = binary.LogLinearBinary.random(12,0.01)
+print x.marginals()
+
+y = binary.LogisticRegrBinary.from_loglinear_model(x)
+print y.marginals()
+
