@@ -25,9 +25,9 @@ class data(object):
         '''
 
         ## data
-        self.__X = list(X)
+        self._X = list(X)
         ## weights
-        self.__w = list(w)
+        self._w = list(w)
         ## index set
         self.__order = None
 
@@ -35,15 +35,19 @@ class data(object):
         return format(self.getMean(weight=True), 'mean') + '\n' + \
                format(self.getCor(weight=True), 'correlation')
 
+    def fraction(self, fraction=1.0):
+        return data(X=self.X[self.order[0:int(self.size * fraction)]], \
+                    w=self.getWeights(noexp=True)[self.order[0:int(self.size * fraction)]])
+
     def getData(self):
         '''
             Get data.
             @return data array.
         '''
-        if isinstance(self.__X, list):
-            return array(self.__X)
+        if isinstance(self._X, list):
+            return array(self._X)
         else:
-            return self.__X
+            return self._X
 
     def proc_data(self, order=False, fraction=1.0, dtype=int):
         '''
@@ -61,16 +65,21 @@ class data(object):
         else:
             return array(self.X[self.order[0:int(self.size * fraction)]], dtype=dtype)
 
-    def getWeights(self):
+    def getWeights(self, noexp=False):
         '''
             Get weights.
             @remark If weights are negative, the function returns the normalized exponential weights.
             @return normalized weights
         '''
         if not self.isWeighted(): return ones(self.size) / float(self.size)
-        w = array(self.__w)
+        w = array(self._w)
+
+        if noexp: return w
+
         max = w.max()
-        if max < 0: w = exp(self.__w - max)
+        min = w.min()
+        if min > 0: w = exp(self._w - min)
+        if max < 0: w = exp(self._w - max)
         return w / w.sum()
 
     def proc_weights(self, order=False, fraction=1.0):
@@ -97,7 +106,7 @@ class data(object):
             self.__init__()
         else:
             self.__init__(X=self.X[self.order[0:int(self.size * fraction)]], \
-                          w=self.w[self.order[0:int(self.size * fraction)]])
+                          w=self.getWeights(noexp=True)[self.order[0:int(self.size * fraction)]])
 
     def getD(self):
         '''
@@ -105,35 +114,35 @@ class data(object):
             @return dimension 
         '''
         if size == 0: return 0
-        return len(self.__X[0])
+        return len(self._X[0])
 
     def getSize(self):
         '''
             Get sample size.
             @return sample size 
         '''
-        return len(self.__X)
+        return len(self._X)
 
     def setData(self, X):
         '''
             Set data.
             @param X data
         '''
-        self.__X = list(X)
+        self._X = list(X)
 
     def setWeights(self, w):
         '''
             Set weights.
             @param w weights
         '''
-        self.__w = list(w)
+        self._w = list(w)
 
     def isWeighted(self):
         '''
             Test if weighted.
             @return True, if the sample has weights.
         '''
-        return len(self.__w) > 0
+        return len(self._w) > 0
 
     def getMean(self, weight=False, fraction=1.0):
         '''
@@ -189,8 +198,9 @@ class data(object):
         '''
             Sets the index for the data in ascending order according to the weights.
         '''
-        self.__order = self.w.argsort(axis=0).tolist()
+        self.__order = self.getWeights(noexp=True).argsort(axis=0).tolist()
         self.__order.reverse()
+
 
     def lexorder(self):
         '''
@@ -199,30 +209,40 @@ class data(object):
         '''
         return argsort(array([str(array(x, int)) for x in self.X]))
 
-    def assign_weights(self, f):
+    def assign_weights(self, f, verbose=True):
         '''
             Evaluates the value of c*exp(f(x)) for each sample x.
             @param f a real-valued function on the sampling space 
         '''
 
-        self.__w = []
-        weight = post.lpmf(array(self.X[0]))
+        if verbose:
+            t = clock()
+            bars = 20
+            drawn = 0
+            print 'Evaluating ' + f.name + '...'
+            stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
+
+        self._w = []
+        weight = f.lpmf(array(self.X[0]))
+
+        X = array(self._X)
 
         # Apply in lexicographical order to avoid extra evaluation of f.
         lexorder = self.lexorder()
         for index in range(self.size):
-            if not (X[lexorder(index)] == X[lexorder(index - 1)]).all():
-                weight = f(self.X[lexorder(index)])
-            self.__w.append(weight)
-        self.__w = array(self.__w)
+            if not (X[lexorder[index]] == X[lexorder[index - 1]]).all():
+                weight = f.lpmf(self.X[lexorder[index]])
+            self._w.append(weight)
+            if verbose:
+                n = bars * index / self.size - drawn
+                if n > 0:
+                    stdout.write(n * "-")
+                    stdout.flush()
+                    drawn += n
+        self._w = array(self._w)
+        self._w = self._w[argsort(lexorder)]
 
-        # Assure good log-level.
-        max = self.__w.max()
-        min = self.__w.min()
-        if max < 0: self.__w -= max
-        if min > 0: self.__w -= min
-
-        self.__w = exp(self.__w[argsort(lexorder)])
+        if verbose: print ']\nDone. %i evaluation in %.2f seconds.\n' % (self.size, clock() - t)
 
     def append(self, x, w=None):
         '''
@@ -230,17 +250,17 @@ class data(object):
             @param x value
             @param w weight
         '''
-        if not isinstance(self.__X, list): self.__X.tolist()
-        if not isinstance(self.__w, list): self.__w.tolist()
-        self.__X.append(x)
-        if not w is None: self.__w.append(float(w))
+        if not isinstance(self._X, list): self._X.tolist()
+        if not isinstance(self._w, list): self._w.tolist()
+        self._X.append(x)
+        if not w is None: self._w.append(float(w))
 
     def shrink(self, index):
         '''
             Removes the indicated columns from the data.
             @param index column index set 
         '''
-        self.__X = self.X[:, index]
+        self._X = self.X[:, index]
 
     def get_sub_data(self, index):
         '''

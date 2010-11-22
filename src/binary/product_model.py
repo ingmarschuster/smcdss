@@ -89,7 +89,7 @@ class ProductBinary(Binary):
 
     def _rvslpmf(self):
         '''
-            Generates a random variable and computes its likelihood.
+            Generates a random variable and computes its probability.
         '''
         rv = self.rvs()
         return rv, self.lpmf(rv)

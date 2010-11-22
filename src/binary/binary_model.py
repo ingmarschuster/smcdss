@@ -51,7 +51,7 @@ class Binary(rv_discrete):
 
     def rvslpmf(self):
         '''
-            Generates a random variable and computes its likelihood.
+            Generates a random variable and computes its probability.
         '''
         if self.d == 0: return array([]), 0.0
         return self._rvslpmf()

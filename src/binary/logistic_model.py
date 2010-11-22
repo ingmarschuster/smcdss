@@ -57,6 +57,17 @@ class LogisticRegrBinary(ProductBinary):
         return cls(Beta)
 
     @classmethod
+    def uniform(cls, d):
+        '''
+            Constructs a hidden-normal-binary model with independent components.
+            @param cls class 
+            @param p mean
+        '''
+        Beta = zeros((d, d))
+        Beta[0, 0] = 0.5
+        return cls(Beta)
+
+    @classmethod
     def random(cls, d):
         '''
             Constructs a random logistic-regression-binary model for testing.
@@ -80,10 +91,9 @@ class LogisticRegrBinary(ProductBinary):
     @classmethod
     def from_loglinear_model(cls, llmodel):
         '''
-            Constructs a random log-linear-binary model for testing.
+            Constructs an approximate logistic-regression model from a log-linear model.
             @param cls class 
-            @param d dimension
-            @param scale standard deviation of the off-diagonal elements
+            @param llmodel log-linear model
         '''
         d = llmodel.d
         Beta = zeros((d, d))
@@ -127,7 +137,7 @@ class LogisticRegrBinary(ProductBinary):
 
     def _rvslpmf(self):
         '''
-            Samples from the model and evaluates the likelihood of the sample.
+            Generates a random variable and computes its probability.
             @return random variable
             @return likelihood
         '''

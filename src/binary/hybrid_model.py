@@ -12,11 +12,11 @@ __version__ = "$Revision$"
 from auxpy.data import *
 from binary import *
 
-class HybridBinary(ProductBinary):
+class HybridBinary(Binary):
     '''
         A hybrid model having constant, independent and dependent components.
     '''
-    
+
     def __init__(self, cBase, iProd, iDep, dProd, dDep):
         '''
             Constructor.
@@ -27,23 +27,29 @@ class HybridBinary(ProductBinary):
             @param dDep binary model supporting dependencies
         '''
 
+        Binary.__init__(self, name='hybrid-binary', longname='A hybrid model having constant, independent and dependent components.')
+
         ## base vector with set constant components
-        self.__cBase = cBase
+        self._cBase = cBase
         ## index of independent components
-        self.__iProd = list(iProd)
+        self._iProd = list(iProd)
         ## index of dependent components
-        self.__iDep = list(iDep)
+        self._iDep = list(iDep)
         ## index of constant components
-        self.__iConst = [i for i in range(self.d) if not i in iProd + iDep]
+        self._iConst = [i for i in range(self.d) if not i in iProd + iDep]
         ## product model
         self.dProd = dProd
         ## binary model supporting dependencies
         self.dDep = dDep
 
     def __str__(self):
-        return 'constant: ' + str(self.iConst) + '\n' + format(self.__cBase[self.iConst], 'base vector') + '\n' + \
+        return 'constant: ' + str(self.iConst) + '\n' + format(self._cBase[self.iConst], 'base vector') + '\n' + \
                'product model: ' + str(self.iProd) + '\n' + str(self.dProd) + '\n' + \
                'dependency model: ' + str(self.iDep) + '\n' + str(self.dDep) + '\n'
+
+    @classmethod
+    def uniform(cls, d, model=LogisticRegrBinary):
+        return cls(zeros(d, dtype=bool), [], range(d), ProductBinary.uniform(0), model.uniform(d))
 
     @classmethod
     def from_data(cls, sample, eps=0.05, delta=0.1, model=LogisticRegrBinary):
@@ -74,7 +80,7 @@ class HybridBinary(ProductBinary):
         iProd = list(where(boolProd == True)[0])
         iDep = list(where(boolDep == True)[0])
         dProd = ProductBinary(mean[iProd])
-        dDep = model.fromData(sample.getSubData(iDep))
+        dDep = model.from_data(sample.get_sub_data(iDep))
 
         return cls(cBase, iProd, iDep, dProd, dDep)
 
@@ -83,7 +89,7 @@ class HybridBinary(ProductBinary):
             Probability mass function.
             @param gamma: binary vector
         '''
-        if not ((self.__cBase == gamma)[self.iConst]).all(): return 0
+        if not ((self._cBase == gamma)[self.iConst]).all(): return 0
         return self.dProd.pmf(gamma[self.iProd]) * self.dDep.pmf(gamma[self.iDep])
 
     def _lpmf(self, gamma):
@@ -91,24 +97,23 @@ class HybridBinary(ProductBinary):
             Log-probability mass function.
             @param gamma binary vector
         '''
-        if not ((self.__cBase == gamma)[self.iConst]).all(): return - inf
+        if not ((self._cBase == gamma)[self.iConst]).all(): return - inf
         return self.dProd.lpmf(gamma[self.iProd]) + self.dDep.lpmf(gamma[self.iDep])
 
     def _rvs(self):
         '''
             Generates a random variable.
         '''
-        rv = self.__cBase.copy()
-        rv[self.iProd] = self.dProd.rvs()
-        rv[self.iDep] = self.dDep.rvs()
-
+        rv = self._cBase.copy()
+        if self.nProd > 0: rv[self.iProd] = self.dProd.rvs()
+        if self.nDep > 0: rv[self.iDep] = self.dDep.rvs()
         return rv
 
     def _rvslpmf(self):
         '''
-            Generates a random variable and computes its likelihood.
+            Generates a random variable and computes its probability.
         '''
-        rv = self.__cBase.copy()
+        rv = self._cBase.copy()
         rvProd, lmpfProd = self.dProd.rvsplus()
         rv[self.iProd] = rvProd
         rvDep, lmpfDep = self.dDep.rvsplus()
@@ -121,7 +126,7 @@ class HybridBinary(ProductBinary):
             Get index of independent components.
             @return index
         '''
-        return self.__iProd
+        return self._iProd
 
 
     def getIDep(self):
@@ -129,7 +134,7 @@ class HybridBinary(ProductBinary):
             Get index of dependent components.
             @return index
         '''
-        return self.__iDep
+        return self._iDep
 
 
     def getIConst(self):
@@ -137,42 +142,42 @@ class HybridBinary(ProductBinary):
             Get index of constant components.
             @return index
         '''
-        return self.__iConst
+        return self._iConst
 
     def getIRandom(self):
         '''
             Get index of random components.
             @return index
         '''
-        return self.__iProd + self.__iDep
+        return self._iProd + self._iDep
 
     def getIZeros(self):
         '''
             Get index of constant zero (False) components.
             @return index
         '''
-        return [i for i in self.__iConst if i in where(self.__cBase ^ True)[0]]
+        return [i for i in self._iConst if i in where(self._cBase ^ True)[0]]
 
     def getIOnes(self):
         '''
             Get index of constant one (True) components.
             @return index
         '''
-        return [i for i in self.__iConst if i in where(self.__cBase ^ False)[0]]
+        return [i for i in self._iConst if i in where(self._cBase ^ False)[0]]
 
     def getNProd(self):
         '''
             Get number of independent components.
             @return number
         '''
-        return len(self.__iProd)
+        return len(self._iProd)
 
     def getNDep(self):
         '''
             Get number of dependent components.
             @return number
         '''
-        return len(self.__iDep)
+        return len(self._iDep)
 
 
     def getNConst(self):
@@ -180,14 +185,14 @@ class HybridBinary(ProductBinary):
             Get number of constant components.
             @return number
         '''
-        return len(self.__iConst)
+        return len(self._iConst)
 
     def getNRandom(self):
         '''
             Get number of random components.
             @return number
         '''
-        return self.d - len(self.__iConst)
+        return self.d - len(self._iConst)
 
     def getNZeros(self):
         '''
@@ -208,7 +213,7 @@ class HybridBinary(ProductBinary):
             Get dimension.
             @return dimension
         '''
-        return self.__cBase.shape[0]
+        return self._cBase.shape[0]
 
     iProd = property(fget=getIProd, doc="index of independent components")
     iDep = property(fget=getIDep, doc="index of dependent components")

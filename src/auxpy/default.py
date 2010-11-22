@@ -12,6 +12,7 @@
 __version__ = "$Revision$"
 
 from numpy import inf
+from binary import LogisticRegrBinary
 
 dicMC = dict(
 
@@ -42,23 +43,26 @@ dicSMC = dict(
 dicCE = dict(
 
     # number of particles 
-    n_particles=10000,
+    n_particles=6000,
 
     # model for binary data with dependencies
-    dep_model='logistic-regression-binary',
+    dep_model=LogisticRegrBinary,
 
     # elite fraction used to estimate the mean
-    elite_mean=0.02,
+    elite_prod=0.02,
 
     # elite fraction used to estimate the correlation matrix
     # or the logistic regression coefficients
-    elite_corr=0.2,
+    elite_dep=0.2,
 
     # lag in mean update
-    lag_mean=0.3,
+    lag_prod=0.3,
 
     # lag in correlation update
-    lag_corr=0.2,
+    lag_dep=0.3,
+    
+    # ratio of product model
+    r_prod=1.0,
 
     # minimum distance of mean from the boundaries of [0,1]
     eps=0.02,
