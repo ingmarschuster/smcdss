@@ -18,7 +18,7 @@ class MixtureBinary(Binary):
         A mixture model consisting of a product model and a hybrid model.
     '''
 
-    def __init__(self, dHybrid, rProd=0.0, dProd=None, lagProd=0.0, lagHybrid=0.0):
+    def __init__(self, dHybrid, lag):
         '''
             Constructor.
             @param dHybrid current hybrid model
@@ -30,43 +30,33 @@ class MixtureBinary(Binary):
 
         Binary.__init__(self, name='mixture-binary', longname='A mixture model consisting of a product model and a hybrid model.')
 
-        self.rProd = rProd
-        self.lagProd = lagProd
-        self.lagHybrid = lagHybrid
         self.dHybridCurrent = dHybrid
         self.dHybridFormer = dHybrid
-        if dProd is None: dProd = ProductBinary.uniform(self.d)
-        self.dProdCurrent = dProd
+        self.lag = lag
+        self.mean = 0.5 * ones(self.d)
 
-    def renew(self, dProdNew, dHybridNew):
-        '''
-            Renews the mixture changing the new to the current, and the current to the former.
-            @param dProdNew new product model
-            @param dHybridNew new hybrid model
-        '''
-        self.dProdCurrent = ProductBinary(p=(1.0 - self.lagProd) * dProdNew.p + self.lagProd * self.dProdCurrent.p)
-        self.dHybridFormer = self.dHybridCurrent
-        self.dHybridCurrent = dHybridNew
-
-    def renew_from_data(self, sample, fProd=1.0, fHybrid=1.0, eps=0.05, delta=0.1):
+    def renew_from_data(self, sample, fProd=1.0, fDep=1.0, eps=0.05, delta=0.1, verbose=False):
         '''
             Renews the mixture moving the current to the former and calibrating the current from the data.
             @param sample data
         '''
-        dProdNew = self.dProdCurrent.from_data(sample.fraction(fProd))
-        dHybridNew = self.dHybridCurrent.from_data(sample.fraction(fHybrid), eps, delta)
-        self.renew(dProdNew, dHybridNew)
+
+        self.dHybridFormer = self.dHybridCurrent
+        self.mean = (1.0 - self.lag) * sample.getMean(weight=True, fraction=fProd) + self.lag * self.mean
+
+        # construct hybrid model using smoothed mean
+        self.dHybridCurrent = \
+        self.dHybridCurrent.from_data(sample.fraction(fDep), eps, delta, mean=self.mean, verbose=verbose)
+
+        # keep former hybrid model using smoothed mean
+        self.dHybridFormer.dProd.p = self.mean[self.dHybridFormer.iProd]
 
     def _rvs(self):
         '''
             Generates a random variable.
         '''
-        if random.random() < self.rProd:
-            # return inHybridendent components
-            return self.dProdCurrent.rvs()
-
-        if random.random() < self.lagProd:
-            # return from old model
+        if random.random() < self.lag:
+            # return from former model
             return self.dHybridFormer.rvs()
         else:
             # return from current model

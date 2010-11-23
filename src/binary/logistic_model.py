@@ -79,13 +79,13 @@ class LogisticRegrBinary(ProductBinary):
         return cls
 
     @classmethod
-    def from_data(cls, sample):
+    def from_data(cls, sample, verbose=False):
         '''
             Construct a logistic-regression binary model from data.
             @param cls class
             @param sample a sample of binary data
         '''
-        return cls(calc_Beta(sample))
+        return cls(calc_Beta(sample, verbose=verbose))
 
 
     @classmethod
@@ -279,6 +279,7 @@ def calc_Beta(sample, Init=None, verbose=False):
     '''
 
     if sample.d == 0: return array([])
+    if verbose: print 'Computing logistic-regression model of size %i...' % sample.d
 
     t = clock()
     n = sample.size
@@ -300,7 +301,7 @@ def calc_Beta(sample, Init=None, verbose=False):
         Beta[m, :m + 1], r = calc_log_regr(y=X[:, m + 1], X=X[:, :m + 1], XW=XW[:, :m + 1], init=Init[m, :m + 1])
         resp += r
 
-    if verbose: print 'loops %.3f, failures %i, time %.3f' % (resp[0] / float(d - 1), resp[1], clock() - t)
+    if verbose: print 'Loops %.3f, failures %i, time %.3f\n' % (resp[0] / float(d - 1), resp[1], clock() - t)
 
     return Beta
 

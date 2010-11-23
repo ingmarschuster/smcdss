@@ -37,7 +37,7 @@ class data(object):
 
     def fraction(self, fraction=1.0):
         return data(X=self.X[self.order[0:int(self.size * fraction)]], \
-                    w=self.getWeights(noexp=True)[self.order[0:int(self.size * fraction)]])
+                    w=array(self._w)[self.order[0:int(self.size * fraction)]])
 
     def getData(self):
         '''
@@ -65,7 +65,7 @@ class data(object):
         else:
             return array(self.X[self.order[0:int(self.size * fraction)]], dtype=dtype)
 
-    def getWeights(self, noexp=False):
+    def getWeights(self):
         '''
             Get weights.
             @remark If weights are negative, the function returns the normalized exponential weights.
@@ -73,8 +73,6 @@ class data(object):
         '''
         if not self.isWeighted(): return ones(self.size) / float(self.size)
         w = array(self._w)
-
-        if noexp: return w
 
         max = w.max()
         min = w.min()
@@ -95,7 +93,8 @@ class data(object):
             else:
                 return self.w
         else:
-            return self.w[self.order[0:int(self.size * fraction)]]
+            w = self.w[self.order[0:int(self.size * fraction)]]
+            return w / w.sum()
 
     def clear(self, fraction=1.0):
         '''
@@ -106,7 +105,7 @@ class data(object):
             self.__init__()
         else:
             self.__init__(X=self.X[self.order[0:int(self.size * fraction)]], \
-                          w=self.getWeights(noexp=True)[self.order[0:int(self.size * fraction)]])
+                          w=array(self._w)[self.order[0:int(self.size * fraction)]])
 
     def getD(self):
         '''
@@ -198,7 +197,7 @@ class data(object):
         '''
             Sets the index for the data in ascending order according to the weights.
         '''
-        self.__order = self.getWeights(noexp=True).argsort(axis=0).tolist()
+        self.__order = array(self._w).argsort(axis=0).tolist()
         self.__order.reverse()
 
 

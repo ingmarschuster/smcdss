@@ -43,7 +43,7 @@ dicSMC = dict(
 dicCE = dict(
 
     # number of particles 
-    n_particles=6000,
+    n_particles=3000,
 
     # model for binary data with dependencies
     dep_model=LogisticRegrBinary,
@@ -56,13 +56,7 @@ dicCE = dict(
     elite_dep=0.2,
 
     # lag in mean update
-    lag_prod=0.3,
-
-    # lag in correlation update
-    lag_dep=0.3,
-    
-    # ratio of product model
-    r_prod=1.0,
+    lag=0.3,
 
     # minimum distance of mean from the boundaries of [0,1]
     eps=0.02,

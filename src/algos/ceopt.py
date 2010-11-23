@@ -18,70 +18,59 @@ from auxpy.default import dicCE, dicData
 
 def ceopt(target, verbose=True):
     '''
-        Run cross entropy optimization.
+        Runs cross-entropy optimization.
+        
+        @param target target function
     '''
 
-    n = dicCE['n_particles']
-    d = target.d
-
-    # presampling step
     start = clock()
 
-    model = (MixtureBinary(
-                 dHybrid=HybridBinary.uniform(d, model=dicCE['dep_model']),
-                 rProd=dicCE['r_prod'],
-                 lagProd=dicCE['lag_prod'],
-                 lagHybrid=dicCE['lag_dep']
-                 ))
-
+    model = MixtureBinary(dHybrid=HybridBinary.uniform(target.d, model=dicCE['dep_model']), lag=dicCE['lag'])
     if verbose: print "start ceopt using " + model.dHybridCurrent.dDep.name
-
     d = data()
-    #d.sample(model, n, verbose=verbose)
-    #d.clear(fraction=dicCE['elite_prod'])
 
-    #if verbose: print "score: %.5f\n" % d.getWeights(noexp=True)[0]
-
-    # run crosss entropy optimization scheme
-
-    for step in range(1, 51):
+    # run optimization scheme
+    for step in range(1, 50):
         if verbose: print "step %i" % step,
 
-        # create weighted sample
-        d.sample(model, n, verbose=verbose)
+        d.sample(model, dicCE['n_particles'], verbose=verbose)
         d.assign_weights(f=target)
+        
+        model.renew_from_data(d, fProd=dicCE['elite_prod'], fDep=dicCE['elite_dep'], eps=dicCE['eps'], verbose=verbose)
+        if verbose: print "state: ", model.dHybridCurrent.iOnes, model.dHybridCurrent.iZeros, model.dHybridCurrent.iRand
 
-        # reinit sampler with elite samples
-        model.renew_from_data(d, fProd=dicCE['elite_prod'], fHybrid=dicCE['elite_dep'], eps=dicCE['eps'])
-
-        if verbose:
-            x = model.dHybridCurrent
-            print "state: " , x.iOnes, x.iZeros, x.iRand
-
-        # if dimension is reduced to feasible size, run brute force search
+        # check if dimension is sufficiently reduced
         if model.dHybridCurrent.nRand < 5:
-            state_max = d._X[0]
-            score_max = d._w[0]
-            if model.dHybridCurrent.nRand > 0:
-                gamma = model.dHybridCurrent._cBase
-                for dec in range(2 ** model.dHybridCurrent.nRand):
-                    bin = dec2bin(dec, model.dHybridCurrent.nRand)
-                    gamma[model.dHybridCurrent.iRand] = bin
-                    score = target.lpmf(gamma)
-                    if score > score_max:
-                        state_max = gamma.copy()
-                        score_max = score
+            max = brute_search(target=target, max=dict(state=d._X[0], score=d._w[0]), model=model)
+            return max, clock() - start
 
-            return ['%.3f' % score_max, '[' + ', '.join([str(i) for i in where(state_max)[0]]) + ']',
-                    '%.3f' % (clock() - start)]
-
-        # remove all but elite samples
         d.clear(fraction=dicCE['elite_prod'])
 
-        state_max = d._X[0]
-        score_max = d._w[0]
+        max = dict(state=d._X[0], score=d._w[0])
+        if verbose: print "score: %.5f\n" % max['score']
 
-        if verbose: print "score: %.5f\n" % d.getWeights(noexp=True)[0]
+def brute_search(target, max, model):
+    '''
+        Run exhaustive search.
+        
+        @param target target function
+        @param max current max state and score 
+        @param model underlying model
+        @return max max state and score obtained from solving the sub-problem 
+    '''
+    if model.dHybridCurrent.nRand > 0:
+        gamma = model.dHybridCurrent._cBase
+        for dec in range(2 ** model.dHybridCurrent.nRand):
+            bin = dec2bin(dec, model.dHybridCurrent.nRand)
+            gamma[model.dHybridCurrent.iRand] = bin
+            score = target.lpmf(gamma)
+            if score > max['score']:
+                max['state'] = gamma.copy()
+                max['score'] = score
+    return max
 
 target = PosteriorBinary(dataFile='/home/cschafer/Documents/smcdss/data/datasets/test_dat.csv')
-print ceopt(target)
+max, time= ceopt(target)
+print max['score']
+print '[' + ', '.join([str(i) for i in where(max['state'])[0]]) + ']',
+print time

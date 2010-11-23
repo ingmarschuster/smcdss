@@ -26,7 +26,7 @@ class HiddenNormalBinary(ProductBinary):
         A multivariate Bernoulli as function of a hidden multivariate normal distribution.
     '''
 
-    def __init__(self, p, R):
+    def __init__(self, p, R, verbose=False):
         '''
             Constructor.
             @param p mean
@@ -43,7 +43,7 @@ class HiddenNormalBinary(ProductBinary):
 
         localQ = calc_local_Q(R, self.mu, self.p)
         ## correlation matrix of the hidden normal distribution
-        self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=False)
+        self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
 
     @classmethod
     def random(cls, d):
@@ -76,13 +76,13 @@ class HiddenNormalBinary(ProductBinary):
         return cls(p, eye(len(p)))
 
     @classmethod
-    def from_data(cls, sample):
+    def from_data(cls, sample, verbose=False):
         '''
             Construct a product-binary model from data.
             @param cls class
             @param sample a sample of binary data
         '''
-        return cls(sample.mean, sample.cor)
+        return cls(sample.mean, sample.cor, verbose=verbose)
 
 
     def __pmf(self, gamma):

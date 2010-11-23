@@ -17,7 +17,7 @@ class HybridBinary(Binary):
         A hybrid model having constant, independent and dependent components.
     '''
 
-    def __init__(self, cBase, iProd, iDep, dProd, dDep):
+    def __init__(self, cBase, iProd, iDep, dProd, dDep, name='hybrid-binary', longname='A hybrid model having constant, independent and dependent components.'):
         '''
             Constructor.
             @param cBase base vector with set constant components
@@ -27,7 +27,7 @@ class HybridBinary(Binary):
             @param dDep binary model supporting dependencies
         '''
 
-        Binary.__init__(self, name='hybrid-binary', longname='A hybrid model having constant, independent and dependent components.')
+        Binary.__init__(self, name, longname)
 
         ## base vector with set constant components
         self._cBase = cBase
@@ -52,7 +52,7 @@ class HybridBinary(Binary):
         return cls(zeros(d, dtype=bool), [], range(d), ProductBinary.uniform(0), model.uniform(d))
 
     @classmethod
-    def from_data(cls, sample, eps=0.05, delta=0.1, model=LogisticRegrBinary):
+    def from_data(cls, sample, eps=0.05, delta=0.1, model=LogisticRegrBinary, mean=None, verbose=False):
         '''
             Construct a hybrid-binary model from data.
             @param cls class
@@ -63,7 +63,7 @@ class HybridBinary(Binary):
         '''
 
         # compute mean
-        mean = sample.getMean(weight=True)
+        if mean is None: mean = sample.getMean(weight=True)
         cBase = mean > 0.5
 
         # random components
@@ -80,7 +80,7 @@ class HybridBinary(Binary):
         iProd = list(where(boolProd == True)[0])
         iDep = list(where(boolDep == True)[0])
         dProd = ProductBinary(mean[iProd])
-        dDep = model.from_data(sample.get_sub_data(iDep))
+        dDep = model.from_data(sample.get_sub_data(iDep), verbose=verbose)
 
         return cls(cBase, iProd, iDep, dProd, dDep)
 
