@@ -68,14 +68,14 @@ class LogisticRegrBinary(ProductBinary):
         return cls(Beta)
 
     @classmethod
-    def random(cls, d):
+    def random(cls, d, scale=3.0):
         '''
             Constructs a random logistic-regression-binary model for testing.
             @param cls class 
             @param d dimension
         '''
         cls = LogisticRegrBinary.independent(random.random(d))
-        cls.Beta[:, 1:] = random.normal(scale=3.0, size=(d, d - 1))
+        cls.Beta[:, 1:] = random.normal(scale=scale, size=(d, d - 1))
         return cls
 
     @classmethod
@@ -152,6 +152,13 @@ class LogisticRegrBinary(ProductBinary):
             @return dimension 
         '''
         return self.Beta.shape[0]
+
+    def getModelSize(self):
+        '''
+            Get ratio of used parameters over d*(d+1)/2.
+            @return dimension 
+        '''
+        return '%i/%i' % ((self.Beta <> 0.0).sum(), self.d * (self.d + 1) / 2.0)
 
     def __str__(self):
         return format_matrix(self.Beta, 'Beta')
@@ -269,6 +276,8 @@ class LogisticRegrBinary(ProductBinary):
 
     d = property(fget=getD, doc="dimension")
 
+
+
 def calc_Beta(sample, Init=None, verbose=False):
     '''
         Computes the logistic regression coefficients of all conditionals. 
@@ -285,21 +294,33 @@ def calc_Beta(sample, Init=None, verbose=False):
     n = sample.size
     d = sample.d
 
+    A = column_stack((ones(d, dtype=bool)[:, newaxis], abs(sample.getCor(weight=True)) > 0.1))
+
     # Add constant column.
     X = column_stack((ones(n, dtype=bool)[:, newaxis], sample.proc_data(dtype=bool)))
     if sample.isWeighted: XW = sample.w[:, newaxis] * X
     else: XW = X
 
-    if Init is None: Init = zeros((d, d))
+    p = X[:, 1:].sum(axis=0) / float(n)
+    log_odds = log(p / (1 - p))
+
+    if Init is None:
+        Init = zeros((d, d), dtype=float)
+        Init[1:, 0] = log_odds[1:]
+
     Beta = zeros((d, d), dtype=float)
-    Beta[0][0] = sum(X[:, 1]) / float(n)
+    Beta[0][0] = p[0]
 
     # Loop over all dimensions compute logistic regressions.
     resp = array([0, 0])
     for m in range(1, d):
 
-        Beta[m, :m + 1], r = calc_log_regr(y=X[:, m + 1], X=X[:, :m + 1], XW=XW[:, :m + 1], init=Init[m, :m + 1])
-        resp += r
+        a = where(A[m, :m + 1])[0]
+        if a.shape[0] > 1:
+            Beta[m, a], r = calc_log_regr(y=X[:, m + 1], X=X[:, a], XW=XW[:, a], init=Init[m, a])
+            resp += r
+        else:
+            Beta[m, 0] = log_odds[m]
 
     if verbose: print 'Loops %.3f, failures %i, time %.3f\n' % (resp[0] / float(d - 1), resp[1], clock() - t)
 

@@ -73,10 +73,7 @@ class data(object):
         '''
         if not self.isWeighted(): return ones(self.size) / float(self.size)
         w = array(self._w)
-
         max = w.max()
-        min = w.min()
-        if min > 0: w = exp(self._w - min)
         if max < 0: w = exp(self._w - max)
         return w / w.sum()
 

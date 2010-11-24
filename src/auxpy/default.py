@@ -43,7 +43,7 @@ dicSMC = dict(
 dicCE = dict(
 
     # number of particles 
-    n_particles=3000,
+    n_particles=4000,
 
     # model for binary data with dependencies
     dep_model=LogisticRegrBinary,
