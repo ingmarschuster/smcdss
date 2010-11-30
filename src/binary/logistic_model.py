@@ -19,7 +19,7 @@ from scipy.linalg import solve
 from binary import ProductBinary
 from binary.loglinear_model import calc_marginal
 
-CONST_PRECISION = 0.00001
+CONST_PRECISION = 0.0001
 CONST_ITERATIONS = 30
 
 
@@ -79,13 +79,37 @@ class LogisticRegrBinary(ProductBinary):
         return cls
 
     @classmethod
-    def from_data(cls, sample, verbose=False):
+    def from_data(cls, sample, Init=None, verbose=False):
         '''
             Construct a logistic-regression binary model from data.
             @param cls class
             @param sample a sample of binary data
         '''
-        return cls(calc_Beta(sample, verbose=verbose))
+        return cls(calc_Beta(sample, Init=Init, verbose=verbose))
+
+    def renew_from_data(self, sample, prvIndex, adjIndex, lag=0.0, verbose=False, **param):
+
+        if len(adjIndex) == 0:
+            self.Beta = array([])
+            self.Beta.shape = (0, 0)
+            return
+
+        prvBeta = self.Beta
+        adjBeta = zeros((len(adjIndex), len(adjIndex)), dtype=float)
+
+        mapping = [(adjIndex.index(i), prvIndex.index(i)) for i in list(set(prvIndex) & set(adjIndex))]
+        for adj_x, prv_x in mapping:
+            adjBeta[adj_x, 0] = prvBeta[prv_x, 0]
+            for adj_y, prv_y in mapping:
+                if adj_y >= len(adjIndex) - 1 or prv_y >= len(prvIndex) - 1: continue
+                adjBeta[adj_x, adj_y + 1] = prvBeta[prv_x, prv_y + 1]
+
+        # Compute new parameter from data.
+        newBeta = calc_Beta(sample=sample.get_sub_data(adjIndex), eps=param['eps'], delta=param['delta'],
+                            Init=adjBeta, verbose=verbose)
+
+        # Set convex combination of new parameter and adjusted, previous parameter.
+        self.Beta = (1 - lag) * newBeta + lag * adjBeta
 
 
     @classmethod
@@ -268,7 +292,7 @@ class LogisticRegrBinary(ProductBinary):
             # Generate the ith entry
             gamma[i] = logu[i] < logcprob
 
-            # Compute log conditional probability of whole gamma vector
+            # Add to log conditional probability
             logvprob += logcprob
             if not gamma[i]: logvprob -= sum
 
@@ -277,12 +301,11 @@ class LogisticRegrBinary(ProductBinary):
     d = property(fget=getD, doc="dimension")
 
 
-
-def calc_Beta(sample, Init=None, verbose=False):
+def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
     '''
         Computes the logistic regression coefficients of all conditionals. 
         @param sample binary data
-        @param Init matrix with inital values
+        @param Init matrix with initial values
         @param verbose print to stdout 
         @return matrix of regression coefficients
     '''
@@ -294,15 +317,22 @@ def calc_Beta(sample, Init=None, verbose=False):
     n = sample.size
     d = sample.d
 
-    A = column_stack((ones(d, dtype=bool)[:, newaxis], abs(sample.getCor(weight=True)) > 0.1))
-
     # Add constant column.
     X = column_stack((ones(n, dtype=bool)[:, newaxis], sample.proc_data(dtype=bool)))
     if sample.isWeighted: XW = sample.w[:, newaxis] * X
     else: XW = X
 
-    p = X[:, 1:].sum(axis=0) / float(n)
+    # Compute slightly adjusted mean and real log odds.
+    p = 1e-07 * 0.5 + (1.0 - 1e-07) * X[:, 1:].sum(axis=0) / float(n)
     log_odds = log(p / (1 - p))
+
+    # Determine regressors according to their correlation.
+    A = column_stack((ones(d, dtype=bool)[:, newaxis], abs(sample.cor) > delta))
+
+    # Remove regressors from components with expectation close to the borders of the unit interval.
+    for i, prob in enumerate(p):
+        if prob < eps or prob > 1.0 - eps:
+            A[i, 1:] = zeros(d, dtype=bool)
 
     if Init is None:
         Init = zeros((d, d), dtype=float)
@@ -312,17 +342,17 @@ def calc_Beta(sample, Init=None, verbose=False):
     Beta[0][0] = p[0]
 
     # Loop over all dimensions compute logistic regressions.
-    resp = array([0, 0])
+    resp = array([0, 0, 0])
     for m in range(1, d):
 
         a = where(A[m, :m + 1])[0]
         if a.shape[0] > 1:
             Beta[m, a], r = calc_log_regr(y=X[:, m + 1], X=X[:, a], XW=XW[:, a], init=Init[m, a])
-            resp += r
+            resp += r + (1,)
         else:
             Beta[m, 0] = log_odds[m]
 
-    if verbose: print 'Loops %.3f, failures %i, time %.3f\n' % (resp[0] / float(d - 1), resp[1], clock() - t)
+    if verbose: print 'Loops %.3f, failures %i, time %.3f\n' % (resp[0] / resp[2], resp[1], clock() - t)
 
     return Beta
 
@@ -341,13 +371,14 @@ def calc_log_regr(y, X, XW=None, init=None):
     if init is None: beta = zeros(d)
     else:            beta = init
 
+    v = empty(n)
+    P = empty(n)
+
     for iter in range(CONST_ITERATIONS):
 
         last_beta = beta.copy()
 
         if hasWeave:
-            v = empty(n)
-            P = empty(n);
             code = \
             """
             double p, Xbeta;
@@ -366,16 +397,22 @@ def calc_log_regr(y, X, XW=None, init=None):
             """
             inline(code, ['beta', 'X', 'y', 'P', 'd', 'n', 'v'], \
             type_converters=converters.blitz, compiler='gcc')
-        else:
+
+        if not hasWeave or P[0] != P[0]:
             Xbeta = dot(X, beta)
             p = pow(1 + exp(-Xbeta), -1)
             P = p * (1 - p)
             v = P * Xbeta + y - p
 
-        XWDX = dot(XW.T, P[:, newaxis] * X) + exp(-10) * eye(d)
+        XWDX = dot(XW.T, P[:, newaxis] * X) + exp(-5) * eye(d)
 
         # Solve Newton-Raphson equation.
-        beta = solve(XWDX, dot(XW.T, v), sym_pos=True)
+        try:
+            beta = solve(XWDX, dot(XW.T, v), sym_pos=True)
+        except:
+            print format(XWDX, 'XWDX')
+            print format(dot(XW.T, v), 'XW_v')
+            raise ValueError
 
         if (abs(last_beta - beta) < CONST_PRECISION).all(): break
 

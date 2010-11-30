@@ -14,11 +14,19 @@ from numpy import zeros, array, diag, log, random
 from auxpy.data import *
 from auxpy.plotting import *
 from datetime import time
+from algos.ceopt import ceopt
+from algos.ceopt import smc
 
-g=LogisticRegrBinary.random(60,scale=3)
+def testceopt():
+    target = PosteriorBinary(dataFile='/home/cschafer/Documents/smcdss/data/datasets/test_dat.csv')
+    max, time = ceopt(target, verbose=False)
+    print '\n[' + ', '.join([str(i) for i in where(max['state'])[0]]) + ']',
+    print '\ntime %.2f' % time
 
-d=data()
-d.sample(g,5000)
+def testsmc():
+    target = PosteriorBinary(dataFile='/home/cschafer/Documents/smcdss/data/datasets/test_dat.csv')
+    mean, time = smc(target, verbose=False)
+    print '\n[' + ', '.join([str(i) for i in mean]) + ']'
+    print '\ntime %.2f' % time
 
-l=LogisticRegrBinary.from_data(d,verbose=True)
-print l.getModelSize()
+testsmc()

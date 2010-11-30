@@ -51,7 +51,7 @@ class ProductBinary(Binary):
             @param cls class
             @param d dimension
         '''
-        return cls(0.5 * ones(d))
+        return cls(p=0.5 * ones(d))
 
     @classmethod
     def from_data(cls, sample):
@@ -61,6 +61,13 @@ class ProductBinary(Binary):
             @param sample a sample of binary data
         '''
         return cls(sample.mean)
+
+    def renew_from_data(self, sample, prvIndex, adjIndex, lag=0.0, verbose=False, **param):
+        prvP = array(param['prvP'] > 0.5, dtype=float)
+        prvP[prvIndex] = self.p
+        adjP = prvP[adjIndex]
+        newP = sample.get_sub_data(adjIndex).getMean(weight=True)
+        self.p = (1 - lag) * newP + lag * adjP
 
     def _pmf(self, gamma):
         '''

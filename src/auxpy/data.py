@@ -198,14 +198,16 @@ class data(object):
         self.__order.reverse()
 
 
-    def lexorder(self):
+    def lexorder(self, X):
         '''
             Gives the index for the data in lexicographical order.
             @return index set 
         '''
-        return argsort(array([str(array(x, int)) for x in self.X]))
+        #return argsort(array([str(array(x, int)) for x in X]))
+        k = array([2 ** i for i in range(len(X[0]))])
+        return argsort(array([dot(k, x) for x in X]))
 
-    def assign_weights(self, f, verbose=True):
+    def assign_weights(self, f, verbose=False):
         '''
             Evaluates the value of c*exp(f(x)) for each sample x.
             @param f a real-valued function on the sampling space 
@@ -218,27 +220,28 @@ class data(object):
             print 'Evaluating ' + f.name + '...'
             stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
 
-        self._w = []
-        weight = f.lpmf(array(self.X[0]))
-
-        X = array(self._X)
+        v = self._w
+        k = len(v)
+        X = array(self._X)[k:]
+        self.w = []
 
         # Apply in lexicographical order to avoid extra evaluation of f.
-        lexorder = self.lexorder()
-        for index in range(self.size):
+        lexorder = self.lexorder(X)
+        weight = f.lpmf(X[lexorder[0]])
+        for index in range(self.size - k):
             if not (X[lexorder[index]] == X[lexorder[index - 1]]).all():
-                weight = f.lpmf(self.X[lexorder[index]])
+                weight = f.lpmf(X[lexorder[index]])
             self._w.append(weight)
             if verbose:
-                n = bars * index / self.size - drawn
+                n = bars * (index + 1) / (self.size - k) - drawn
                 if n > 0:
                     stdout.write(n * "-")
                     stdout.flush()
                     drawn += n
         self._w = array(self._w)
-        self._w = self._w[argsort(lexorder)]
+        self._w = v + list(self._w[argsort(lexorder)])
 
-        if verbose: print ']\nDone. %i evaluation in %.2f seconds.\n' % (self.size, clock() - t)
+        if verbose: print ']\nDone. %i evaluation in %.2f seconds.\n' % (self.size - k, clock() - t)
 
     def append(self, x, w=None):
         '''

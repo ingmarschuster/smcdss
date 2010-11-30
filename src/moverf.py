@@ -89,39 +89,19 @@ def header():
     </linearGradient>
     <filter
        inkscape:collect="always"
-       id="filter3575">
+       id="filter_box">
       <feGaussianBlur
          inkscape:collect="always"
-         stdDeviation="5.7916706"
-         id="feGaussianBlur3577" />
-    </filter>
-    <filter
-       inkscape:collect="always"
-       id="filter3587">
-      <feGaussianBlur
-         inkscape:collect="always"
-         stdDeviation="2.9124999"
+         stdDeviation="3.0"
          id="feGaussianBlur3589" />
     </filter>
     <filter
        inkscape:collect="always"
-       id="filter3635">
+       id="filter_pfad">
       <feGaussianBlur
          inkscape:collect="always"
-         stdDeviation="3.7832201"
-         id="feGaussianBlur3637" />
-    </filter>
-    <filter
-       inkscape:collect="always"
-       id="filter3639"
-       x="-0.042680412"
-       width="1.0853608"
-       y="-0.10097561"
-       height="1.2019512">
-      <feGaussianBlur
-         inkscape:collect="always"
-         stdDeviation="5.175"
-         id="feGaussianBlur3641" />
+         stdDeviation="5.75"
+         id="feGaussianBlur3577" />
     </filter>
     <linearGradient
        inkscape:collect="always"
@@ -817,7 +797,7 @@ def create_boxes(int_vor, nat_vor, int_ytd, nat_ytd):
 
     xml = '''
     <rect
-       style="opacity:0.35;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter3587)"
+       style="opacity:0.35;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter_box)"
        width="135"
        height="%.1f"
        x="58"
@@ -846,7 +826,7 @@ def create_boxes(int_vor, nat_vor, int_ytd, nat_ytd):
 
     xml += '''
     <rect
-       style = "opacity:0.35;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter3635)"
+       style = "opacity:0.35;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter_box)"
        width = "135"
        height = "%.1f"
        x = "206"
@@ -917,10 +897,10 @@ def create_path(mon_vor, mon_ytd):
     )
 
     style = dict(
-    ytd_schatten="opacity:0.5;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter3575)",
+    ytd_schatten="opacity:0.5;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter_pfad)",
     ytd_fuellung="fill:url(#linearGradient3821);fill-opacity:1;stroke:none;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1",
     ytd_linie="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:12, 6;stroke-dashoffset:0;stroke-opacity:1",
-    vor_schatten="opacity:0.35;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter3639)",
+    vor_schatten="opacity:0.5;fill:#000000;fill-opacity:1;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;filter:url(#filter_pfad)",
     vor_fuellung="fill:url(#linearGradient3796);fill-opacity:1;stroke:none;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1",
     vor_linie="fill:none;stroke:#000000;stroke-width:3;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1"
     )

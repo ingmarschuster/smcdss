@@ -16,7 +16,7 @@ from numpy import zeros
 from binary import *
 from auxpy.default import dicCE, dicData
 
-def ceopt(target, verbose=True):
+def ceopt(target, verbose=False):
     '''
         Runs cross-entropy optimization.
         
@@ -24,30 +24,32 @@ def ceopt(target, verbose=True):
     '''
 
     start = clock()
+    model = HybridBinary.uniform(target.d, model=dicCE['model'])
+    print "running ceopt using " + model.name
 
-    model = MixtureBinary(dHybrid=HybridBinary.uniform(target.d, model=dicCE['dep_model']), lag=dicCE['lag'])
-    if verbose: print "start ceopt using " + model.dHybridCurrent.dDep.name
     d = data()
 
     # run optimization scheme
-    for step in range(1, 50):
-        if verbose: print "step %i" % step,
+    for step in range(1, 100):
+        if verbose: print "\nstep %i" % step,
 
         d.sample(model, dicCE['n_particles'], verbose=verbose)
-        d.assign_weights(f=target)
-        
-        model.renew_from_data(d, fProd=dicCE['elite_prod'], fDep=dicCE['elite_dep'], eps=dicCE['eps'], verbose=verbose)
-        if verbose: print "state: ", model.dHybridCurrent.iOnes, model.dHybridCurrent.iZeros, model.dHybridCurrent.iRand
+        d.assign_weights(f=target, verbose=verbose)
+
+        model.renew_from_data(sample=d.fraction(dicCE['elite']), verbose=verbose, **dicCE)
+        if verbose: print "state: ", model.iZeros, model.iOnes, model.iModel
 
         # check if dimension is sufficiently reduced
-        if model.dHybridCurrent.nRand < 5:
+        if model.nModel < 15:
             max = brute_search(target=target, max=dict(state=d._X[0], score=d._w[0]), model=model)
+            stdout.write('\rscore: %.5f' % max['score'])
             return max, clock() - start
 
-        d.clear(fraction=dicCE['elite_prod'])
+        d.clear(fraction=dicCE['elite'])
 
         max = dict(state=d._X[0], score=d._w[0])
-        if verbose: print "score: %.5f\n" % max['score']
+        stdout.write('\rscore: %.5f [0: %03i, 1: %03i, r: %03i]' % (max['score'], model.nZeros, model.nOnes, model.nModel))
+        stdout.flush()
 
 def brute_search(target, max, model):
     '''
@@ -58,19 +60,13 @@ def brute_search(target, max, model):
         @param model underlying model
         @return max max state and score obtained from solving the sub-problem 
     '''
-    if model.dHybridCurrent.nRand > 0:
-        gamma = model.dHybridCurrent._cBase
-        for dec in range(2 ** model.dHybridCurrent.nRand):
-            bin = dec2bin(dec, model.dHybridCurrent.nRand)
-            gamma[model.dHybridCurrent.iRand] = bin
+    if model.nModel > 0:
+        gamma = model._Const
+        for dec in range(2 ** model.nModel):
+            bin = dec2bin(dec, model.nModel)
+            gamma[model.iModel] = bin
             score = target.lpmf(gamma)
             if score > max['score']:
                 max['state'] = gamma.copy()
                 max['score'] = score
     return max
-
-target = PosteriorBinary(dataFile='/home/cschafer/Documents/smcdss/data/datasets/test_dat.csv')
-max, time= ceopt(target)
-print max['score']
-print '[' + ', '.join([str(i) for i in where(max['state'])[0]]) + ']',
-print time

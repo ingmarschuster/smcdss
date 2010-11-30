@@ -17,4 +17,3 @@ from loglinear_model import *
 from linear_model import *
 from hybrid_model import *
 from posterior_bvs import *
-from mixture_model import *

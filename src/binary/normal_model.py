@@ -41,7 +41,7 @@ class HiddenNormalBinary(ProductBinary):
         ## mean of hidden normal distribution
         self.mu = norm.ppf(self.p)
 
-        localQ = calc_local_Q(R, self.mu, self.p)
+        localQ = calc_local_Q(R, self.mu, self.p, verbose=verbose)
         ## correlation matrix of the hidden normal distribution
         self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
 
@@ -76,6 +76,15 @@ class HiddenNormalBinary(ProductBinary):
         return cls(p, eye(len(p)))
 
     @classmethod
+    def uniform(cls, d):
+        '''
+            Construct a random product-binary model for testing.
+            @param cls class
+            @param d dimension
+        '''
+        return cls.independent(p=0.5 * ones(d))
+
+    @classmethod
     def from_data(cls, sample, verbose=False):
         '''
             Construct a product-binary model from data.
@@ -84,6 +93,27 @@ class HiddenNormalBinary(ProductBinary):
         '''
         return cls(sample.mean, sample.cor, verbose=verbose)
 
+    def renew_from_data(self, sample, prvIndex, adjIndex, lag=0.0, verbose=False, **param):
+
+        if len(adjIndex) == 0:
+            self.p = array([])
+            return
+
+        sample = sample.get_sub_data(adjIndex)
+        self.R = sample.cor
+
+        prvP = array(param['prvP'] > 0.5, dtype=float)
+        prvP[prvIndex] = self.p
+        adjP = prvP[adjIndex]
+        newP = sample.mean
+        self.p = (1 - lag) * newP + lag * adjP    
+
+        ## mean of hidden normal distribution
+        self.mu = norm.ppf(self.p)
+
+        localQ = calc_local_Q(self.R, self.mu, self.p, eps=param['eps'], delta=param['delta'], verbose=verbose)
+        ## correlation matrix of the hidden normal distribution
+        self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
 
     def __pmf(self, gamma):
         '''
@@ -117,6 +147,14 @@ class HiddenNormalBinary(ProductBinary):
         rv = self.rvs()
         return rv, 0
 
+    def getD(self):
+        '''
+            Get dimension.
+            @return dimension 
+        '''
+        return self.p.shape[0]
+
+    d = property(fget=getD, doc="dimension")
 
 
 
@@ -139,7 +177,7 @@ def calc_R(Q, mu, p):
     return R
 
 
-def calc_local_Q(R, mu, p, verbose=False):
+def calc_local_Q(R, mu, p, eps=0.03, delta=0.08, verbose=False):
     '''
         Computes the hidden-normal correlation matrix Q necessary to generate
         bivariable bernoulli samples with a certain local correlation matrix R.
@@ -148,10 +186,22 @@ def calc_local_Q(R, mu, p, verbose=False):
         @param p mean of the binary
         @param verbose print to stdout 
     '''
+
     t = clock()
     iter = 0
     d = len(p)
     localQ = ones((d, d))
+
+    for i in range(d):
+        if p[i] < eps or p[i] > 1.0 - eps:
+            R[i, :] = R[:, i] = zeros(d, dtype=float)
+            R[i, i] = 1.0
+        else:
+            for j in range(i):
+                if R[i, j] < delta:
+                    R[i, j] = 0.0
+        R[:i, i] = R[i, :i]
+    k = 0.5 * (sum(R > 0.0) - d)
 
     for i in range(d):
         for j in range(i):
@@ -160,7 +210,9 @@ def calc_local_Q(R, mu, p, verbose=False):
             iter += n
         localQ[0:i, i] = localQ[i, 0:i].T
 
-    if verbose: print 'calcLocalQ'.ljust(20) + '> time %.3f, loops %i' % (clock() - t, iter)
+    if verbose:
+        if k > 0: iter = float(iter) / k
+        print 'calcLocalQ'.ljust(20) + '> time %.3f, loops %.3f' % (clock() - t, iter)
 
     return localQ
 
@@ -175,6 +227,8 @@ def calc_local_q(mu, p, r, init=0, verbose=False):
         @param init initial value
         @param verbose print to stdout 
     '''
+
+    if r == 0.0: return 0.0, 0
 
     # For extreme marginals, correlation is negligible.
     for i in range(2):
@@ -309,7 +363,7 @@ def scale_Q(Q, verbose=False):
         n = 1.0
 
     # If the smallest eigenvalue is (almost) negative, rescale Q matrix.
-    mineig = min(eigvalsh(Q)) - exp(-5.0)
+    mineig = min(eigvalsh(Q)) - 1e-04
     if mineig < 0:
         Q -= mineig * eye(d)
         Q /= (1 - mineig)
