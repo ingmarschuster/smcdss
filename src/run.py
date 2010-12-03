@@ -15,18 +15,18 @@ from auxpy.data import *
 from auxpy.plotting import *
 from datetime import time
 from algos.ceopt import ceopt
-from algos.ceopt import smc
+from algos.smc import *
 
 def testceopt():
     target = PosteriorBinary(dataFile='/home/cschafer/Documents/smcdss/data/datasets/test_dat.csv')
-    max, time = ceopt(target, verbose=False)
+    max, time = ceopt(target, verbose=True)
     print '\n[' + ', '.join([str(i) for i in where(max['state'])[0]]) + ']',
     print '\ntime %.2f' % time
 
 def testsmc():
     target = PosteriorBinary(dataFile='/home/cschafer/Documents/smcdss/data/datasets/test_dat.csv')
     mean, time = smc(target, verbose=False)
-    print '\n[' + ', '.join([str(i) for i in mean]) + ']'
+    print format(mean)
     print '\ntime %.2f' % time
 
 testsmc()

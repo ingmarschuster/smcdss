@@ -311,7 +311,6 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
     '''
 
     if sample.d == 0: return array([])
-    if verbose: print 'Computing logistic-regression model of size %i...' % sample.d
 
     t = clock()
     n = sample.size
@@ -319,7 +318,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
 
     # Add constant column.
     X = column_stack((ones(n, dtype=bool)[:, newaxis], sample.proc_data(dtype=bool)))
-    if sample.isWeighted: XW = sample.w[:, newaxis] * X
+    if sample.ess > 0.1: XW = sample.nW[:, newaxis] * X
     else: XW = X
 
     # Compute slightly adjusted mean and real log odds.
@@ -330,9 +329,21 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
     A = column_stack((ones(d, dtype=bool)[:, newaxis], abs(sample.cor) > delta))
 
     # Remove regressors from components with expectation close to the borders of the unit interval.
+    logit_size = 0.0; logit_param = 0.0
     for i, prob in enumerate(p):
         if prob < eps or prob > 1.0 - eps:
             A[i, 1:] = zeros(d, dtype=bool)
+
+        n_param = 1 + sum(A[i, :i])
+        if n_param > 1:
+            logit_size += 1
+            logit_param += n_param
+
+    if logit_size > 0: ratio = logit_param / (logit_size * (logit_size + 1))
+    else: ratio = 0
+
+    if verbose: print 'Computing logistic-regression model of size %i (product %i, logistic %i [%.3f])' % \
+                (d, d - logit_size, logit_size, ratio)
 
     if Init is None:
         Init = zeros((d, d), dtype=float)

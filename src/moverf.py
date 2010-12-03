@@ -769,7 +769,7 @@ def create_scale(v_max):
     scale = [i * s_shift for i in range(1, 8)]
     xml = ''
 
-    for side in [('links', 4.5), ('rechts', 662)]:
+    for side in [('links', 50.5), ('rechts', 708)]:
         xml += '''
     <g
        id="skala_%s"
@@ -783,8 +783,8 @@ def create_scale(v_max):
          x="%.1f"
          id="text_skala_%s_%i"
          font-size="8"
-         style="font-size:8px;fill:#4d4d4d;font-family:Tahoma">%.3f €</text>'''\
-            % (y, side[1], side[0], i + 1, value)
+         style="font-size:8px;text-align:end;text-anchor:end;fill:#4d4d4d;font-family:Tahoma">%s</text>'''\
+            % (y, side[1], side[0], i + 1, curr(value))
             y += y_shift
         xml += '\n    </g>'
     return xml
@@ -854,12 +854,12 @@ def create_boxes(int_vor, nat_vor, int_ytd, nat_ytd):
        int_ytd * scale, y_bottom - (nat_ytd + int_ytd) * scale)
 
     for caption in \
-    ((16, 16, 'ges_vor', 125.0, y_bottom - (nat_vor + int_vor) * scale - 7.0, 'ges_vor', int_vor + nat_vor),
-     (12, 12, 'nat_vor', 125.0, y_bottom - (nat_vor / 2.0) * scale + 4.0, 'nat_vor', nat_vor),
-     (12, 12, 'int_vor', 125.0, y_bottom - (nat_vor + int_vor / 2.0) * scale + 4.0, 'int_vor', int_vor),
-     (16, 16, 'ges_ytd', 273.0, y_bottom - (nat_ytd + int_ytd) * scale - 7.0, 'ges_ytd', int_ytd + nat_ytd),
-     (12, 12, 'nat_ytd', 273.0, y_bottom - (nat_ytd / 2.0) * scale + 4.0, 'nat_ytd', nat_ytd),
-     (12, 12, 'int_ytd', 273.0, y_bottom - (nat_ytd + int_ytd / 2.0) * scale + 4.0, 'int_ytd', int_ytd)):
+    ((16, 16, 'ges_vor', 125.0, y_bottom - (nat_vor + int_vor) * scale - 7.0, 'ges_vor', curr(int_vor + nat_vor)),
+     (12, 12, 'nat_vor', 125.0, y_bottom - (nat_vor / 2.0) * scale + 4.0, 'nat_vor', curr(nat_vor)),
+     (12, 12, 'int_vor', 125.0, y_bottom - (nat_vor + int_vor / 2.0) * scale + 4.0, 'int_vor', curr(int_vor)),
+     (16, 16, 'ges_ytd', 273.0, y_bottom - (nat_ytd + int_ytd) * scale - 7.0, 'ges_ytd', curr(int_ytd + nat_ytd)),
+     (12, 12, 'nat_ytd', 273.0, y_bottom - (nat_ytd / 2.0) * scale + 4.0, 'nat_ytd', curr(nat_ytd)),
+     (12, 12, 'int_ytd', 273.0, y_bottom - (nat_ytd + int_ytd / 2.0) * scale + 4.0, 'int_ytd', curr(int_ytd))):
         xml += '''
     <text
        style="font-size:%ipx;text-align:center;text-anchor:middle;fill:#1a1a1a;font-family:Tahoma-Bold"
@@ -867,7 +867,7 @@ def create_boxes(int_vor, nat_vor, int_ytd, nat_ytd):
        id="text_%s"
        x="%.1f"
        y="%.1f"
-       inkscape:label="#text_%s" >%.3f €</text>'''\
+       inkscape:label="#text_%s" >%s</text>'''\
        % caption
 
     return xml
@@ -914,6 +914,11 @@ def create_path(mon_vor, mon_ytd):
         else: xml += 'L %i,223" />\n' % x[len(y[name[0]]) - 1]
 
     return xml
+
+def curr(x):
+    s = format(x, ".3f")
+    if x >= 1000: s = s[0] + '.' + s[1:]
+    return s + ' €'
 
 def create_xml(int_vor, nat_vor, int_ytd, nat_ytd, mon_vor, mon_ytd):
     xml = header()

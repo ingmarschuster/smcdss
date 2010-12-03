@@ -66,7 +66,7 @@ class ProductBinary(Binary):
         prvP = array(param['prvP'] > 0.5, dtype=float)
         prvP[prvIndex] = self.p
         adjP = prvP[adjIndex]
-        newP = sample.get_sub_data(adjIndex).getMean(weight=True)
+        newP = sample.get_sub_data(adjIndex).getMean(weight = (sample.ess > 0.1))
         self.p = (1 - lag) * newP + lag * adjP
 
     def _pmf(self, gamma):

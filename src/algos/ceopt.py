@@ -21,6 +21,7 @@ def ceopt(target, verbose=False):
         Runs cross-entropy optimization.
         
         @param target target function
+        @param verbose verbose
     '''
 
     start = clock()
@@ -28,6 +29,7 @@ def ceopt(target, verbose=False):
     print "running ceopt using " + model.name
 
     d = data()
+    max = dict(state=None, score= -inf)
 
     # run optimization scheme
     for step in range(1, 100):
@@ -41,15 +43,19 @@ def ceopt(target, verbose=False):
 
         # check if dimension is sufficiently reduced
         if model.nModel < 15:
-            max = brute_search(target=target, max=dict(state=d._X[0], score=d._w[0]), model=model)
+            max = brute_search(target=target, max=dict(state=d._X[0], score=d._W[0]), model=model)
             stdout.write('\rscore: %.5f' % max['score'])
             return max, clock() - start
 
+        max = dict(state=d._X[0], score=d._W[0])
         d.clear(fraction=dicCE['elite'])
 
-        max = dict(state=d._X[0], score=d._w[0])
-        stdout.write('\rscore: %.5f [0: %03i, 1: %03i, r: %03i]' % (max['score'], model.nZeros, model.nOnes, model.nModel))
+        dicCE['elite'] *= 0.95
+
+        stdout.write('\r%02i. %.5f [0: %03i, 1: %03i, r: %03i]' % (step, max['score'], model.nZeros, model.nOnes, model.nModel))
         stdout.flush()
+
+    return max, clock() - start
 
 def brute_search(target, max, model):
     '''

@@ -27,7 +27,7 @@ class data(object):
         ## data
         self._X = list(X)
         ## weights
-        self._w = list(w)
+        self._W = list(w)
         ## index set
         self.__order = None
 
@@ -37,7 +37,7 @@ class data(object):
 
     def fraction(self, fraction=1.0):
         return data(X=self.X[self.order[0:int(self.size * fraction)]], \
-                    w=array(self._w)[self.order[0:int(self.size * fraction)]])
+                    w=array(self._W)[self.order[0:int(self.size * fraction)]])
 
     def getData(self):
         '''
@@ -65,17 +65,20 @@ class data(object):
         else:
             return array(self.X[self.order[0:int(self.size * fraction)]], dtype=dtype)
 
-    def getWeights(self):
+    def getNWeights(self):
         '''
             Get weights.
             @remark If weights are negative, the function returns the normalized exponential weights.
             @return normalized weights
         '''
         if not self.isWeighted(): return ones(self.size) / float(self.size)
-        w = array(self._w)
+        w = array(self._W)
         max = w.max()
-        if max < 0: w = exp(self._w - max)
+        if max < 0: w = exp(self._W - max)
         return w / w.sum()
+
+    def getWeights(self, normalized=False):
+        return self._W
 
     def proc_weights(self, order=False, fraction=1.0):
         '''
@@ -86,11 +89,11 @@ class data(object):
         '''
         if fraction == 1.0:
             if order:
-                return self.w[self.order]
+                return self.nW[self.order]
             else:
-                return self.w
+                return self.nW
         else:
-            w = self.w[self.order[0:int(self.size * fraction)]]
+            w = self.nW[self.order[0:int(self.size * fraction)]]
             return w / w.sum()
 
     def clear(self, fraction=1.0):
@@ -102,7 +105,7 @@ class data(object):
             self.__init__()
         else:
             self.__init__(X=self.X[self.order[0:int(self.size * fraction)]], \
-                          w=array(self._w)[self.order[0:int(self.size * fraction)]])
+                          w=array(self._W)[self.order[0:int(self.size * fraction)]])
 
     def getD(self):
         '''
@@ -131,14 +134,14 @@ class data(object):
             Set weights.
             @param w weights
         '''
-        self._w = list(w)
+        self._W = list(w)
 
     def isWeighted(self):
         '''
             Test if weighted.
             @return True, if the sample has weights.
         '''
-        return len(self._w) > 0
+        return len(self._W) > 0
 
     def getMean(self, weight=False, fraction=1.0):
         '''
@@ -181,6 +184,13 @@ class data(object):
         '''
         return diag(self.getCov(weight=weight, fraction=fraction))
 
+    def getEss(self):
+        '''
+        Return effective sample size 1/(sum_{w \in weights} w^2) .
+        '''
+        if not self.isWeighted(): return 0
+        return 1 / (self.size * pow(self.nW, 2).sum())
+
     def getOrder(self):
         '''
             Get order.
@@ -194,7 +204,7 @@ class data(object):
         '''
             Sets the index for the data in ascending order according to the weights.
         '''
-        self.__order = array(self._w).argsort(axis=0).tolist()
+        self.__order = array(self._W).argsort(axis=0).tolist()
         self.__order.reverse()
 
 
@@ -220,10 +230,10 @@ class data(object):
             print 'Evaluating ' + f.name + '...'
             stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
 
-        v = self._w
+        v = self._W
         k = len(v)
         X = array(self._X)[k:]
-        self.w = []
+        self.nW = []
 
         # Apply in lexicographical order to avoid extra evaluation of f.
         lexorder = self.lexorder(X)
@@ -231,17 +241,34 @@ class data(object):
         for index in range(self.size - k):
             if not (X[lexorder[index]] == X[lexorder[index - 1]]).all():
                 weight = f.lpmf(X[lexorder[index]])
-            self._w.append(weight)
+            self._W.append(weight)
             if verbose:
                 n = bars * (index + 1) / (self.size - k) - drawn
                 if n > 0:
                     stdout.write(n * "-")
                     stdout.flush()
                     drawn += n
-        self._w = array(self._w)
-        self._w = v + list(self._w[argsort(lexorder)])
+        self._W = array(self._W)
+        self._W = v + list(self._W[argsort(lexorder)])
 
         if verbose: print ']\nDone. %i evaluation in %.2f seconds.\n' % (self.size - k, clock() - t)
+
+    def distinct(self):
+        X = self._X
+        W = self.nW
+        lexorder = self.lexorder(X)
+        self._X = []; self._W = []
+        x = X[lexorder[0]]
+        count = 1
+        for index in lexorder:
+            if (x == X[index]).all():
+                count += 1
+            else:
+                self._X += [x]
+                self._W += [W[index] * count]
+                x = X[index]
+                w = W[index]
+                count = 1
 
     def append(self, x, w=None):
         '''
@@ -250,9 +277,9 @@ class data(object):
             @param w weight
         '''
         if not isinstance(self._X, list): self._X.tolist()
-        if not isinstance(self._w, list): self._w.tolist()
+        if not isinstance(self._W, list): self._W.tolist()
         self._X.append(x)
-        if not w is None: self._w.append(float(w))
+        if not w is None: self._W.append(float(w))
 
     def shrink(self, index):
         '''
@@ -316,7 +343,9 @@ class data(object):
         self.__init__(data.X, data.w)
 
     X = property(fget=getData, fset=setData, doc="data")
-    w = property(fget=getWeights, fset=setWeights, doc="weights")
+    nW = property(fget=getNWeights, fset=setWeights, doc="normalized weights")
+    W = property(fget=getWeights, fset=setWeights, doc="weights")
+    ess = property(fget=getEss, doc="effective sample size")
     mean = property(fget=getMean, doc="mean")
     var = property(fget=getVar, doc="variance")
     cov = property(fget=getCov, doc="covariance matrix")

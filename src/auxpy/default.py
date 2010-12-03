@@ -30,39 +30,46 @@ dicMC = dict(
 dicSMC = dict(
 
     # number of particles
-    n_particles=20000,
+    n_particles=10000,
 
-    # model for binary data with dependencies
-    #model=LogisticRegrBinary,
-    model=ProductBinary,
-    #model=HiddenNormalBinary,
+    # minimum distance of mean from the boundaries of [0,1]
+    min_d=1e-04,
+
+    # epsilon
+    eps=0.05,
+
+    # delta
+    delta=0.1,
+    
+    # tau
+    tau=0.7
 
 )
 
 dicCE = dict(
 
     # number of particles 
-    n_particles=5000,
+    n_particles=1000,
 
     # model for binary data with dependencies
-    #model=LogisticRegrBinary,
+    model=LogisticRegrBinary,
     #model=ProductBinary,
-    model=HiddenNormalBinary,
+    #model=HiddenNormalBinary,
 
     # elite fraction used to estimate the mean
-    elite=0.3,
+    elite=0.5,
 
     # lag in mean update
-    lag=0.25,
+    lag=0.2,
 
     # minimum distance of mean from the boundaries of [0,1]
-    min_d=1e-07,
+    min_d=1e-04,
 
     # epsilon
-    eps=0.15,
+    eps=0.05,
 
     # delta
-    delta=0.15
+    delta=0.1
 
 )
 

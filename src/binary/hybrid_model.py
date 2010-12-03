@@ -80,7 +80,11 @@ class HybridBinary(Binary):
         prvIndex = self._iModel
 
         # compute mean
-        self.p = (1 - param['lag']) * sample.mean + param['lag'] * self.p
+        if 'lag' in param.keys():
+            lag = param['lag']
+        else:
+            lag = 0
+        self.p = (1 - lag) * sample.mean + lag * self.p
 
         # base vector and index sets
         self._Const = self.p > 0.5
@@ -93,8 +97,8 @@ class HybridBinary(Binary):
             else:
                 self._iModel.append(i)
         adjIndex = self._iModel
-        
-        self._Model.renew_from_data(sample, prvIndex, adjIndex, lag=param['lag'],
+
+        self._Model.renew_from_data(sample, prvIndex, adjIndex, lag=lag,
                                     eps=param['eps'], delta=param['delta'], prvP=prvP, verbose=verbose)
 
     def _pmf(self, gamma):
@@ -103,7 +107,7 @@ class HybridBinary(Binary):
             @param gamma: binary vector
         '''
         if not ((self._Const == gamma)[self.iConst]).all(): return 0
-        return self.Model.pmf(gamma[self.iModel])
+        return self._Model.pmf(gamma[self.iModel])
 
     def _lpmf(self, gamma):
         '''
@@ -111,7 +115,7 @@ class HybridBinary(Binary):
             @param gamma binary vector
         '''
         if not ((self._Const == gamma)[self.iConst]).all(): return - inf
-        return self.Model.lpmf(gamma[self.iModel])
+        return self._Model.lpmf(gamma[self.iModel])
 
     def _rvs(self):
         '''
@@ -126,7 +130,7 @@ class HybridBinary(Binary):
             Generates a random variable and computes its probability.
         '''
         rv = self._Const.copy()
-        x, lmpf = self.Model._rvslpmf()
+        x, lmpf = self._Model._rvslpmf()
         rv[self.iModel] = x
         return rv, lmpf
 

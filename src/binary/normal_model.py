@@ -99,14 +99,15 @@ class HiddenNormalBinary(ProductBinary):
             self.p = array([])
             return
 
+        weight = sample.ess > 0.1
         sample = sample.get_sub_data(adjIndex)
-        self.R = sample.cor
+        self.R = sample.getCor(weight=weight)
 
         prvP = array(param['prvP'] > 0.5, dtype=float)
         prvP[prvIndex] = self.p
         adjP = prvP[adjIndex]
-        newP = sample.mean
-        self.p = (1 - lag) * newP + lag * adjP    
+        newP = sample.getMean(weight=weight)
+        self.p = (1 - lag) * newP + lag * adjP
 
         ## mean of hidden normal distribution
         self.mu = norm.ppf(self.p)
