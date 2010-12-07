@@ -51,7 +51,7 @@ class HybridBinary(Binary):
                    p=0.5 * ones(d, dtype=float))
 
     @classmethod
-    def from_data(cls, sample, min_d=0.0, model=LogisticRegrBinary, verbose=False):
+    def from_data(cls, sample, xi=0.0, model=LogisticRegrBinary, verbose=False):
         '''
             Construct a hybrid-binary model from data.
             @param cls class
@@ -66,24 +66,20 @@ class HybridBinary(Binary):
 
         # set base vector and random components
         Const = p > 0.5
-        iModel = list(where((mean >= min_d) * (mean <= 1 - min_d))[0])
+        iModel = list(where((mean >= xi) * (mean <= 1 - xi))[0])
 
         # initialize binary model
         Model = model.from_data(sample.get_sub_data(iModel), verbose=verbose)
 
         return cls(Const, Model, iModel, p)
 
-    def renew_from_data(self, sample, verbose=False, **param):
+    def renew_from_data(self, sample, eps, delta, xi, lag=0, verbose=False):
 
         # keep previous parameters
         prvP = self.p
         prvIndex = self._iModel
 
         # compute mean
-        if 'lag' in param.keys():
-            lag = param['lag']
-        else:
-            lag = 0
         self.p = (1 - lag) * sample.mean + lag * self.p
 
         # base vector and index sets
@@ -92,14 +88,13 @@ class HybridBinary(Binary):
         # Determine constant components.
         self._iModel = []; self._iConst = []
         for i, prob in enumerate(self.p):
-            if prob < param['min_d'] or prob > 1.0 - param['min_d']:
+            if prob < xi or prob > 1.0 - xi:
                 self._iConst.append(i)
             else:
                 self._iModel.append(i)
         adjIndex = self._iModel
 
-        self._Model.renew_from_data(sample, prvIndex, adjIndex, lag=lag,
-                                    eps=param['eps'], delta=param['delta'], prvP=prvP, verbose=verbose)
+        self._Model.renew_from_data(sample, prvIndex, adjIndex, lag=lag, eps=eps, delta=delta, prvP=prvP, verbose=verbose)
 
     def _pmf(self, gamma):
         '''

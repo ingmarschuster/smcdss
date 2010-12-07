@@ -17,27 +17,27 @@ class PosteriorBinary(ProductBinary):
         Reads a dataset and construct the posterior probabilities of all linear models
         with variables regressed on the first column.
     '''
-    def __init__(self, dataFile, modelType='hb'):
+    def __init__(self, data_file, posterior_type='hb'):
         '''
             Constructor.
-            @param dataFile data file
-            @param modelType Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
+            @param data_file data file
+            @param posterior_type Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
         '''
 
         ProductBinary.__init__(self, name='posterior-binary', longname='A posterior distribution of a Bayesian variable selection problem.')
 
         # import dataset
-        dataReader = reader(open(dataFile), delimiter=';')
+        dataReader = reader(open(data_file), delimiter=';')
         X = []; Y = []
         for row in dataReader:
             X.append(array([float(entry) for entry in row[1:]]))
             Y.append(float(row[0]))
         X = array(X); Y = array(Y)
         ## data file
-        self.dataFile = dataFile
+        self.data_file = data_file
 
         ## Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
-        self.modelType = modelType
+        self.posterior_type = posterior_type
         ## sample size
         self.n = X.shape[0]
         ## X^t times y
@@ -46,7 +46,7 @@ class PosteriorBinary(ProductBinary):
         self.XtX = dot(X.T, X)
 
         #-------------------------------------------------- Hierachical Bayesian
-        if self.modelType == 'hb':
+        if self.posterior_type == 'hb':
             # variance of betas
             v1 = 100
             # inverse gamma prior of sigma^2
@@ -61,7 +61,7 @@ class PosteriorBinary(ProductBinary):
             self.c3 = nu_ * lambda_ + dot(Y.T, Y)
 
         #---------------------------------------- Bayesian Information Criterion
-        if self.modelType == 'bic':
+        if self.posterior_type == 'bic':
             ## constant 1
             self.c1 = dot(Y.T, Y) / float(self.n)
             ## constant 2
@@ -116,7 +116,7 @@ class PosteriorBinary(ProductBinary):
             Unnormalized log-probability mass function.
             @param gamma binary vector
         '''
-        if self.modelType == 'bic':
+        if self.posterior_type == 'bic':
             return float(self.bic(gamma))
         else:
             return float(self.hb(gamma))

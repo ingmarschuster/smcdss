@@ -9,13 +9,11 @@
 
 __version__ = "$Revision$"
 
-import sys
-import csv
-from getopt import getopt
+import sys, csv, getopt
 from copy import copy
 from numpy import array, vstack, zeros, newaxis, empty, random, abs
 
-def editcols(dataset, outfile, **param):
+def editcols(param):
     '''
         Creates a data set with altered columns from a given data set.
         @see main
@@ -25,21 +23,15 @@ def editcols(dataset, outfile, **param):
     '''
 
     # parse parameters
-    response = 1
-    if 'response' in param:
-        response = param['response']
+    response = param['data_regressand']
+    variables = param['data_regressors']
+    intercept = param['data_intercept']
+    cross = param['data_cross']
+    dataset = param['sys_path'] + '/' + param['data_path'] + '/' + param['data_set']
+    outfile = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/' + param['data_set']
 
-    if 'variables' in param:
-        variables = param['variables']
-    else:
-        datreader = csv.reader(open(dataset + '_dat.csv'), delimiter=';'); row = datreader.next()
-        variables = range(1, len(row) + 1)
-    
-    intercept = ('intercept' in param)
-    if intercept:
-        variables = [response] + [0] + variables
-    else:
-        variables = [response - 1] + list(array(variables) - 1)
+    if intercept: variables = [response] + [0] + variables
+    else: variables = [response - 1] + [i - 1 for i in variables]
 
     # read doc
     docreader = csv.DictReader(open(dataset + '_doc.csv'), fieldnames=['column', 'type', 'short', 'long'], delimiter=';')
@@ -81,7 +73,7 @@ def editcols(dataset, outfile, **param):
 
     # cross columns
     intercept = int(intercept)
-    if 'cross' in param:
+    if cross:
         data = vstack((data.T, empty((n, d * (d + 1 - 2 * intercept) / 2), dtype=float).T)).T
         column_names_crossed = []
         for i in range(d + 1 - intercept):
@@ -121,6 +113,8 @@ def editcols(dataset, outfile, **param):
     writer = csv.writer(open(outfile + '_dat.csv', 'wb'), delimiter=';')
     for row in data:
         writer.writerow(list(row))
+
+    return outfile + '_dat.csv'
 
 
 def main():

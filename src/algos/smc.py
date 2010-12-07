@@ -8,14 +8,13 @@
 '''
 
 from numpy import *
-from datetime import time
+from time import clock
 from operator import setitem
-from copy import deepcopy
 from scipy.weave import inline, converters
+from sys import stdout
 
 from binary import *
 from auxpy.data import data
-from auxpy.default import dicSMC
 
 if system() == 'Linux':    hasWeave = True
 else:                      hasWeave = False
@@ -23,12 +22,11 @@ else:                      hasWeave = False
 CONST_PRECISION = 1e-8
 
 
-def smc(f, verbose=True):
+def smc(param, verbose=True):
 
     print 'running smc...\n'
 
-    start = clock()
-    ps = ParticleSystem(f, dicSMC['n_particles'])
+    ps = ParticleSystem(param)
 
     # run sequential MC scheme
     while ps.rho < 1.0:
@@ -38,51 +36,61 @@ def smc(f, verbose=True):
         ps.move()
         ps.next_step()
 
-    print "\ndone in %.3f seconds.\n" % (clock() - start)
+    print "\ndone in %.3f seconds.\n" % (clock() - ps.start)
 
-    d = data(ps.X, ps.log_W)
-    return d.getMean(weight=True), clock() - start
+    return str(ps)
 
 
 class ParticleSystem(object):
 
-    def __init__(self, f, verbose=True):
+    def __init__(self, param, verbose=True):
         '''
             Constructor.
             @param f target function
             @param verbose verbose
         '''
         self.verbose = verbose
+        self.start = clock()
 
         ## target function
-        self.f = f
+        self.f = param['f']
         ## proposal model
-        self.prop = HybridBinary.uniform(f.d)
+        self.prop = HybridBinary.uniform(self.f.d)
 
         ## dimension of target function
-        self.d = f.d
+        self.d = self.f.d
         ## number of particles
-        self.n = dicSMC['n_particles']
+        self.n = param['smc_n']
 
         ## array of particles
-        self.X = resize(empty(self.n * f.d, dtype=bool), (self.n, f.d))
+        self.X = resize(empty(self.n * self.d, dtype=bool), (self.n, self.d))
         ## array of log weights
         self.log_W = zeros(self.n, dtype=float)
         ## array of log evaluations of f
         self.log_f = empty(self.n, dtype=float)
         ## array of log evaluation of the proposal model
         self.log_prop = ones(self.n, dtype=float)
-        ## array of particle ids needed for sorting the system
+        ## array of ids
         self.id = [0] * self.n
 
         ## annealing parameter
         self.rho = 0
+        ## tau
+        self.tau = param['smc_tau']
+
         ## move step counter
         self.n_moves = 0
         ## target function evaluation counter
         self.n_f_evals = 0
 
-        self.__k = array([2 ** i for i in range(f.d)])
+        ##
+        self.eps = param['smc_eps']
+        ##
+        self.delta = param['smc_delta']
+        ##
+        self.xi = param['smc_xi']
+
+        self.__k = array([2 ** i for i in range(self.d)])
 
         # initialize particle system
         for i in xrange(self.n):
@@ -126,12 +134,12 @@ class ParticleSystem(object):
         '''
             Computes an advance of the geometric bridge such that ess = tau and updates the log weights.
         '''
-        l = 0.0; u = 1.0
+        l = 0.0; u = 1.0 - self.rho
         alpha = 0.05
 
         # run bisectional search
         for iter in range(30):
-            if self.getEss(alpha) < dicSMC['tau']:
+            if self.getEss(alpha) < self.tau:
                 u = alpha; alpha = 0.5 * (alpha + l)
             else:
                 l = alpha; alpha = 0.5 * (alpha + u)
@@ -142,14 +150,15 @@ class ParticleSystem(object):
         self.log_W += alpha * self.log_f
 
         if self.verbose: print 'progress %.1f' % (100 * self.rho) + '%'
+        print '\n' + str(self) + '\n'
 
     def fit_proposal(self):
         '''
             Adjust the proposal model to the particle system.
         '''
-        d = data(self.X, self.log_W)
-        d.distinct()
-        self.prop.renew_from_data(d, **dicSMC)
+        sample = data(self.X, self.log_W)
+        sample.distinct()
+        self.prop.renew_from_data(sample, eps=self.eps, delta=self.delta, xi=self.xi, verbose=self.verbose)
 
     def getNWeight(self):
         '''
@@ -168,6 +177,11 @@ class ParticleSystem(object):
         k = [ l.count(i) * i for i in range(1, 101) ]
         return str(k) + ' %i ' % sum(k)
 
+    def __str__(self):
+        sample = data(self.X, self.log_W)
+        mean = '[' + ', '.join(['%.4f' % x for x in sample.getMean(weight=True)]) + ']'
+        return '%s;%.3f;%.3f' % (mean, self.n_f_evals / 1000.0, clock() - self.start)
+
     def move(self):
         '''
             Moves the particle system according to an independent Metropolis-Hastings kernel
@@ -181,7 +195,7 @@ class ParticleSystem(object):
             if self.verbose:
                 bars = 20
                 drawn = 0
-                print 'move. ',
+                print 'move.'
                 stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
 
             # pass particle system through transition kernel

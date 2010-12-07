@@ -334,7 +334,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
         if prob < eps or prob > 1.0 - eps:
             A[i, 1:] = zeros(d, dtype=bool)
 
-        n_param = 1 + sum(A[i, :i])
+        n_param = sum(A[i, :i+1])
         if n_param > 1:
             logit_size += 1
             logit_param += n_param

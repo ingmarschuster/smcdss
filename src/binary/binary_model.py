@@ -75,7 +75,6 @@ class Binary(rv_discrete):
         sample = data()
         for dec in range(2 ** self.d):
             bin = dec2bin(dec, self.d)
-            sample.append(bin, self.pmf(bin))
-
-        return str(sample)
-
+            sample.append(bin, self.pmf(bin))     
+        return sample
+    

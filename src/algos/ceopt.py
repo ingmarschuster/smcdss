@@ -14,7 +14,6 @@ from datetime import time
 from numpy import zeros
 
 from binary import *
-from auxpy.default import dicCE, dicData
 
 def ceopt(target, verbose=False):
     '''
