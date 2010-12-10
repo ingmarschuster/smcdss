@@ -156,11 +156,11 @@ param = dict(
     # default path to evaluation directory 
     eval_path='data/evaluations',
 
-    # outer margins (see R)
-    eval_outer_margin=[40, 4, 5, 4],
+    # outer margins (bottom, left, top, right) 
+    eval_outer_margin=[2, 2, 2, 2],
 
-    # inner margins (see R)    
-    eval_inner_margin=[0, 0, 0, 0],
+    # inner margins (bottom, left, top, right) 
+    eval_inner_margin=[0, 0, 2, 0],
 
     # font family (see R)      
     eval_font_family='serif',
@@ -169,7 +169,7 @@ param = dict(
     eval_font_cex=1,
 
     # lines below main title
-    eval_title='Title',
+    eval_title='',
 
     # lines below main title
     eval_title_line=1

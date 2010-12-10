@@ -229,6 +229,7 @@ class data(object):
             drawn = 0
             print 'Evaluating ' + f.name + '...'
             stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
+            stdout.flush()
 
         v = self._W
         k = len(v)
@@ -246,7 +247,6 @@ class data(object):
                 n = bars * (index + 1) / (self.size - k) - drawn
                 if n > 0:
                     stdout.write(n * "-")
-                    stdout.flush()
                     drawn += n
         self._W = array(self._W)
         self._W = v + list(self._W[argsort(lexorder)])
@@ -340,7 +340,7 @@ class data(object):
             @param filename filename
         '''
         data = load(open(filename))
-        self.__init__(data.X, data.w)
+        self.__init__(data.X, data._W)
 
     X = property(fget=getData, fset=setData, doc="data")
     nW = property(fget=getNWeights, fset=setWeights, doc="normalized weights")

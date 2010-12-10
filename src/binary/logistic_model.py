@@ -43,6 +43,9 @@ class LogisticRegrBinary(ProductBinary):
 
         ProductBinary.__init__(self, name='logistic-regression-binary', longname='A multivariate Bernoulli with conditionals based on logistic regression models.')
 
+    def __str__(self):
+        return format(self.Beta, 'Beta')
+
     @classmethod
     def independent(cls, p):
         '''
@@ -75,7 +78,8 @@ class LogisticRegrBinary(ProductBinary):
             @param d dimension
         '''
         cls = LogisticRegrBinary.independent(random.random(d))
-        cls.Beta[:, 1:] = random.normal(scale=scale, size=(d, d - 1))
+        cls.Beta[1:, 1:] = random.normal(scale=scale, size=(d - 1, d - 1))
+        cls.Beta[1:, 1:] *= dot(cls.Beta[1:, 0][:, newaxis], cls.Beta[1:, 0][newaxis, :])
         return cls
 
     @classmethod
@@ -334,7 +338,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
         if prob < eps or prob > 1.0 - eps:
             A[i, 1:] = zeros(d, dtype=bool)
 
-        n_param = sum(A[i, :i+1])
+        n_param = sum(A[i, :i + 1])
         if n_param > 1:
             logit_size += 1
             logit_param += n_param
@@ -350,6 +354,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
         Init[1:, 0] = log_odds[1:]
 
     Beta = zeros((d, d), dtype=float)
+    Beta[:, 0] = log_odds
     Beta[0][0] = p[0]
 
     # Loop over all dimensions compute logistic regressions.
@@ -358,12 +363,19 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
 
         a = where(A[m, :m + 1])[0]
         if a.shape[0] > 1:
-            Beta[m, a], r = calc_log_regr(y=X[:, m + 1], X=X[:, a], XW=XW[:, a], init=Init[m, a])
-            resp += r + (1,)
-        else:
-            Beta[m, 0] = log_odds[m]
+            beta, iter = calc_log_regr(y=X[:, m + 1], X=X[:, a], XW=XW[:, a], init=Init[m, a])
 
-    if verbose: print 'Loops %.3f, failures %i, time %.3f\n' % (resp[0] / resp[2], resp[1], clock() - t)
+            # count fittings and loops needed for convergence
+            resp[0:2] += (1, iter)
+
+            # component failed to converge due to complete separation
+            if beta is None:
+                resp[2] += 1
+                Beta[m, 0] = log_odds[m]
+            else:
+                Beta[m, a] = beta
+
+    if verbose: print 'Loops %.3f, failures %i, time %.3f\n' % (resp[0] / resp[1], resp[2], clock() - t)
 
     return Beta
 
@@ -410,12 +422,13 @@ def calc_log_regr(y, X, XW=None, init=None):
             type_converters=converters.blitz, compiler='gcc')
 
         if not hasWeave or P[0] != P[0]:
+            print '\n\n\nNUMERICAL ERROR USING WEAVE!\n\n\n'
             Xbeta = dot(X, beta)
             p = pow(1 + exp(-Xbeta), -1)
             P = p * (1 - p)
             v = P * Xbeta + y - p
 
-        XWDX = dot(XW.T, P[:, newaxis] * X) + exp(-5) * eye(d)
+        XWDX = dot(XW.T, P[:, newaxis] * X) + 1e-4 * eye(d)
 
         # Solve Newton-Raphson equation.
         try:
@@ -425,13 +438,9 @@ def calc_log_regr(y, X, XW=None, init=None):
             print format(dot(XW.T, v), 'XW_v')
             raise ValueError
 
+        # convergence failure due to complete separation
+        if abs(beta[0]) > 25: return None, iter
+
         if (abs(last_beta - beta) < CONST_PRECISION).all(): break
 
-    # Mark as failed, if the Newton-Raphson iteration did not converge.
-    failed = (iter == CONST_ITERATIONS)
-    if failed:
-        beta = zeros(d)
-        p = y.sum() / float(n)
-        beta[0] = log(p / (1 - p))
-
-    return beta, (iter, failed)
+    return beta, iter

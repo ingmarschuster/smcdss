@@ -34,7 +34,7 @@ def smc(param, verbose=True):
         ps.fit_proposal()
         ps.resample()
         ps.move()
-        ps.next_step()
+        ps.reweight()
 
     print "\ndone in %.3f seconds.\n" % (clock() - ps.start)
 
@@ -99,7 +99,7 @@ class ParticleSystem(object):
             self.id[i] = self.getId(self.X[i])
 
         # do first step
-        self.next_step()
+        self.reweight()
 
     def getId(self, x):
         '''
@@ -130,12 +130,12 @@ class ParticleSystem(object):
         map(setitem, (dic,)*self.n, self.id, [])
         return len(dic.keys()) / float(self.n)
 
-    def next_step(self):
+    def reweight(self):
         '''
             Computes an advance of the geometric bridge such that ess = tau and updates the log weights.
         '''
         l = 0.0; u = 1.0 - self.rho
-        alpha = 0.05
+        alpha = min(0.05, u)
 
         # run bisectional search
         for iter in range(30):
@@ -207,7 +207,6 @@ class ParticleSystem(object):
                     n = bars * (index + 1) / (self.n) - drawn
                     if n > 0:
                         stdout.write(n * "-")
-                        stdout.flush()
                         drawn += n
 
             pD = self.pD

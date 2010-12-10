@@ -9,9 +9,12 @@
 
 import sys, getopt, os, time, shutil, csv
 import auxpy.editcols
+import auxpy.logger
 import binary
 import default
 import algos
+from numpy.random import seed
+
 try:
     from rpy import *
 except:
@@ -25,7 +28,7 @@ def main():
 
     # parse command line options
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hre', ['help', 'run', 'eval'])
+        opts, args = getopt.getopt(sys.argv[1:], 'hreov', ['help', 'run', 'eval', 'okular', 'verbose'])
     except getopt.error, msg:
         print msg
         sys.exit(2)
@@ -41,17 +44,24 @@ def main():
     user = __import__(param['test_name'])
     param.update(user.param)
 
+    logstream = auxpy.logger.Logger(sys.stdout, param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/log.txt')
+    sys.stdout = logstream
+
     # process options
     for o, a in opts:
         if o in ("-h", "--help"):
             print __doc__
             sys.exit(0)
         if o in ("-r", "--run"):
-            _testrun(param)
+            _testrun(param, True)
         if o in ("-e", "--eval"):
             _eval_mean(param)
+        if o in ("-o", "--okular"):
+            os.system('okular ' + param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/eval.pdf  &')
 
-def _testrun(param):
+def _testrun(param, verbose=False):
+
+    seed(30091981)
 
     if param['test_output']:
         path = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name']
@@ -72,8 +82,10 @@ def _testrun(param):
 
     shutil.copyfile(test_file, path + '/' + param['test_name'] + '.py')
 
+    print 'start test suite of %i runs...' % param['test_runs']
     for i in range(param['test_runs']):
-        result = algo(param, verbose=True)
+        print 'starting %i/%i' % (i + 1, param['test_runs'])
+        result = algo(param, verbose=verbose)
         for j in range(5):
             try:
                 file = open(out_file, 'a')
@@ -97,28 +109,31 @@ def _eval_mean(param):
     n = X.shape[0]
     d = X.shape[1]
 
+    param['eval_title'] += '%i runs' % n
+
     A = zeros((5, d))
     box = param['eval_boxplot']
+
     X.sort(axis=0)
+
     for i in xrange(d):
         A[0][i] = X[:, i][0]
         for j, q in [(1, 1.0 - box), (2, 0.5), (3, box), (4, 1.0)]:
             A[j][i] = X[:, i][int(q * n) - 1] - A[:j + 1, i].sum()
 
     # plot with rpy
-    r.pdf(paper="a4", file=param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + "/eval.pdf", width=12, height=12)
+    r.pdf(paper="a4r", file=param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + "/eval.pdf", width=12, height=12)
 
     if param['eval_color']: colors = ['azure1', 'black', 'white', 'white', 'black']
     else: colors = ['grey85', 'black', 'white', 'white', 'black']
 
     r.par(oma=param['eval_outer_margin'], mar=param['eval_inner_margin'])
 
-    r.barplot(A, ylim=[0, 1], axes=False, col=colors)
+    r.barplot(A, ylim=[0, 1], names=range(0, d), axes=False, col=colors)
     r.title(main=param['eval_title'],
             line=param['eval_title_line'],
             family=param['eval_font_family'],
             cex_main=param['eval_font_cex'], font_main=1)
-
     r.dev_off()
 
 
