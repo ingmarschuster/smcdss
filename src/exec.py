@@ -15,10 +15,8 @@ import default
 import algos
 from numpy.random import seed
 
-try:
-    from rpy import *
-except:
-    pass
+try:    from rpy import *
+except: pass
 
 def main():
 
@@ -28,7 +26,7 @@ def main():
 
     # parse command line options
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hreov', ['help', 'run', 'eval', 'okular', 'verbose'])
+        opts, args = getopt.getopt(sys.argv[1:], 'hreocv')
     except getopt.error, msg:
         print msg
         sys.exit(2)
@@ -36,7 +34,8 @@ def main():
     if len(args) == 0: sys.exit(0)
 
     param.update({'test_name':args[0]})
-    if not os.path.isfile(param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '.py'):
+    param.update({'test_folder':param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name']})
+    if not os.path.isfile(param['test_folder'] + '.py'):
         print 'The test file "' + param['test_name'] + '" does not exist in the test path.'
         sys.exit(0)
 
@@ -44,31 +43,22 @@ def main():
     user = __import__(param['test_name'])
     param.update(user.param)
 
-    logstream = auxpy.logger.Logger(sys.stdout, param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/log.txt')
-    sys.stdout = logstream
 
     # process options
-    for o, a in opts:
-        if o in ("-h", "--help"):
-            print __doc__
-            sys.exit(0)
-        if o in ("-r", "--run"):
-            _testrun(param, True)
-        if o in ("-e", "--eval"):
-            _eval_mean(param)
-        if o in ("-o", "--okular"):
-            os.system('okular ' + param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/eval.pdf  &')
+    opts = [o[0] for o in opts]
+    if '-h' in opts: print __doc__
+    if '-c' in opts: shutil.rmtree(param['test_folder'])
+    if '-r' in opts: _testrun(param, True)
+    if '-e' in opts: _eval_mean(param)
+    if '-o' in opts: os.system('okular ' + param['test_folder'] + '/eval.pdf  &')
 
 def _testrun(param, verbose=False):
 
-    seed(30091981)
+    seed(1)
 
-    if param['test_output']:
-        path = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name']
-        try:
-            os.mkdir(path)
-        except:
-            pass
+    path = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name']
+    try: os.mkdir(path)
+    except: pass
 
     algo = param['test_algo']
 
@@ -81,6 +71,9 @@ def _testrun(param, verbose=False):
     else: test_file = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '.py'
 
     shutil.copyfile(test_file, path + '/' + param['test_name'] + '.py')
+
+    logstream = auxpy.logger.Logger(sys.stdout, param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/log')
+    sys.stdout = logstream
 
     print 'start test suite of %i runs...' % param['test_runs']
     for i in range(param['test_runs']):

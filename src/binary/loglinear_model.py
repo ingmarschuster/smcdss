@@ -7,7 +7,6 @@
     $Revision: 29 $
 '''
 
-from rpy import *
 from numpy import *
 from auxpy.data import *
 from binary import ProductBinary

@@ -9,9 +9,8 @@
 
 __version__ = "$Revision$"
 
-import sys, csv, getopt
-from copy import copy
-from numpy import array, vstack, zeros, newaxis, empty, random, abs
+import csv, copy
+from numpy import *
 
 def editcols(param):
     '''
@@ -26,6 +25,7 @@ def editcols(param):
     response = param['data_regressand']
     variables = param['data_regressors']
     intercept = param['data_intercept']
+
     cross = param['data_cross']
     dataset = param['sys_path'] + '/' + param['data_path'] + '/' + param['data_set']
     outfile = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/' + param['data_set']
@@ -41,7 +41,7 @@ def editcols(param):
         column_names.append(row)
 
     # add noise
-    column_names = [copy(col) for col in array(column_names)[variables]]
+    column_names = [column_names[i] for i in variables]
     d = len(column_names) - 1
     for i in range(1, d):
         x = column_names[i]['column']
@@ -115,78 +115,3 @@ def editcols(param):
         writer.writerow(list(row))
 
     return outfile + '_dat.csv'
-
-
-def main():
-    '''
-    USAGE: editcols [options] dataset [output]
-    
-    -h, --help
-        display help message
-                                
-    -v, --variables
-        variables as singles separated by commas (e.g. 2,4,7) or as a sequence (e.g. 2:7)
-    
-    -r, --response
-        move that column to front
-    
-    -i, --intercept
-        add a constant column
-                                
-    -c, --cross
-        cross columns
-    '''
-
-    # parse command line arguments
-    try:
-        opts, args = getopt(sys.argv[1:], "r:v:ich",
-                                ['response=', 'variables=', 'intercept', 'cross', 'help'])
-    except getopt.error, msg:
-        print msg
-        sys.exit(2)
-
-    if len(args) == 0:
-        print main.__doc__
-        sys.exit(2)
-
-    # parse command line options
-    param = dict()
-    for o, a in opts:
-        if o in ("-h", "--help"):
-            print main.__doc__
-            sys.exit(0)
-
-        if o in ("-r", "--response"):
-            param['response'] = int(a)
-
-        if o in ("-v", "--variables"):
-            outfile = a.replace(',', '.').replace(':', '-')
-            try:
-                a = a.split(':')
-                if len(a) == 1:
-                    param['variables'] = eval('[' + a[0] + ']')
-                else:
-                    param['variables'] = range(int(a[0]), int(a[1]) + 1)
-            except:
-                print "Error while parsing variables " + a + "."
-
-        if o in ("-c", "--cross"): param['cross'] = True
-
-        if o in ("-i", "--intercept"): param['intercept'] = True
-
-    dataset = args[0]
-    if dataset[-8:] == '_dat.csv': dataset = dataset[:-8]
-
-    # check outfile
-    if len(args) > 1:
-        outfile = args[1]
-        # add path of dataset
-        if outfile.find('/') == -1:
-            outfile = dataset[:dataset.rfind('/') + 1] + outfile
-    else:
-        outfile = ''.join(dataset, '_', outfile)
-
-    editcols(dataset, outfile, **param)
-
-if __name__ == "__main__":
-    main()

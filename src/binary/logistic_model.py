@@ -422,7 +422,7 @@ def calc_log_regr(y, X, XW=None, init=None):
             type_converters=converters.blitz, compiler='gcc')
 
         if not hasWeave or P[0] != P[0]:
-            print '\n\n\nNUMERICAL ERROR USING WEAVE!\n\n\n'
+            if hasWeave: print '\n\n\nNUMERICAL ERROR USING WEAVE!\n\n\n'
             Xbeta = dot(X, beta)
             p = pow(1 + exp(-Xbeta), -1)
             P = p * (1 - p)
