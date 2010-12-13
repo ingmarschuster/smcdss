@@ -43,7 +43,6 @@ def main():
     user = __import__(param['test_name'])
     param.update(user.param)
 
-
     # process options
     opts = [o[0] for o in opts]
     if '-h' in opts: print __doc__
@@ -56,8 +55,7 @@ def _testrun(param, verbose=False):
 
     seed(1)
 
-    path = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name']
-    try: os.mkdir(path)
+    try: os.mkdir(param['test_folder'])
     except: pass
 
     algo = param['test_algo']
@@ -65,12 +63,12 @@ def _testrun(param, verbose=False):
     data_file = auxpy.editcols.editcols(param)
     posterior_type = param['posterior_type']
     param.update({'f':binary.PosteriorBinary(data_file, posterior_type)})
-    out_file = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/' + 'result.csv'
+    out_file = param['test_folder'] + '/' + 'result.csv'
 
     if param['test_name'] is 'default': test_file = param['sys_path'] + '/src/default.py'
-    else: test_file = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '.py'
-
-    shutil.copyfile(test_file, path + '/' + param['test_name'] + '.py')
+    else: test_file = param['test_folder'] + '.py'
+    
+    shutil.copyfile(test_file, param['test_folder'] + '/' + param['test_name'] + '.py')
 
     logstream = auxpy.logger.Logger(sys.stdout, param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/log')
     sys.stdout = logstream

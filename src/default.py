@@ -25,9 +25,6 @@ param = dict(
     # number of particles
     smc_n=10000,
 
-    # minimum distance of mean from the boundaries of [0,1]
-    smc_min_d=1e-04,
-
     # epsilon
     smc_eps=0.05,
 
@@ -38,7 +35,7 @@ param = dict(
     smc_tau=0.7,
     
     # minimum distance of mean from the boundaries of [0,1]
-    smc_xi=1e-04,
+    smc_xi=1e-12,
 
 
 
@@ -129,9 +126,6 @@ param = dict(
 
     # default path to test run directory 
     test_path='data/testruns',
-
-    # name of the output file
-    test_name='default',
 
     # write result into an output file
     test_output=False,
