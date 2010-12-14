@@ -10,5 +10,4 @@
 __version__ = "$Revision$"
 
 from auxpy.plotting import *
-
-plot_matrix()
+from binary import *

@@ -62,12 +62,9 @@ class ProductBinary(Binary):
         '''
         return cls(sample.mean)
 
-    def renew_from_data(self, sample, prvIndex, adjIndex, lag=0.0, verbose=False, **param):
-        prvP = array(param['prvP'] > 0.5, dtype=float)
-        prvP[prvIndex] = self.p
-        adjP = prvP[adjIndex]
-        newP = sample.get_sub_data(adjIndex).getMean(weight = (sample.ess > 0.1))
-        self.p = (1 - lag) * newP + lag * adjP
+    def renew_from_data(self, sample, lag=0.0, verbose=False, **param):
+        p = sample.getMean(weight = (sample.ess > 0.1))
+        self.p = (1 - lag) * p + lag * self.p
 
     def _pmf(self, gamma):
         '''

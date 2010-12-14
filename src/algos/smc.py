@@ -69,13 +69,13 @@ class ParticleSystem(object):
         ## array of log evaluations of f
         self.log_f = empty(self.n, dtype=float)
         ## array of log evaluation of the proposal model
-        self.log_prop = ones(self.n, dtype=float)
+        self.log_prop = zeros(self.n, dtype=float)
         ## array of ids
         self.id = [0] * self.n
 
         ## annealing parameter
         self.rho = 0
-        ## tau
+        ## target effective sample size before resampling
         self.tau = param['smc_tau']
 
         ## move step counter
@@ -83,11 +83,11 @@ class ParticleSystem(object):
         ## target function evaluation counter
         self.n_f_evals = 0
 
-        ##
+        ## min mean distance from the boundaries of [0,1] to be considered part of a logistic model
         self.eps = param['smc_eps']
-        ##
+        ## min correlation to be considered part of a logistic model
         self.delta = param['smc_delta']
-        ##
+        ## min mean distance from the boundaries of [0,1] to be considered random
         self.xi = param['smc_xi']
 
         self.__k = array([2 ** i for i in range(self.d)])
@@ -100,6 +100,11 @@ class ParticleSystem(object):
 
         # do first step
         self.reweight()
+
+    def __str__(self):
+        sample = data(self.X, self.log_W)
+        mean = '[' + ', '.join(['%.4f' % x for x in sample.getMean(weight=True)]) + ']'
+        return '%s;%.3f;%.3f' % (mean, self.n_f_evals / 1000.0, clock() - self.start)
 
     def getId(self, x):
         '''
@@ -147,7 +152,7 @@ class ParticleSystem(object):
 
         # update rho and and log weights
         self.rho += alpha
-        self.log_W += alpha * self.log_f
+        self.log_W = alpha * self.log_f
 
         if self.verbose: print 'progress %.1f' % (100 * self.rho) + '%'
         print '\n' + str(self) + '\n'
@@ -176,11 +181,6 @@ class ParticleSystem(object):
         l = [ self.id.count(i) for i in id_set ]
         k = [ l.count(i) * i for i in range(1, 101) ]
         return str(k) + ' %i ' % sum(k)
-
-    def __str__(self):
-        sample = data(self.X, self.log_W)
-        mean = '[' + ', '.join(['%.4f' % x for x in sample.getMean(weight=True)]) + ']'
-        return '%s;%.3f;%.3f' % (mean, self.n_f_evals / 1000.0, clock() - self.start)
 
     def move(self):
         '''
@@ -225,20 +225,23 @@ class ParticleSystem(object):
         self.n_f_evals += 1
 
         # generate proposal
-        proposal, new_log_prop = self.prop.rvslpmf()
-        new_log_f = self.f.lpmf(proposal)
-        new_log_pi = self.rho * new_log_f
+        Y, lpmf = self.prop.rvslpmf()
+        log_f_Y = self.f.lpmf(Y)
 
-        # gather current values
-        cur_log_pi = self.rho * self.log_f[index]
-        cur_log_prop = self.log_prop[index]
+        # values proposal Y
+        log_pi_Y = self.rho * log_f_Y
+        log_prop_Y = lpmf
+
+        # values state X
+        log_pi_X = self.rho * self.log_f[index]
+        log_prop_X = self.log_prop[index]
 
         # compute acceptance probability and do MH step
-        if rand() < exp(new_log_pi - cur_log_pi + cur_log_prop - new_log_prop):
-            self.X[index] = proposal
-            self.id[index] = self.getId(proposal)
-            self.log_f[index] = new_log_f
-            self.log_prop[index] = new_log_prop
+        if rand() < exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y):
+            self.X[index] = Y
+            self.id[index] = self.getId(Y)
+            self.log_f[index] = log_f_Y
+            self.log_prop[index] = log_prop_Y
             return 1
         else:
             return 0
@@ -253,8 +256,8 @@ class ParticleSystem(object):
 
         # move objects according to resampled order
         self.id = [self.id[i] for i in indices]
-        for obj in [self.X, self.log_f, self.log_prop]:
-            obj = obj[indices]
+        for name in ['X', 'log_f', 'log_prop']:
+            setattr(self, name, getattr(self, name)[indices])
 
         if self.verbose: print 'pD: %.3f' % self.pD
 
@@ -265,9 +268,6 @@ class ParticleSystem(object):
                 self.log_prop[i] = self.log_prop[i - 1]
             else:
                 self.log_prop[i] = self.prop.lpmf(self.X[i])
-
-        # set weights to unity
-        self.log_W = zeros(self.n)
 
     nW = property(fget=getNWeight, doc="normalized weights")
     pD = property(fget=getParticleDiversity, doc="particle diversity")

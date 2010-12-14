@@ -10,6 +10,7 @@
 import sys, getopt, os, time, shutil, csv
 import auxpy.editcols
 import auxpy.logger
+from auxpy.data import data
 import binary
 import default
 import algos
@@ -33,23 +34,29 @@ def main():
 
     if len(args) == 0: sys.exit(0)
 
-    param.update({'test_name':args[0]})
-    param.update({'test_folder':param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name']})
+    param.update({'test_name':os.path.splitext(os.path.basename(args[0]))[0]})
+    param.update({'test_folder':os.path.join(param['sys_path'] , param['test_path'] , param['test_name'])})
+
     if not os.path.isfile(param['test_folder'] + '.py'):
         print 'The test file "' + param['test_name'] + '" does not exist in the test path.'
         sys.exit(0)
 
-    sys.path.insert(0, param['sys_path'] + '/' + param['test_path'])
+    sys.path.insert(0, os.path.join(param['sys_path'] , param['test_path']))
     user = __import__(param['test_name'])
     param.update(user.param)
 
     # process options
     opts = [o[0] for o in opts]
     if '-h' in opts: print __doc__
-    if '-c' in opts: shutil.rmtree(param['test_folder'])
+    if '-c' in opts:
+        try:
+            shutil.rmtree(param['test_folder'])
+        except:
+            pass
     if '-r' in opts: _testrun(param, True)
     if '-e' in opts: _eval_mean(param)
     if '-o' in opts: os.system('okular ' + param['test_folder'] + '/eval.pdf  &')
+
 
 def _testrun(param, verbose=False):
 
@@ -67,15 +74,15 @@ def _testrun(param, verbose=False):
 
     if param['test_name'] is 'default': test_file = param['sys_path'] + '/src/default.py'
     else: test_file = param['test_folder'] + '.py'
-    
-    shutil.copyfile(test_file, param['test_folder'] + '/' + param['test_name'] + '.py')
 
-    logstream = auxpy.logger.Logger(sys.stdout, param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/log')
+    shutil.copyfile(test_file, os.path.join(param['test_folder'] , param['test_name']) + '.py')
+
+    logstream = auxpy.logger.Logger(sys.stdout, param['test_folder'] + '/log')
     sys.stdout = logstream
 
     print 'start test suite of %i runs...' % param['test_runs']
     for i in range(param['test_runs']):
-        print 'starting %i/%i' % (i + 1, param['test_runs'])
+        print '\nstarting %i/%i' % (i + 1, param['test_runs'])
         result = algo(param, verbose=verbose)
         for j in range(5):
             try:
@@ -86,6 +93,7 @@ def _testrun(param, verbose=False):
             except:
                 print 'Could not write to %s. Trying again in 3 seconds...'
                 time.sleep(3)
+
 
 def _eval_mean(param):
     '''

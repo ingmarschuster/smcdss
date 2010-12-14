@@ -89,7 +89,7 @@ class kernel():
         '''
             Gibbs kernel driving the Markov chain
         '''
-        proposal = state.copy()
+        proposal = self.state.copy()
         index = random.randint(0, self.d)
         proposal[index] = proposal[index] ^ True
         log_proposal_pi = self.f.lpmf(proposal)

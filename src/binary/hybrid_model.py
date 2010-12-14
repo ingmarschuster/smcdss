@@ -51,7 +51,7 @@ class HybridBinary(Binary):
                    p=0.5 * ones(d, dtype=float))
 
     @classmethod
-    def from_data(cls, sample, xi=0.0, model=LogisticRegrBinary, verbose=False):
+    def from_data(cls, sample, xi=1e-12, model=LogisticRegrBinary, verbose=False):
         '''
             Construct a hybrid-binary model from data.
             @param cls class
@@ -63,17 +63,18 @@ class HybridBinary(Binary):
 
         # compute mean
         p = sample.getMean(weight=True)
+        d = p.shape[0]
 
         # set base vector and random components
         Const = p > 0.5
-        iModel = list(where((mean >= xi) * (mean <= 1 - xi))[0])
+        iModel = [i for i in xrange(d) if p[i] >= xi and p[i] <= 1 - xi]
 
         # initialize binary model
         Model = model.from_data(sample.get_sub_data(iModel), verbose=verbose)
 
         return cls(Const, Model, iModel, p)
 
-    def renew_from_data(self, sample, eps, delta, xi, lag=0, verbose=False):
+    def renew_from_data(self, sample, eps=0.03, delta=0.075, xi=1e-12, lag=0, verbose=False):
 
         # keep previous parameters
         prvP = self.p
@@ -127,7 +128,7 @@ class HybridBinary(Binary):
         rv = self._Const.copy()
         x, lmpf = self._Model._rvslpmf()
         rv[self.iModel] = x
-        return rv, lmpf
+        return rv, float(lmpf)
 
     def getIModel(self):
         '''
