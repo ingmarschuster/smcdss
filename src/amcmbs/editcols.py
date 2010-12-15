@@ -11,6 +11,7 @@ __version__ = "$Revision$"
 
 import csv, copy
 from numpy import *
+import os.path as op
 
 def editcols(param):
     '''
@@ -27,8 +28,8 @@ def editcols(param):
     intercept = param['data_intercept']
 
     cross = param['data_cross']
-    dataset = param['sys_path'] + '/' + param['data_path'] + '/' + param['data_set']
-    outfile = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/' + param['data_set']
+    dataset = op.join(param['sys_path'] , param['data_path'] , param['data_set'])
+    outfile = op.join(param['sys_path'] , param['test_path'] , param['test_name'] , param['data_set'])
 
     if intercept: variables = [response] + [0] + variables
     else: variables = [response - 1] + [i - 1 for i in variables]
@@ -94,7 +95,9 @@ def editcols(param):
                     column_dict['type'] = 'c'
                     column_dict['short'] = column_dict['short'] + '+noise'
                     column_dict['long'] = column_dict['long'] + '+noise'
-                    data[:, 1 + d + j + i * (i - 1) / 2] = data[:, 1 + d + j + i * (i - 1) / 2] + random.normal(0, 0.1, n)
+                    print data[:, 1 + d + j + i * (i - 1) / 2]
+                    data[:, 1 + d + j + i * (i - 1) / 2] += random.normal(0, 0.1, n)
+                    print data[:, 1 + d + j + i * (i - 1) / 2]
 
                 column_names_crossed.append(column_dict)
         column_names = column_names + column_names_crossed

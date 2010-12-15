@@ -17,7 +17,7 @@ class PosteriorBinary(ProductBinary):
         Reads a dataset and construct the posterior probabilities of all linear models
         with variables regressed on the first column.
     '''
-    def __init__(self, data_file, posterior_type='hb'):
+    def __init__(self, sample, posterior_type='hb'):
         '''
             Constructor.
             @param data_file data file
@@ -26,16 +26,10 @@ class PosteriorBinary(ProductBinary):
 
         ProductBinary.__init__(self, name='posterior-binary', longname='A posterior distribution of a Bayesian variable selection problem.')
 
-        # import dataset
-        dataReader = reader(open(data_file), delimiter=';')
-        X = []; Y = []
-        for row in dataReader:
-            X.append(array([float(entry) for entry in row[1:]]))
-            Y.append(float(row[0]))
-        X = array(X); Y = array(Y)
-        ## data file
-        self.data_file = data_file
-
+        # sample
+        Y = sample[:,0]
+        X = sample[:,1:]
+                
         ## Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
         self.posterior_type = posterior_type
         ## sample size

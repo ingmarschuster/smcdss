@@ -38,7 +38,7 @@ def smc(param, verbose=True):
 
     print "\ndone in %.3f seconds.\n" % (clock() - ps.start)
 
-    return str(ps)
+    return ps.csv()
 
 
 class ParticleSystem(object):
@@ -102,9 +102,15 @@ class ParticleSystem(object):
         self.reweight()
 
     def __str__(self):
-        sample = data(self.X, self.log_W)
-        mean = '[' + ', '.join(['%.4f' % x for x in sample.getMean(weight=True)]) + ']'
+        mean = '[' + ', '.join(['%.3f' % x for x in self.getMean()]) + ']'
         return '%s;%.3f;%.3f' % (mean, self.n_f_evals / 1000.0, clock() - self.start)
+
+    def csv(self):
+        mean = ';'.join(['%.8f' % x for x in self.getMean()])
+        return '%s;%.3f;%.3f' % (mean, self.n_f_evals / 1000.0, clock() - self.start)
+
+    def getMean(self):
+        return dot(self.nW, self.X)
 
     def getId(self, x):
         '''

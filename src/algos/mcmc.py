@@ -53,7 +53,7 @@ def mcmc(param, verbose=True):
         p_sample.append(s_sample.mean)
 
     # return results
-    mean = '[' + ', '.join(['%.4f' % x for x in p_sample.mean]) + ']'
+    mean = ';'.join(['%.8f' % x for x in p_sample.mean])
     return '%s;%.3f;%.3f' % (mean, kappa.n_moves / float(kappa.n_iter), clock() - start)
 
 class kernel():

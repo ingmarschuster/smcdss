@@ -14,6 +14,7 @@ __version__ = "$Revision$"
 from numpy import inf
 from binary import *
 from algos import *
+from os.path import normcase
 
 param = dict(
 
@@ -23,17 +24,17 @@ param = dict(
     #---------------------------------------------------- Sequential Monte Carlo
 
     # number of particles
-    smc_n=10000,
+    smc_n=20000,
 
     # epsilon
-    smc_eps=0.05,
+    smc_eps=0.02,
 
     # delta
-    smc_delta=0.1,
+    smc_delta=0.05,
 
     # tau
     smc_tau=0.7,
-    
+
     # minimum distance of mean from the boundaries of [0,1]
     smc_xi=1e-12,
 
@@ -72,10 +73,10 @@ param = dict(
     mcmc_kernel='mh',
 
     # max running time in minutes
-    mcmc_max_time=30.0,
+    mcmc_max_time=inf,
 
     # max iterations
-    mcmc_max_iter=inf,
+    mcmc_max_iter=2e6,
 
 
 
@@ -98,20 +99,11 @@ param = dict(
     # data set to perform the variable selection on
     data_set='boston',
 
-    # observed explanatory variable
-    data_regressors=range(9, 16),
-
-    # observed explained variable
-    data_regressand=8,
-
-    # cross columns
-    data_cross=True,
-
-    # intercept
-    data_intercept=True,
+    # number of covariates
+    data_n_covariates=inf,
 
     # default path to data directory 
-    data_path='data/datasets',
+    data_path=normcase('data/datasets'),
 
     # a conjugate Hierarchical Bayesian setup (hb) or the Bayesian Information Criterion (bic)
     posterior_type='hb',
@@ -125,7 +117,7 @@ param = dict(
     test_algo=smc,
 
     # default path to test run directory 
-    test_path='data/testruns',
+    test_path=normcase('data/testruns'),
 
     # write result into an output file
     test_output=False,
@@ -148,7 +140,7 @@ param = dict(
     eval_color=False,
 
     # default path to evaluation directory 
-    eval_path='data/evaluations',
+    eval_path=normcase('data/evaluations'),
 
     # outer margins (bottom, left, top, right) 
     eval_outer_margin=[2, 2, 2, 2],

@@ -7,8 +7,7 @@
     $Revision: 38 $
 '''
 
-import sys, getopt, os, time, shutil, csv
-import auxpy.editcols
+import sys, getopt, time, shutil, csv, os
 import auxpy.logger
 from auxpy.data import data
 import binary
@@ -60,39 +59,51 @@ def main():
 
 def _testrun(param, verbose=False):
 
-    seed(1)
+    # seed(1)
 
-    try: os.mkdir(param['test_folder'])
-    except: pass
+    # read data
+    data_file = os.path.join(param['sys_path'], param['data_path'], param['data_set'], param['data_set'] + '.out')
+    reader = csv.reader(open(data_file, 'r'), delimiter='\t')
+    n = min(param['data_n_covariates'] + 1, len(reader.next()))
+    sample = array([
+                    array([eval(x) for x in row[:n]]) for row in reader
+                    ])
 
-    algo = param['test_algo']
-
-    data_file = auxpy.editcols.editcols(param)
-    posterior_type = param['posterior_type']
-    param.update({'f':binary.PosteriorBinary(data_file, posterior_type)})
+    # build posterior distribution
+    param.update({'f':binary.PosteriorBinary(sample, param['posterior_type'])})
     out_file = param['test_folder'] + '/' + 'result.csv'
 
+    print [(key, x) for key, x in param.iteritems() if key[:4]=='smc_']
+
+    # setup test folder
+    try: os.mkdir(param['test_folder'])
+    except: pass
     if param['test_name'] is 'default': test_file = param['sys_path'] + '/src/default.py'
     else: test_file = param['test_folder'] + '.py'
-
     shutil.copyfile(test_file, os.path.join(param['test_folder'] , param['test_name']) + '.py')
 
-    logstream = auxpy.logger.Logger(sys.stdout, param['test_folder'] + '/log')
-    sys.stdout = logstream
+    # setup logger
+    log_stream = auxpy.logger.Logger(sys.stdout, param['test_folder'] + '/log')
+    log_id = os.path.splitext(os.path.basename(log_stream.logfile.name))[0]
+    sys.stdout = log_stream
 
     print 'start test suite of %i runs...' % param['test_runs']
-    for i in range(param['test_runs']):
+    for i in xrange(param['test_runs']):
+
         print '\nstarting %i/%i' % (i + 1, param['test_runs'])
-        result = algo(param, verbose=verbose)
+        result = param['test_algo'](param, verbose=verbose)
+        id = ';%s;%i;%i' % (log_id, i + 1, param['f'].d)
+
         for j in range(5):
             try:
                 file = open(out_file, 'a')
-                file.write(result + '\n')
+                file.write(result + id + '\n')
                 file.close()
                 break
             except:
                 print 'Could not write to %s. Trying again in 3 seconds...'
                 time.sleep(3)
+
 
 
 def _eval_mean(param):
@@ -102,9 +113,11 @@ def _eval_mean(param):
         @param param parameters
     '''
 
-    file = open(param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + '/' + 'result.csv', 'r')
+    file = open(param['test_folder'] + '/' + 'result.csv', 'r')
     reader = csv.reader(file, delimiter=';')
-    X = array([array(eval(row[0])) for row in reader])
+    X = array([
+              array([eval(x) for x in row[:eval(row[-1])]]) for row in reader
+        ])
     n = X.shape[0]
     d = X.shape[1]
 
