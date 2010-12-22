@@ -8,7 +8,7 @@ from numpy.random import rand, normal as normal_rand
 from numpy import *
 from numpy.linalg import norm
 from scipy.linalg import cholesky, eigvalsh, solve
-from bvnorm import bvnorm as bvnormal
+#from bvnorm import bvnorm as bvnormal
 from scipy.stats import rv_discrete, norm as normal
 from scipy.stats.distributions import inf
 from copy import *
@@ -1024,7 +1024,7 @@ class binary_post_old(binary):
 
 
 class binary_post(binary):
-    def __init__(self, dataset, scoretype='hb'):
+    def __init__(self, scoretype='hb'):
         '''
         Reads a dataset and construct the posterior probabilities of all linear models
         with variates regressed on the first column.
@@ -1032,8 +1032,10 @@ class binary_post(binary):
    
         # import dataset
         X = []; Y = []
-        datreader = csv.reader(open(dataset), delimiter=';')
+        datreader = csv.reader(open('/home/cschafer/Documents/Python/smcdss/data/datasets/boston/boston.out'), delimiter='\t')
+        datreader.next()
         for row in datreader:
+            #row=row[:25]
             X.append(array([float(entry) for entry in row[1:]]))
             Y.append(float(row[0]))
         
@@ -1042,6 +1044,8 @@ class binary_post(binary):
         self.dim = len(X[0])
         self.feasible = (self.dim <= MAX_FEASIBLE)
         self.n = len(X)
+        self.p = len(X[0])
+        self.dataset='boston'
         
         # compute beta=XtY and XtX
         X = array(X); Y = array(Y)

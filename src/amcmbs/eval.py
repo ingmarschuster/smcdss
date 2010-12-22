@@ -30,8 +30,8 @@ try:
 except:
     print 'Can\'t import rpy for plotting.'
 
-TEST_PATH = '/home/cschafer/Documents/Python/workspace/data/testruns'
-PDF_PATH = '/home/cschafer/Tex'
+TEST_PATH = '/home/cschafer/Documents/Python/smcdss/data/testruns'
+PDF_PATH = '/home/cschafer/Documents/Python/smcdss/data/testruns'
 
 def maketitle(file):
     file = PDF_PATH + "/" + file
@@ -108,17 +108,17 @@ def evalest(filestubs=['*'], boxdata=0.8, titles=False, color=False):
         evaldict['time'][ifilestub] = evaldict['time'][ifilestub] / n
         
     # plot with rpy
-    r.pdf(paper="a4", file=PDF_PATH + "/" + ''.join(filestubs) + ".pdf", width=12, height=12)
+    r.pdf(paper="a4r", file=PDF_PATH + "/" + ''.join(filestubs) + ".pdf", width=12, height=12)
     if color:
         colors = ['azure1', 'black', 'white', 'white', 'black']
     else:
         colors = ['grey85', 'black', 'white', 'white', 'black']
     
-    if titles:
-        r.par(mfcol=[len(filestubs), 1], oma=[30, 4, 5 , 4], mar=[2, 0, 2, 0])
-        #r.par(mfrow=[len(filestubs), 1], oma=[0, 0, 1 , 0], mar=[2, 0, 2, 0])
-    else:
-        r.par(mfcol=[len(filestubs), 1], oma=[0, 0, 2 , 0], mar=[2, 0, 2, 0])        
+    #if titles:
+        #r.par(mfcol=[len(filestubs), 1], oma=[30, 4, 5 , 4], mar=[2, 0, 2, 0])
+    #    r.par(mfrow=[len(filestubs), 1], oma=[0, 0, 1 , 0], mar=[2, 0, 2, 0])
+    #else:
+    r.par(mfcol=[len(filestubs), 1], oma=[2, 2, 2 , 2], mar=[0, 0, 2, 0])        
     for ifilestub in range(len(filestubs)):
         if titles:
             title = "title " + str(ifilestub)

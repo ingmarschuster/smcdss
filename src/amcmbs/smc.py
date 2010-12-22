@@ -455,9 +455,9 @@ def smctest(targetDistr, filestub, runs, nbridge, nparticles, kappa, test, plot,
         elif filestub.rfind("smc") == -1:
             filestub = filestub + 'smc'
         
-        filename = "../../data/testruns/" + filestub + "_1.txt"; i = 1
+        filename = "../../data/testruns/old_smc/" + filestub + "_1.txt"; i = 1
         while os.path.exists(filename):
-            filename = "../../data/testruns/" + filestub + ("_%i.txt" % i)
+            filename = "../../data/testruns/old_smc/" + filestub + ("_%i.txt" % i)
             i += 1
         file = open(filename, 'w')
         file.write(summary + "\ntype;mprobs;moves;targetevals;time\n")
@@ -630,7 +630,9 @@ def main():
             smceval(filestubs=filestubs, boxdata=boxdata, fragmaster=fragmaster)
             sys.exit(0)
     
-    targetDistr = binary_post(cols[0], variates=variates, dataset=dataset, scoretype=scoretype)
+    filestub='old_smc'
+    
+    targetDistr = binary_post(scoretype=scoretype)
     smctest(targetDistr=targetDistr, filestub=filestub, runs=runs, nparticles=nparticles, \
             plot=plot, nbridge=nbridge, kappa=kappa, verbose=verbose, test=test)
 

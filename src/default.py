@@ -30,10 +30,10 @@ param = dict(
     smc_eps=0.02,
 
     # delta
-    smc_delta=0.05,
+    smc_delta=0.075,
 
     # tau
-    smc_tau=0.7,
+    smc_tau=0.65,
 
     # minimum distance of mean from the boundaries of [0,1]
     smc_xi=1e-12,
@@ -59,7 +59,7 @@ param = dict(
     ce_xi=1e-04,
 
     # epsilon
-    ce_eps=0.05,
+    ce_eps=0.075,
 
     # delta
     ce_delta=0.1,
@@ -70,13 +70,10 @@ param = dict(
     #-------------------------------------------------- Markov chain Monte Carlo
 
     # Markov kernel
-    mcmc_kernel='mh',
-
-    # max running time in minutes
-    mcmc_max_time=inf,
+    mcmc_kernel=SymmetricMetropolisHastings,
 
     # max iterations
-    mcmc_max_iter=2e6,
+    mcmc_max_calls=2e6,
 
 
 
@@ -137,7 +134,7 @@ param = dict(
     eval_boxplot=0.8,
 
     # colored graph
-    eval_color=False,
+    eval_color=['azure1', 'black', 'white', 'white', 'black'],
 
     # default path to evaluation directory 
     eval_path=normcase('data/evaluations'),

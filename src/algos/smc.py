@@ -21,8 +21,9 @@ else:                      hasWeave = False
 
 CONST_PRECISION = 1e-8
 
+header = lambda: ['NO_EVALS', 'TIME']
 
-def smc(param, verbose=True):
+def run(param, verbose=True):
 
     print 'running smc...\n'
 
@@ -38,7 +39,7 @@ def smc(param, verbose=True):
 
     print "\ndone in %.3f seconds.\n" % (clock() - ps.start)
 
-    return ps.csv()
+    return ps.getCsv()
 
 
 class ParticleSystem(object):
@@ -69,14 +70,12 @@ class ParticleSystem(object):
         ## array of log evaluations of f
         self.log_f = empty(self.n, dtype=float)
         ## array of log evaluation of the proposal model
-        self.log_prop = zeros(self.n, dtype=float)
+        self.log_prop = empty(self.n, dtype=float)
         ## array of ids
         self.id = [0] * self.n
 
         ## annealing parameter
         self.rho = 0
-        ## target effective sample size before resampling
-        self.tau = param['smc_tau']
 
         ## move step counter
         self.n_moves = 0
@@ -105,9 +104,9 @@ class ParticleSystem(object):
         mean = '[' + ', '.join(['%.3f' % x for x in self.getMean()]) + ']'
         return '%s;%.3f;%.3f' % (mean, self.n_f_evals / 1000.0, clock() - self.start)
 
-    def csv(self):
-        mean = ';'.join(['%.8f' % x for x in self.getMean()])
-        return '%s;%.3f;%.3f' % (mean, self.n_f_evals / 1000.0, clock() - self.start)
+    def getCsv(self):
+        mean = '\t'.join(['%.8f' % x for x in self.getMean()])
+        return mean, '%.3f\t%.3f' % (self.n_f_evals / 1000.0, clock() - self.start)
 
     def getMean(self):
         return dot(self.nW, self.X)
@@ -145,30 +144,40 @@ class ParticleSystem(object):
         '''
             Computes an advance of the geometric bridge such that ess = tau and updates the log weights.
         '''
-        l = 0.0; u = 1.0 - self.rho
+        l = 0.0; u = 1.05 - self.rho
         alpha = min(0.05, u)
+        
+        tau = 0.9
 
         # run bisectional search
         for iter in range(30):
-            if self.getEss(alpha) < self.tau:
+
+            if self.getEss(alpha) < tau:
                 u = alpha; alpha = 0.5 * (alpha + l)
             else:
                 l = alpha; alpha = 0.5 * (alpha + u)
-            if abs(l - u) < CONST_PRECISION or l > 1.0: break
+
+            if abs(l - u) < CONST_PRECISION or self.rho + l > 1.0: break
 
         # update rho and and log weights
+        if self.rho + alpha > 1.0: alpha = 1.0 - self.rho
         self.rho += alpha
         self.log_W = alpha * self.log_f
 
         if self.verbose: print 'progress %.1f' % (100 * self.rho) + '%'
         print '\n' + str(self) + '\n'
 
+    def sumexp(self, logx):
+        m = logx.max()
+        return exp(m) * (exp(logx - m)).sum()
+
+
     def fit_proposal(self):
         '''
             Adjust the proposal model to the particle system.
         '''
         sample = data(self.X, self.log_W)
-        sample.distinct()
+        # sample.distinct()
         self.prop.renew_from_data(sample, eps=self.eps, delta=self.delta, xi=self.xi, verbose=self.verbose)
 
     def getNWeight(self):
@@ -218,7 +227,7 @@ class ParticleSystem(object):
             pD = self.pD
             if self.verbose: print "\naR: %.3f, pD: %.3f" % (n_acceptance / float(self.n), pD)
 
-            if pD - prev_pD < 0.05 or pD > 0.92: break
+            if pD - prev_pD < 0.04 or pD > 0.93: break
             else: prev_pD = pD
 
     def ind_MH(self, index):
@@ -262,18 +271,18 @@ class ParticleSystem(object):
 
         # move objects according to resampled order
         self.id = [self.id[i] for i in indices]
-        for name in ['X', 'log_f', 'log_prop']:
-            setattr(self, name, getattr(self, name)[indices])
+        self.X = self.X[indices]
+        self.log_f = self.log_f[indices]
 
         if self.verbose: print 'pD: %.3f' % self.pD
 
         # update log proposal values
         self.log_prop[0] = self.prop.lpmf(self.X[0])
-        for i in range(1, self.n):
-            if (self.log_prop[i] == self.log_prop[i - 1]).all():
-                self.log_prop[i] = self.log_prop[i - 1]
-            else:
-                self.log_prop[i] = self.prop.lpmf(self.X[i])
+        for i in xrange(1, self.n):
+           if (self.log_prop[i] == self.log_prop[i - 1]).all():
+               self.log_prop[i] = self.log_prop[i - 1]
+           else:
+               self.log_prop[i] = self.prop.lpmf(self.X[i])
 
     nW = property(fget=getNWeight, doc="normalized weights")
     pD = property(fget=getParticleDiversity, doc="particle diversity")

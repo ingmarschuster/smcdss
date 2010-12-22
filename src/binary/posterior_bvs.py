@@ -27,9 +27,9 @@ class PosteriorBinary(ProductBinary):
         ProductBinary.__init__(self, name='posterior-binary', longname='A posterior distribution of a Bayesian variable selection problem.')
 
         # sample
-        Y = sample[:,0]
-        X = sample[:,1:]
-                
+        Y = sample[:, 0]
+        X = sample[:, 1:]
+
         ## Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
         self.posterior_type = posterior_type
         ## sample size
@@ -38,26 +38,37 @@ class PosteriorBinary(ProductBinary):
         self.XtY = dot(X.T, Y)
         ## X^t times X
         self.XtX = dot(X.T, X)
+        ## Y^t times Y
+        YtY = dot(Y.T, Y)
 
         #-------------------------------------------------- Hierachical Bayesian
         if self.posterior_type == 'hb':
-            # variance of betas
-            v1 = 100
+
+            # full linear model
+            beta = solve(self.XtX + 1e-6 * eye(self.d), self.XtY, sym_pos=True)
+            # variance of full linear model
+            sigma2_full_LM = (YtY - dot(self.XtY, beta)) / float(self.n)
+
+            # prior variance of beta
+            self.v = 10.0 / sigma2_full_LM
+
             # inverse gamma prior of sigma^2
-            lambda_ = 1
-            # inverse gamma prior of sigma^2
-            nu_ = .1
+            lambda_ = sigma2_full_LM
+            # choose nu such that the prior mean is 2 * sigma2_full_LM
+            nu_ = 4.0
+
             ## constant 1
-            self.c1 = 0.5 * log(v1)
+            self.c1 = 0.5 * log(self.v)
             ## constant 2
             self.c2 = 0.5 * (self.n + nu_)
             ## constant 3
-            self.c3 = nu_ * lambda_ + dot(Y.T, Y)
+            self.c3 = nu_ * lambda_ + YtY
 
         #---------------------------------------- Bayesian Information Criterion
         if self.posterior_type == 'bic':
+                       
             ## constant 1
-            self.c1 = dot(Y.T, Y) / float(self.n)
+            self.c1 = YtY / float(self.n)
             ## constant 2
             self.c2 = self.XtY / float(self.n)
             ## constant 3
@@ -70,17 +81,17 @@ class PosteriorBinary(ProductBinary):
         
             gamma    a binary vector
         '''
-        p = gamma.sum()
-        if p == 0:
+        d = gamma.sum()
+        if d == 0:
             return - inf
         else:
-            K = cholesky(self.XtX[gamma, :][:, gamma] + 10 ** -8 * eye(p))
+            K = cholesky(self.XtX[gamma, :][:, gamma] + 1 / self.v * eye(d) + 1e-6 * eye(d))
             if K.shape == (1, 1):
                 w = self.XtY[gamma, :] / float(K)
             else:
                 w = solve(K.T, self.XtY[gamma, :])
             k = log(K.diagonal()).sum()
-        return - k - self.c1 * p - self.c2 * log(self.c3 - dot(w, w.T))
+        return - k - self.c1 * d - self.c2 * log(self.c3 - dot(w, w.T))
 
     def bic(self, gamma):
         '''

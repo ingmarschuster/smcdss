@@ -434,9 +434,12 @@ def calc_log_regr(y, X, XW=None, init=None):
         try:
             beta = solve(XWDX, dot(XW.T, v), sym_pos=True)
         except:
-            print format(XWDX, 'XWDX')
-            print format(dot(XW.T, v), 'XW_v')
-            raise ValueError
+            try:
+                beta = solve(XWDX, dot(XW.T, v), sym_pos=False)
+            except:
+                print format(XWDX, 'XWDX')
+                print format(dot(XW.T, v), 'XW_v')
+                raise ValueError
 
         # convergence failure due to complete separation
         if abs(beta[0]) > 25: return None, iter
