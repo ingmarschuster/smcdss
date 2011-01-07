@@ -62,7 +62,7 @@ def _testrun(param, verbose=False):
 
     # read data
     data_file = os.path.join(param['sys_path'], param['data_path'], param['data_set'], param['data_set'] + '.out')
-    reader = csv.reader(open(data_file, 'r'), delimiter='\t')
+    reader = csv.reader(open(data_file, 'r'), delimiter=',')
     data_header = reader.next()
     d = min(param['data_n_covariates'] + 1, len(data_header))
     sample = array([
@@ -107,7 +107,6 @@ def _testrun(param, verbose=False):
                 time.sleep(3)
 
 
-
 def _eval_mean(param):
     '''
         Make pdf-boxplots from test files.
@@ -138,7 +137,9 @@ def _eval_mean(param):
         for j, q in [(1, 1.0 - box), (2, 0.5), (3, box), (4, 1.0)]:
             A[j][i] = X[:, i][int(q * n) - 1] - A[:j + 1, i].sum()
 
-    param['eval_title'] = 'KERNEL %s, ALGO %s, DATA %s, DIM %i, RUNS %i, TIME %.3f, NO_EVALS %.3f' % (param['mcmc_kernel'].__name__, param['test_algo'].__name__, param['data_set'], d, n, T / n, E / n)
+    param['eval_title'] = 'ALGO %s, DATA %s, DIM %i, RUNS %i, TIME %.3f, NO_EVALS %.3f' % \
+        (param['test_algo'].__name__, param['data_set'], d, n, T / n, E / n)
+    if param['test_algo'].__name__ == 'algos.mcmc': param['eval_title'] += ', KERNEL ' + param['mcmc_kernel'].__name__
 
     # plot with rpy
     r.pdf(paper="a4r", file=param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + "/eval.pdf", width=12, height=12)

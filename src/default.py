@@ -73,7 +73,7 @@ param = dict(
     mcmc_kernel=SymmetricMetropolisHastings,
 
     # max iterations
-    mcmc_max_calls=2e6,
+    mcmc_max_evals=2e6,
 
 
 

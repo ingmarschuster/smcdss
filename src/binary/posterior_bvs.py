@@ -63,6 +63,7 @@ class PosteriorBinary(ProductBinary):
             self.c2 = 0.5 * (self.n + nu_)
             ## constant 3
             self.c3 = nu_ * lambda_ + YtY
+            
 
         #---------------------------------------- Bayesian Information Criterion
         if self.posterior_type == 'bic':
@@ -92,6 +93,7 @@ class PosteriorBinary(ProductBinary):
                 w = solve(K.T, self.XtY[gamma, :])
             k = log(K.diagonal()).sum()
         return - k - self.c1 * d - self.c2 * log(self.c3 - dot(w, w.T))
+
 
     def bic(self, gamma):
         '''

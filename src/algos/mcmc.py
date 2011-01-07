@@ -18,7 +18,7 @@ header = lambda: ['NO_EVALS', 'ACC_RATE' , 'TIME']
 
 def run(param, verbose=True):
 
-    mc = MarkovChain(f=param['f'], kernel=param['mcmc_kernel'], max_calls=param['mcmc_max_calls'])
+    mc = MarkovChain(f=param['f'], kernel=param['mcmc_kernel'], max_evals=param['mcmc_max_evals'])
 
     mc.burn_in()
 
@@ -32,27 +32,28 @@ def run(param, verbose=True):
 
 class MarkovChain():
 
-    def __init__(self, f, kernel, max_calls=1e6, step_size=1e5, verbose=True):
+    def __init__(self, f, kernel, max_evals=1e6, step_size=1e5, verbose=True):
 
         self.start = clock()
         self.verbose = verbose
         self.kernel = kernel.setup(f)
         self.d = f.d
-        self.step_size = int(min(step_size, max_calls))
-        self.max_calls = float(max_calls)
+        self.step_size = int(min(step_size, max_evals))
+        self.max_evals = float(max_evals)
 
         self.x = random.random(self.d) > 0.5
         self.log_f_x = self.kernel.f.lpmf(self.x)
 
         self.n_calls = 0
         self.n_moves = 0
+        self.n_evals = 0
         self.n_steps = 0
 
         self.mean = zeros(self.d)
         self.cov = zeros((self.d, self.d))
 
     def burn_in(self, n_burn_in=None):
-        if n_burn_in is None: n_burn_in = int(self.max_calls / 100.0)
+        if n_burn_in is None: n_burn_in = int(self.max_evals / 100.0)
         if self.verbose:
             print "\n%s: %i steps burn in..." % (self.kernel.name, n_burn_in)
             stdout.write("" + 101 * " " + "]" + "\r" + "[")
@@ -60,7 +61,7 @@ class MarkovChain():
 
         for i in range(n_burn_in):
             self.n_calls += 1
-            self.x, self.log_f_x = self.kernel.rvs(self.x, self.log_f_x)
+            self.x, self.log_f_x, move, eval = self.kernel.rvs(self.x, self.log_f_x)
 
             # print progress bar
             if self.verbose:
@@ -71,7 +72,7 @@ class MarkovChain():
                     self.n_bars += 1
 
         if self.verbose:
-            print "\n%s: %i steps mcmc..." % (self.kernel.name, self.max_calls)
+            print "\n%s: %i steps mcmc..." % (self.kernel.name, self.max_evals)
             stdout.write("" + 101 * " " + "]" + "\r" + "[")
             self.n_bars = 0
 
@@ -80,17 +81,19 @@ class MarkovChain():
         cov = zeros((self.d, self.d))
 
         for i in range(self.step_size):
+            self.x, self.log_f_x, move, eval = self.kernel.rvs(self.x, self.log_f_x)
             self.n_calls += 1
-            self.x, self.log_f_x = self.kernel.rvs(self.x, self.log_f_x)
+            self.n_moves += move
+            self.n_evals += eval            
             mean += self.x
             cov += dot(self.x[:, newaxis], self.x[newaxis, :])
 
             # print progress bar
             if self.verbose:
-                if self.n_bars < int(100.0 * self.n_calls / self.max_calls):
+                if self.n_bars < int(100.0 * self.n_evals / self.max_evals):
                     stdout.write("-")
                     stdout.flush()
-                    if self.n_calls >= self.max_calls: break
+                    if self.n_evals >= self.max_evals: break
                     self.n_bars += 1
 
         mean /= float(self.step_size)
@@ -101,11 +104,11 @@ class MarkovChain():
         self.n_steps += 1
 
     def getDone(self):
-        return self.max_calls <= self.n_calls
+        return self.max_evals <= self.n_evals
 
     def getCsv(self):
         mean = '\t'.join(['%.8f' % x for x in self.mean])
-        return mean , '%.3f\t%.3f\t%.3f' % (self.n_calls / 1000.0, self.n_moves / float(self.n_calls), clock() - self.start)
+        return mean , '%.3f\t%.3f\t%.3f' % (self.n_evals / 1000.0, self.n_moves / float(self.n_calls), clock() - self.start)
 
     done = property(fget=getDone, doc="is done")
 
@@ -168,9 +171,9 @@ class Gibbs(Kernel):
             Y, log_f_Y = self.proposal(x)
 
             if random.random() < 1.0 / (1.0 + exp(log_f_x - log_f_Y)):
-                return Y, log_f_Y
+                return Y, log_f_Y, True, True
             else:
-                return x, log_f_x
+                return x, log_f_x, False, True
 
 
 class SymmetricMetropolisHastings(Gibbs):
@@ -192,9 +195,9 @@ class SymmetricMetropolisHastings(Gibbs):
             '''
             Y, log_f_Y = self.proposal(x)
             if random.random() < exp(log_f_Y - log_f_x):
-                return Y, log_f_Y
+                return Y, log_f_Y, True, True
             else:
-                return x, log_f_x
+                return x, log_f_x, False, True
 
 class AdaptiveMetropolisHastings(Kernel):
         '''
@@ -235,7 +238,7 @@ class AdaptiveMetropolisHastings(Kernel):
             q = max(min(psi, 1 - self.delta), self.delta)
 
             # return if there is no mutation
-            if (random.random() < q) == x[j]: return x, log_f_x
+            if (random.random() < q) == x[j]: return x, log_f_x, False, False
 
             Y, log_f_Y = self.proposal(x, index=j)
 
@@ -245,9 +248,9 @@ class AdaptiveMetropolisHastings(Kernel):
                 r = q / (1 - q)
 
             if random.random() < exp(log_f_Y - log_f_x) * r:
-                return Y, log_f_Y
+                return Y, log_f_Y, True, True
             else:
-                return x, log_f_x
+                return x, log_f_x, False, True
 
 
         def getPermutation(self):
