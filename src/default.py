@@ -75,6 +75,7 @@ param = dict(
     # max iterations
     mcmc_max_evals=2e6,
 
+    mcmc_q=1,
 
 
     #------------------------------------------------------- Simulated annealing
@@ -131,6 +132,9 @@ param = dict(
     #---------------------------------------------------------------- Evaluation
 
     # percentage of data to be contained in the box
+    eval_names=True,
+
+    # percentage of data to be contained in the box
     eval_boxplot=0.8,
 
     # colored graph
@@ -140,10 +144,10 @@ param = dict(
     eval_path=normcase('data/evaluations'),
 
     # outer margins (bottom, left, top, right) 
-    eval_outer_margin=[2, 2, 2, 2],
+    eval_outer_margin=[2, 2, 1, 2],
 
     # inner margins (bottom, left, top, right) 
-    eval_inner_margin=[0, 0, 2, 0],
+    eval_inner_margin=[6, 0, 4, 0],
 
     # font family (see R)      
     eval_font_family='serif',
