@@ -101,6 +101,12 @@ def _testrun(param, verbose=False):
                 file = open(result_file, 'a')
                 file.write('\t'.join([result[0], log_id, str(i + 1) , result[1]]) + '\n')
                 file.close()
+
+                if len(result) > 2:
+                    for file_name, i in [('pd', 2), ('ar', 3)]:
+                        file = open(param['test_folder'] + '/' + '%s.csv' % file_name, 'a')
+                        file.write(result[i] + '\n')
+                        file.close()
                 break
             except:
                 print 'Could not write to %s. Trying again in 3 seconds...' % result_file

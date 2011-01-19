@@ -14,7 +14,7 @@ from data import *
 from binary import *
 from numpy import *
 
-def plot4(f, outfile=None, models=None):
+def plot4(f, path, models=None):
     '''
         Compares f to its binary model approximations. Generates a pseudo sample from f to initialize the binary models.
         Plots the true f and histograms obtained from the models. Works only for dimensions up to 5.  
@@ -23,14 +23,14 @@ def plot4(f, outfile=None, models=None):
         @param models list of binary models
     '''
 
-    m = 10000 # number of pseudo samples from f
-    n = 10000 # number of random draws from models
+    m = 5000 # number of pseudo samples from f
+    n = 5000 # number of random draws from models
     d = f.d
-    if outfile is None: outfile = f.dataFile[:-3] + 'pdf'
-    if models is None: models = [LogisticRegrBinary, ProductBinary, HiddenNormalBinary]
+    if models is None: models = [ProductBinary, LogisticRegrBinary]
 
     names = []
-    hist = array(4 * [zeros(2 ** d)])
+    hist = array(3 * [zeros(2 ** d)])
+    z = len(models) + 1
 
     # explore posterior
     sample = data()
@@ -47,24 +47,39 @@ def plot4(f, outfile=None, models=None):
     models = [model.from_data(sample) for model in models]
     models.insert(0, f)
     for k in range(n):
-        for index in range(1, 4):
+        for index in range(1, z):
             dec = bin2dec(models[index].rvs())
             hist[index][dec] += 1
     hist[1:] /= float(n)
-    ymax = hist.max()
+    ymax = hist.max() + 0.1
 
-    color = ['grey85', 'grey65', 'grey45', 'grey25']
+    color = ['grey75', 'black', 'blue']
 
-    # plot with rpy
-    r.pdf(paper="a4", file=outfile, width=12, height=12)
-    r.par(mfrow=[2, 2], oma=[40, 4, 0, 4], mar=[1, 2, 4, 1])
-    for index in range(4):
+    for index in range(z):
+
+        # plot with rpy
+        r.pdf(file=path + '/out' + str(index) + '.pdf')
+        r.par(oma=[0, 0, 0, 0], family="serif")
         r.barplot(hist[index], ylim=[0, ymax], \
-                  names=names, cex_names=0.8, las=3, \
-                  col=color[index], family="serif", cex_axis=0.8)
-        r.title(main=models[index].name, line=1, family="serif", font_main=1, cex_main=1)
-    r.mtext("Histograms of n=%i based on m=%i pseudo samples" % (n, m), outer=True, line=1, cex=1.5)
-    r.dev_off()
+                  names=names, cex_names=1.5, las=3, \
+                  col=color[index], family="serif", cex_axis=1.5)
+        r.dev_off()
+
+class toy(object):
+    def rvs(self):
+        W = [random.normal() + mean for mean in [-10.0, +10.0]]
+        X = [x + 5 * random.normal() for x in 2 * W]
+        X.insert(0, W[0] + W[1])
+        return array(X)
+    
+def plot_toy():
+    d = data()
+    t = toy()
+    d.sample(q=t, size=100)
+    f = PosteriorBinary(sample=d.X, posterior_type='hb')
+    plot4(f=f, path='../../data/testruns/toy')
+    
+plot_toy()
 
 def _color(x):
     if x == 1.0: return 'grey25'
@@ -80,7 +95,7 @@ def plot_matrix():
     z = dot(z.T, z)
     v = diag(z)
     z /= sqrt(dot(v[:, newaxis], v[newaxis, :]))
-    colors = map(_color, z.reshape(d*d,) )
+    colors = map(_color, z.reshape(d * d,))
     z = abs(z)
     r.library('gplots')
     r.pdf(paper="a4r", file='/home/cschafer/Bureau/balloon.pdf', width=12, height=12)

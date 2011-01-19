@@ -38,7 +38,8 @@ param = dict(
     # minimum distance of mean from the boundaries of [0,1]
     smc_xi=1e-12,
 
-
+    # binary model used in mh kernel
+    smc_binary_model=HybridBinary,
 
 
     #------------------------------------------------------------- Cross-Entropy

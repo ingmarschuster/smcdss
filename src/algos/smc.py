@@ -56,7 +56,7 @@ class ParticleSystem(object):
         ## target function
         self.f = param['f']
         ## proposal model
-        self.prop = HybridBinary.uniform(self.f.d)
+        self.prop = param['smc_binary_model'].uniform(self.f.d)
 
         ## dimension of target function
         self.d = self.f.d
@@ -82,6 +82,11 @@ class ParticleSystem(object):
         ## target function evaluation counter
         self.n_f_evals = 0
 
+        ## acceptance rates
+        self.r_ac = []
+        ## particle diversities
+        self.r_pd = []
+
         ## min mean distance from the boundaries of [0,1] to be considered part of a logistic model
         self.eps = param['smc_eps']
         ## min correlation to be considered part of a logistic model
@@ -101,12 +106,13 @@ class ParticleSystem(object):
         self.reweight()
 
     def __str__(self):
-        mean = '[' + ', '.join(['%.3f' % x for x in self.getMean()]) + ']'
-        return '%s;%.3f;%.3f' % (mean, self.n_f_evals / 1000.0, clock() - self.start)
+        return '[' + ', '.join(['%.3f' % x for x in self.getMean()]) + ']'
 
     def getCsv(self):
-        mean = '\t'.join(['%.8f' % x for x in self.getMean()])
-        return mean, '%.3f\t%.3f' % (self.n_f_evals / 1000.0, clock() - self.start)
+        return ('\t'.join(['%.8f' % x for x in self.getMean()]),
+                '\t'.join(['%.3f' % (self.n_f_evals / 1000.0), '%.3f' % (clock() - self.start)]),
+                '\t'.join(['%.5f' % x for x in self.r_pd]),
+                '\t'.join(['%.5f' % x for x in self.r_ac]))
 
     def getMean(self):
         return dot(self.nW, self.X)
@@ -146,7 +152,7 @@ class ParticleSystem(object):
         '''
         l = 0.0; u = 1.05 - self.rho
         alpha = min(0.05, u)
-        
+
         tau = 0.9
 
         # run bisectional search
@@ -204,6 +210,7 @@ class ParticleSystem(object):
         '''
 
         prev_pD = 0
+        self.r_ac += [0]
         for iter in range(10):
 
             self.n_moves += 1
@@ -226,9 +233,13 @@ class ParticleSystem(object):
 
             pD = self.pD
             if self.verbose: print "\naR: %.3f, pD: %.3f" % (n_acceptance / float(self.n), pD)
+            self.r_ac[-1] += n_acceptance
 
             if pD - prev_pD < 0.04 or pD > 0.93: break
             else: prev_pD = pD
+
+        self.r_ac[-1] /= ((iter + 1) * float(self.n))
+        self.r_pd += [pD]
 
     def ind_MH(self, index):
         '''
