@@ -8,7 +8,3 @@
 '''
 
 __version__ = "$Revision$"
-
-from auxpy.plotting import *
-from binary import *
-from auxpy.data import data

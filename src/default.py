@@ -132,8 +132,20 @@ param = dict(
 
     #---------------------------------------------------------------- Evaluation
 
-    # percentage of data to be contained in the box
-    eval_names=True,
+    # layout on A4 landscape
+    eval_a4=True,
+
+    # height of graph
+    eval_height=6,
+
+    # width of graph
+    eval_width=12,
+
+    # show names of covariates
+    eval_names=False,
+    
+    # title
+    eval_title=False,
 
     # percentage of data to be contained in the box
     eval_boxplot=0.8,
@@ -145,19 +157,16 @@ param = dict(
     eval_path=normcase('data/evaluations'),
 
     # outer margins (bottom, left, top, right) 
-    eval_outer_margin=[2, 2, 1, 2],
+    eval_outer_margin=[0, 0, 0, 0],
 
     # inner margins (bottom, left, top, right) 
-    eval_inner_margin=[6, 0, 4, 0],
+    eval_inner_margin=[2, 2, 0.5, 0],
 
     # font family (see R)      
     eval_font_family='serif',
 
     # font family (see R)      
     eval_font_cex=1,
-
-    # lines below main title
-    eval_title='',
 
     # lines below main title
     eval_title_line=1
