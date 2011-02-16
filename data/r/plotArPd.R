@@ -20,7 +20,7 @@ plotArPd = function(path='../data/testruns/arpd_analysis',
 		linetype = c(1:d)
 		
 		# open pdf device
-		if (out) pdf(file=paste(path, paste(type,'analysis.pdf',sep='_'), sep='/'))
+		if (out) pdf(file=paste(path, paste(type,'analysis.pdf',sep='_'), sep='/'), height=6, width=10)
 		
 		# change outer margins and font type	
 		savefont = par(mar=c(2.5, 2.5, 0.05, 0.05), family='serif') 
@@ -34,7 +34,7 @@ plotArPd = function(path='../data/testruns/arpd_analysis',
 		}
 		# add legend
 		legend(x=pos, inset=0.1, pch=plotchar, legend=c('product model','logistic regression model'),
-				cex=1.5, col=colors, lty=linetype)
+				cex=2, col=colors, lty=linetype)
 		par(family='serif')
 		
 		# turn device off
@@ -42,4 +42,4 @@ plotArPd = function(path='../data/testruns/arpd_analysis',
 	}
 }
 
-plotArPd(colors = c('black','blue'), out=TRUE)
+plotArPd(colors = c('black','chocolate4'), out=TRUE)
