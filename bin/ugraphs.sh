@@ -1,0 +1,19 @@
+#!/bin/sh
+
+#!/bin/sh
+oldPWD=$PWD
+cd $HOME/Documents/Python/smcdss/src
+echo boston SMC...
+python exec.py -e  boston_smc
+echo boston AMCMC...
+python exec.py -e  boston_mcmc
+echo boston SMCMC...
+python exec.py -e  boston_mcmc_sym
+echo concrete SMC...
+python exec.py -e  concrete_smc
+echo concrete AMCMC...
+python exec.py -e  concrete_mcmc
+echo concrete SMCMC...
+python exec.py -e  concrete_mcmc_sym
+echo done.
+cd $oldPWD
