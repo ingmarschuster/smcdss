@@ -13,6 +13,10 @@ from operator import setitem
 from scipy.weave import inline, converters
 from sys import stdout
 
+import pp
+from cPickle import dump, load
+import subprocess
+
 from binary import *
 from auxpy.data import data
 
@@ -55,6 +59,8 @@ class ParticleSystem(object):
 
         ## target function
         self.f = param['f']
+        self.n_cpus = param['smc_ncpus']
+
         ## proposal model
         self.prop = param['smc_binary_model'].uniform(self.f.d)
 
@@ -111,8 +117,9 @@ class ParticleSystem(object):
     def getCsv(self):
         return ('\t'.join(['%.8f' % x for x in self.getMean()]),
                 '\t'.join(['%.3f' % (self.n_f_evals / 1000.0), '%.3f' % (clock() - self.start)]),
-                '\t'.join(['%.5f' % x for x in self.r_pd]),
-                '\t'.join(['%.5f' % x for x in self.r_ac]))
+                ','.join(['%.5f' % x for x in self.r_pd]),
+                ','.join(['%.5f' % x for x in self.r_ac]),
+                ','.join(['%.5f' % x for x in self.log_f]))
 
     def getMean(self):
         return dot(self.nW, self.X)
@@ -173,11 +180,6 @@ class ParticleSystem(object):
         if self.verbose: print 'progress %.1f' % (100 * self.rho) + '%'
         print '\n' + str(self) + '\n'
 
-    def sumexp(self, logx):
-        m = logx.max()
-        return exp(m) * (exp(logx - m)).sum()
-
-
     def fit_proposal(self):
         '''
             Adjust the proposal model to the particle system.
@@ -214,22 +216,8 @@ class ParticleSystem(object):
         for iter in range(10):
 
             self.n_moves += 1
-            if self.verbose:
-                bars = 20
-                drawn = 0
-                print 'move.'
-                stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
-
             # pass particle system through transition kernel
-            n_acceptance = 0
-            for index in range(self.n):
-                n_acceptance += self.ind_MH(index)
-
-                if self.verbose:
-                    n = bars * (index + 1) / (self.n) - drawn
-                    if n > 0:
-                        stdout.write(n * "-")
-                        drawn += n
+            n_acceptance = self.kernel()
 
             pD = self.pD
             if self.verbose: print "\naR: %.3f, pD: %.3f" % (n_acceptance / float(self.n), pD)
@@ -241,36 +229,39 @@ class ParticleSystem(object):
         self.r_ac[-1] /= ((iter + 1) * float(self.n))
         self.r_pd += [pD]
 
-    def ind_MH(self, index):
+    def kernel(self):
         '''
-            Metropolis Hasting kernel with independent proposal.
+            Propagates the particle system via an independent Metropolis Hasting kernel.
+        '''
+
+        self.n_f_evals += self.n
+        print 'sample proposals...'
+        arr_Y, arr_log_prop_Y = self.prop.rvslpmf(self.n)
+
+        print 'evaluate proposals...'
+        arr_log_f_Y = self.f.lpmf(arr_Y, ncpus=self.n_cpus, verbose=True)
+
+        print 'do MH steps...'
+        n_acceptance = 0
+        for index in range(self.n):
             
-            @param index index of the particle that is argument for the kernel
-        '''
+            # values proposal Y
+            log_pi_Y = self.rho * arr_log_f_Y[index]
+            log_prop_Y = arr_log_prop_Y[index]
+            # values state X
+            log_pi_X = self.rho * self.log_f[index]
+            log_prop_X = self.log_prop[index]
 
-        self.n_f_evals += 1
+            # compute acceptance probability and do MH step
+            if rand() < exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y):
+                self.X[index] = arr_Y[index]
+                self.id[index] = self.getId(arr_Y[index])
+                self.log_f[index] = arr_log_f_Y[index]
+                self.log_prop[index] = arr_log_prop_Y[index]
+                n_acceptance += 1
 
-        # generate proposal
-        Y, lpmf = self.prop.rvslpmf()
-        log_f_Y = self.f.lpmf(Y)
-
-        # values proposal Y
-        log_pi_Y = self.rho * log_f_Y
-        log_prop_Y = lpmf
-
-        # values state X
-        log_pi_X = self.rho * self.log_f[index]
-        log_prop_X = self.log_prop[index]
-
-        # compute acceptance probability and do MH step
-        if rand() < exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y):
-            self.X[index] = Y
-            self.id[index] = self.getId(Y)
-            self.log_f[index] = log_f_Y
-            self.log_prop[index] = log_prop_Y
-            return 1
-        else:
-            return 0
+        print 'move completed.\n'
+        return n_acceptance
 
     def resample(self):
         '''
@@ -300,7 +291,7 @@ class ParticleSystem(object):
 
 def resample_python(w):
     '''
-        Computes the particle indices by residual resampling.
+        Computes the particle indices by systematic resampling.
         @param w array of weights
     '''
     n = w.shape[0]
@@ -317,7 +308,7 @@ def resample_python(w):
 
 def resample_weave(w):
     '''
-        Computes the particle indices by residual resampling using scypy.weave.
+        Computes the particle indices by systematic resampling using scypy.weave.
         @param w array of weights
     '''
     code = \
