@@ -10,6 +10,7 @@
 import sys, getopt, time, shutil, csv, os
 import auxpy.logger
 from auxpy.data import data
+import datetime
 import binary
 import default
 import algos
@@ -102,7 +103,7 @@ def _testrun(param, verbose=False):
                 file.close()
 
                 if len(result) > 2:
-                    for file_name, i in [('pd', 2), ('ar', 3)]:
+                    for file_name, i in [('pd', 2), ('ar', 3), ('logf', 4)]:
                         file = open(param['test_folder'] + '/' + '%s.csv' % file_name, 'a')
                         file.write(result[i] + '\n')
                         file.close()
@@ -134,44 +135,49 @@ def _eval_mean(param):
 
     # read data
     X = []
-    for row in reader:
+    for i, row in enumerate(reader):
+        if i == 200: break
         X += [array([float(x) for x in row[:d]])]
         for key in eval.keys():
             if eval[key][0] > -1: eval[key][1] += float(row[eval[key][0]])
+
     file.close()
 
     X = array(X)
+
     n = X.shape[0]
     d = X.shape[1]
     for key in eval.keys(): eval[key] = eval[key][1] / float(n)
+    eval['TIME'] = str(datetime.timedelta(seconds=eval['TIME']));
 
     A = zeros((5, d))
     box = param['eval_boxplot']
     X.sort(axis=0)
+
     for i in xrange(d):
         A[0][i] = X[:, i][0]
         for j, q in [(1, 1.0 - box), (2, 0.5), (3, box), (4, 1.0)]:
             A[j][i] = X[:, i][int(q * n) - 1] - A[:j + 1, i].sum()
 
-    if param['eval_title']: 
-        title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %.3f, NO_EVALS %.1f' % \
-                (param['test_algo'].__name__, param['data_set'], param['posterior_type'], d, n, eval['TIME'], eval['NO_EVALS'])
-        if eval['LENGTH'] > 0: 
-            title += '\nKERNEL %s, LENGTH %.1f, NO_MOVES %.1f, ACC_RATE %.3f' % \
-                (param['mcmc_kernel'].__name__, eval['LENGTH'], eval['NO_MOVES'], eval['ACC_RATE'])
-        
+
+    title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %s, NO_EVALS %.1f' % \
+            (param['test_algo'].__name__, param['data_set'], param['posterior_type'], d, n, eval['TIME'], eval['NO_EVALS'])
+    if eval['LENGTH'] > 0:
+        title += '\nKERNEL %s, LENGTH %.1f, NO_MOVES %.1f, ACC_RATE %.3f' % \
+            (param['mcmc_kernel'].__name__, eval['LENGTH'], eval['NO_MOVES'], eval['ACC_RATE'])
+    print title + '\n'
+
     # plot with rpy
     pdf_name = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + "/eval.pdf"
     r.pdf(file=pdf_name, width=param['eval_width'], height=param['eval_height'])
     r.par(oma=param['eval_outer_margin'], mar=param['eval_inner_margin'])
     r.barplot(A, ylim=[0, 1], names=names, las=2, cex_names=0.5, cex_axis=0.75, axes=True, col=param['eval_color'])
-    if param['eval_title']: 
+    if param['eval_title']:
         r.title(main=title,
                 line=param['eval_title_line'],
                 family=param['eval_font_family'],
                 cex_main=param['eval_font_cex'], font_main=1)
     r.dev_off()
-
 
 if __name__ == "__main__":
     main()

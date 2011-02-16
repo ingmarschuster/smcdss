@@ -23,6 +23,9 @@ param = dict(
 
     #---------------------------------------------------- Sequential Monte Carlo
 
+    # number of cpus
+    smc_ncpus='autodetect',
+
     # number of particles
     smc_n=20000,
 
@@ -136,7 +139,7 @@ param = dict(
     eval_a4=True,
 
     # height of graph
-    eval_height=6,
+    eval_height=4,
 
     # width of graph
     eval_width=12,
@@ -160,6 +163,7 @@ param = dict(
     eval_outer_margin=[0, 0, 0, 0],
 
     # inner margins (bottom, left, top, right) 
+    #eval_inner_margin=[5, 2, 5, 0],
     eval_inner_margin=[2, 2, 0.5, 0],
 
     # font family (see R)      
