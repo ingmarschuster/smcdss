@@ -163,16 +163,13 @@ class LogisticRegrBinary(ProductBinary):
         else:
             return self.__rvs_python()[0]
 
-    def _rvslpmf(self):
+    def _rvslpmf(self, n=None):
         '''
             Generates a random variable and computes its probability.
+            @param n number of variables.
             @return random variable
-            @return likelihood
         '''
-        if hasWeave:
-            return self.__rvs_weave()
-        else:
-            return self.__rvs_python()
+        return self.__rvs_python()
 
     def getD(self):
         '''

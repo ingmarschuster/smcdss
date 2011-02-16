@@ -49,12 +49,16 @@ class Binary(rv_discrete):
         if self.d == 0: return array([])
         return self._rvs()
 
-    def rvslpmf(self):
+    def rvslpmf(self, n=None):
         '''
             Generates a random variable and computes its probability.
         '''
-        if self.d == 0: return array([]), 0.0
-        return self._rvslpmf()
+        if n is None: return self.rvslpmf()
+        arr_Y = empty((n, self.d), dtype=bool)
+        arr_log_f = empty(n, dtype=float)
+        for index in xrange(n):
+            arr_Y[index], arr_log_f[index] = self._rvslpmf()
+        return arr_Y, arr_log_f
 
     def rvstest(self, n):
         '''
@@ -77,4 +81,4 @@ class Binary(rv_discrete):
             bin = dec2bin(dec, self.d)
             sample.append(bin, self.lpmf(bin))
         return sample
-    
+
