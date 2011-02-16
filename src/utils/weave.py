@@ -3,8 +3,8 @@
 
 '''
     @author Christian Schäfer
-    $Date: 2010-12-10 19:39:02 +0100 (ven., 10 déc. 2010) $
-    $Revision: 0 $
+    $Date$
+    $Revision$
 '''
 
 import scipy.weave as weave

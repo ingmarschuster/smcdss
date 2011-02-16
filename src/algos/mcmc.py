@@ -3,8 +3,8 @@
 
 '''
     @author Christian Schäfer
-    $Date: 2010-12-02 20:52:23 +0100 (mar., 30 nov. 2010) $
-    $Revision: 1 $
+    $Date$
+    $Revision$
 '''
 
 from time import clock

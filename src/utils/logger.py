@@ -3,8 +3,8 @@
 
 '''
     @author Christian Schäfer
-    $Date: 2010-12-22 13:39:16 +0100 (mer., 22 déc. 2010) $
-    $Revision: 46 $
+    $Date$
+    $Revision$
     
 '''
 

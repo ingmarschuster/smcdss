@@ -3,11 +3,11 @@
 
 '''
     @author Christian Schäfer
-    $Date: 2011-01-19 19:41:16 +0100 (mer., 19 janv. 2011) $
-    $Revision: 49 $
+    $Date$
+    $Revision$
 '''
 
-__version__ = "$Revision: 49 $"
+__version__ = "$Revision$"
 
 import os
 from numpy import *

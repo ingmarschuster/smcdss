@@ -3,8 +3,8 @@
 
 '''
     @author Christian Schäfer
-    $Date: 2010-10-29 13:41:14 +0200 (ven., 29 oct. 2010) $
-    $Revision: 29 $
+    $Date$
+    $Revision$
 '''
 
 from numpy import *

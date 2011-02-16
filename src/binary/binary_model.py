@@ -3,11 +3,11 @@
 
 '''
     @author Christian Schäfer
-    $Date: 2010-10-29 20:13:19 +0200 (ven., 29 oct. 2010) $
-    $Revision: 30 $
+    $Date$
+    $Revision$
 '''
 
-__version__ = "$Revision: 30 $"
+__version__ = "$Revision$"
 
 from auxpy.data import *
 from numpy import array, ones, zeros, log

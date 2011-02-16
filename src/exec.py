@@ -3,8 +3,8 @@
 
 '''
     @author Christian Schäfer
-    $Date: 2010-12-03 19:08:22 +0100 (ven., 03 déc. 2010) $
-    $Revision: 38 $
+    $Date$
+    $Revision$
 '''
 
 import sys, getopt, time, shutil, csv, os
