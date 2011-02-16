@@ -32,7 +32,7 @@ def run(param, verbose=True):
 
 class MarkovChain():
 
-    def __init__(self, f, kernel, q, max_evals=1e6, step_size=1e4, verbose=True):
+    def __init__(self, f, kernel, q, max_evals=2e6, step_size=2e5, verbose=True):
 
         self.start = clock()
         self.verbose = verbose
@@ -54,8 +54,9 @@ class MarkovChain():
         self.cov = zeros((self.d, self.d))
 
     def __str__(self):
-        return '\nprogress: %.3f %%\nlength: %.3f\nacc_rate: %.3f\nmoves: %.3f\nevals: %.3f' % \
-                (self.progress,
+        return '\nmean: %s\nprogress: %.3f %%\nlength: %.3f\nacc_rate: %.3f\nmoves: %.3f\nevals: %.3f' % \
+                ('[' + ', '.join(['%.3f' % x for x in self.mean]) + ']',
+                 self.progress,
                  self.length * 1e-3,
                  self.acc_rate,
                  self.n_moves * 1e-3,
@@ -187,7 +188,7 @@ class Kernel(rv_discrete):
             Y[index] = Y[index] ^ True
         log_f_Y = self.f.lpmf(Y)
         return Y, log_f_Y
-    
+
     def getPermutation(self):
         perm = range(self.d)
         for i in reversed(range(1, self.d)):
@@ -245,7 +246,7 @@ class SymmetricMetropolisHastings(Gibbs):
                 return x, log_f_x, False, True
 
         def getRandomSubset(self):
-            k = min(geom.rvs(1.0/self.q), self.d)
+            k = min(geom.rvs(1.0 / self.q), self.d)
             if k < 5:
                 Index = []
                 while len(Index) < k:
@@ -267,6 +268,7 @@ class AdaptiveMetropolisHastings(Kernel):
                 @param f log probability mass function of the invariant distribution 
             '''
             Kernel.__init__(self, f=f, name=name, longname=longname)
+            self.adapted = False
             self.mean = 0.5 * ones(self.d)
             self.W = eye(self.d)
             self.k = 0
@@ -277,6 +279,7 @@ class AdaptiveMetropolisHastings(Kernel):
         def adapt(self, mean, cov):
             self.mean = mean
             self.W = linalg.inv(cov + self.xlambda * eye(self.d))
+            self.adapted = True
 
         def _rvs(self, x, log_f_x):
             '''
@@ -288,14 +291,17 @@ class AdaptiveMetropolisHastings(Kernel):
             j = self.perm[self.k]
             self.k += 1
 
-            not_j = [i for i in self.perm if not i == j]
-            v = dot(self.W[j, not_j], x[not_j] - self.mean[not_j])
-            psi = self.mean[j] - v / self.W[j, j]
+            if self.adapted:
+                not_j = [i for i in self.perm if not i == j]
+                v = dot(self.W[j, not_j], x[not_j] - self.mean[not_j])
+                psi = self.mean[j] - v / self.W[j, j]
 
-            q = max(min(psi, 1 - self.delta), self.delta)
+                q = max(min(psi, 1 - self.delta), self.delta)
 
-            # return if there is no mutation
-            if (random.random() < q) == x[j]: return x, log_f_x, False, False
+                # return if there is no mutation
+                if (random.random() < q) == x[j]: return x, log_f_x, False, False
+            else:
+                q = 0.5
 
             Y, log_f_Y = self.proposal(x, Index=[j])
 
