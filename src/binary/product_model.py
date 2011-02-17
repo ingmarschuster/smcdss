@@ -9,7 +9,7 @@
 
 __version__ = "$Revision$"
 
-from auxpy.data import *
+from utils.data import *
 from numpy import array, ones, zeros, log, concatenate
 from numpy.random import rand
 from binary import Binary

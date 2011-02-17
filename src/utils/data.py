@@ -9,12 +9,10 @@
 
 __version__ = "$Revision$"
 
-from copy import deepcopy
-from time import clock
-from cPickle import dump, load
-
-from sys import stdout
+import copy, time, sys, pickle
 from numpy import *
+
+from utils.format import *
 
 class data(object):
     def __init__(self, X=[], w=[]):
@@ -186,7 +184,7 @@ class data(object):
 
     def getEss(self):
         '''
-        Return effective sample size 1/(sum_{w \in weights} w^2) .
+        Return effective sample size 1/(sum_{w in weights} w^2) .
         '''
         if not self.isWeighted(): return 0
         return 1 / (self.size * pow(self.nW, 2).sum())
@@ -224,12 +222,12 @@ class data(object):
         '''
 
         if verbose:
-            t = clock()
+            t = time.clock()
             bars = 20
             drawn = 0
             print 'Evaluating ' + f.name + '...'
-            stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
-            stdout.flush()
+            sys.stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
+            sys.stdout.flush()
 
         v = self._W
         k = len(v)
@@ -246,12 +244,12 @@ class data(object):
             if verbose:
                 n = bars * (index + 1) / (self.size - k) - drawn
                 if n > 0:
-                    stdout.write(n * "-")
+                    sys.stdout.write(n * "-")
                     drawn += n
         self._W = array(self._W)
         self._W = v + list(self._W[argsort(lexorder)])
 
-        if verbose: print ']\nDone. %i evaluation in %.2f seconds.\n' % (self.size - k, clock() - t)
+        if verbose: print ']\nDone. %i evaluation in %.2f seconds.\n' % (self.size - k, time.clock() - t)
 
     def distinct(self):
         X = self._X
@@ -302,7 +300,7 @@ class data(object):
             Creates a deep copy.
             @return deep copy
         '''
-        return deepcopy(self)
+        return copy.deepcopy(self)
 
     def sample(self, q, size, verbose=False):
         '''
@@ -312,34 +310,34 @@ class data(object):
             @param verbose print status line
         '''
         if verbose:
-            t = clock()
+            t = time.clock()
             bars = 20
             drawn = 0
             print 'Sampling from ' + q.name + '...'
-            stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
+            sys.stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
         for i in range(1, size + 1):
             self.append(q.rvs())
             if verbose:
                 n = bars * i / size - drawn
                 if n > 0:
-                    stdout.write(n * "-")
-                    stdout.flush()
+                    sys.stdout.write(n * "-")
+                    sys.stdout.flush()
                     drawn += n
-        if verbose: print ']\nDone. %i variables sampled in %.2f seconds.\n' % (size, clock() - t)
+        if verbose: print ']\nDone. %i variables sampled in %.2f seconds.\n' % (size, time.clock() - t)
 
     def save(self, filename):
         '''
             Saves the sample to a file using pickle.
             @param filename filename
         '''
-        dump(self, open(filename, 'wb'))
+        pickle.dump(self, open(filename, 'wb'))
 
     def load(self, filename):
         '''
-            Loads a sample from a file using pickle.
+            pickle.loads a sample from a file using pickle.
             @param filename filename
         '''
-        data = load(open(filename))
+        data = pickle.load(open(filename))
         self.__init__(data.X, data._W)
 
     X = property(fget=getData, fset=setData, doc="data")
@@ -396,59 +394,3 @@ def calc_cor(X, w=None):
 
 def calc_norm(v, p=2.0):
     return pow(pow(abs(v), p).sum(axis=0), 1.0 / p)
-
-def format(X, name=''):
-    '''
-        Formats a vector or matrix for output on stdout
-        @param X vector or matrix
-        @param name name 
-    '''
-    if len(X.shape) == 1: return format_vector(X, name)
-    if len(X.shape) == 2: return format_matrix(X, name)
-
-def format_vector(v, name=''):
-    '''
-        Formats a vector for output on stdout
-        @param v vector 
-        @param name name 
-    '''
-    if not name == '': name = name + ' =\n'
-    return name + '[' + ' '.join([('%.4f' % x).rjust(7) for x in v]) + ' ]\n'
-
-def format_matrix(M, name=''):
-    '''
-        Formats a matrix for output on stdout
-        @param M matrix
-        @param name name 
-    '''
-    if not name == '': name = name + ' =\n'
-    return name + ''.join([format_vector(x) for x in M])
-
-def bin2str(bin):
-    '''
-        Converts a boolean array to a string representation.
-        @param bin boolean array 
-    '''
-    return ''.join([str(i) for i in array(bin, dtype=int)])
-
-def bin2dec(bin):
-    '''
-        Converts a boolean array into an integer.
-        @param bin boolean array 
-    '''
-    return long(bin2str(bin), 2)
-
-def dec2bin(n, d=0):
-    '''
-        Converts an integer into a boolean array containing its binary representation.
-        @param n integer
-        @param d dimension of boolean vector
-    '''
-    bin = []
-    while n > 0:
-        if n % 2: bin.append(True)
-        else: bin.append(False)
-        n = n >> 1
-    while len(bin) < d: bin.append(False)
-    bin.reverse()
-    return array(bin)

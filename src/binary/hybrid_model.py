@@ -9,7 +9,7 @@
 
 __version__ = "$Revision$"
 
-from auxpy.data import *
+from utils.data import *
 from binary import *
 
 class HybridBinary(Binary):
@@ -45,13 +45,13 @@ class HybridBinary(Binary):
                'random: ' + str(self.iModel) + '\n' + str(self._Model) + '\n'
 
     @classmethod
-    def uniform(cls, d, model=LogisticRegrBinary):
+    def uniform(cls, d, model=LogisticBinary):
         return cls(Const=zeros(d, dtype=bool),
                    Model=model.uniform(d), iModel=range(d),
                    p=0.5 * ones(d, dtype=float))
 
     @classmethod
-    def from_data(cls, sample, xi=1e-12, model=LogisticRegrBinary, verbose=False):
+    def from_data(cls, sample, xi=1e-12, model=LogisticBinary, verbose=False):
         '''
             Construct a hybrid-binary model from data.
             @param cls class

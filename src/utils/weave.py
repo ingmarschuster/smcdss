@@ -37,3 +37,38 @@ def resample(w, u):
     i = np.zeros(n, dtype='int')
     weave.inline(code, ['u', 'n', 'weights', 'i'], type_converters=weave.converters.blitz, compiler='gcc')
     return i
+
+def log_regr_rvs(Beta, u=None, gamma=None):
+    d = Beta.shape[0]
+    sample = int(u is not None)
+    if u is not None:
+        gamma = np.empty(d, dtype=bool)
+        logu = np.log(u)
+    else:
+        logu = np.empty(1, dtype=bool)
+
+    logp = np.zeros(1, dtype=float)
+    code = \
+    """
+    double sum, logcprob;
+    int i,j;
+  
+    for(i=0; i<d; i++){
+    
+        /* Compute log conditional probability that gamma(i) is one */
+        sum = Beta(i,i);
+        for(j=0; j<i; j++){ sum += Beta(i,j) * gamma(j); }
+        logcprob = -log(1+exp(-sum));
+        
+        /* Generate the ith entry */
+        if (sample) gamma(i) = (logu(i) < logcprob);
+        
+        /* Compute log conditional probability of whole gamma vector */
+        logp += logcprob;        
+        if (!gamma(i)) logp -= sum;
+        
+    }
+    """
+    weave.inline(code, ['d', 'logu', 'Beta', 'gamma', 'logp', 'sample'],
+                 type_converters=weave.converters.blitz, compiler='gcc')
+    return gamma, logp[0]

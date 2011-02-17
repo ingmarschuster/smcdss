@@ -9,7 +9,7 @@
 
 __version__ = "$Revision$"
 
-from auxpy.data import data
+from utils.data import data
 from datetime import time
 from numpy import zeros
 

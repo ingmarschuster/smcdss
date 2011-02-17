@@ -42,7 +42,7 @@ param = dict(
     smc_xi=1e-12,
 
     # binary model used in mh kernel
-    smc_binary_model=HybridBinary,
+    smc_binary_model=LogisticBinary,
 
 
     #------------------------------------------------------------- Cross-Entropy
@@ -51,7 +51,7 @@ param = dict(
     ce_n=5000,
 
     # model for binary data with dependencies
-    ce_model=LogisticRegrBinary,
+    ce_model=LogisticBinary,
 
     # elite fraction used to estimate the mean
     ce_elite=0.5,

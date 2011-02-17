@@ -8,7 +8,7 @@
 '''
 
 from numpy import *
-from auxpy.data import *
+from utils.data import *
 from binary import Binary
 from scipy.linalg import cholesky, LinAlgError
 

@@ -11,7 +11,7 @@ __version__ = "$Revision$"
 
 from time import clock
 from binary import ProductBinary
-from auxpy.data import *
+from utils.data import *
 from numpy import *
 from scipy.linalg import cholesky, LinAlgError, eigvalsh, eigh
 from scipy.stats import norm, rv_continuous
@@ -45,6 +45,7 @@ class HiddenNormalBinary(ProductBinary):
         ## correlation matrix of the hidden normal distribution
         self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
 
+
     @classmethod
     def random(cls, d):
         '''
@@ -52,15 +53,14 @@ class HiddenNormalBinary(ProductBinary):
             @param cls class 
             @param d dimension
         '''
-        p = 0.3 + 0.4 * random.rand(d)
+        p = 0.25 + 0.5 * random.rand(d)
 
         # For a random matrix X with entries U[-1,1], set Q = X*X^t and normalize.
-        X = ones((d, d)) - 2 * random.random((d, d))
-        Q = dot(X, X.T) + exp(-10) * eye(d)
+        X = ones((d, d)) - random.random((d, d))
+        Q = dot(X, X.T) + 1e-10 * eye(d)
         q = Q.diagonal()[newaxis, :]
         Q = Q / sqrt(dot(q.T, q))
         R = calc_R(Q, norm.ppf(p), p)
-
         return cls(p, R)
 
     def __str__(self):

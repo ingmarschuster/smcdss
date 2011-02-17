@@ -9,7 +9,7 @@
 
 __version__ = "$Revision$"
 
-from auxpy.data import *
+from utils.data import *
 from numpy import array, ones, zeros, log
 from numpy.random import rand
 from scipy.stats import rv_discrete
@@ -81,4 +81,3 @@ class Binary(rv_discrete):
             bin = dec2bin(dec, self.d)
             sample.append(bin, self.lpmf(bin))
         return sample
-

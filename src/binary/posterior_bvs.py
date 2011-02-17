@@ -90,7 +90,7 @@ class PosteriorBinary(ProductBinary):
         return self.XtX.shape[0]
 
 
-    def lpmf(self, gamma, ncpus='autodetect', verbose=False):
+    def lpmf(self, gamma, job_server=None, verbose=False):
         '''
             Unnormalized log-probability mass function.
             @param gamma binary vector
@@ -102,31 +102,29 @@ class PosteriorBinary(ProductBinary):
         n = gamma.shape[0]
 
         # start job server
-        job_server = pp.Server(ncpus, ppservers=())
-        ncpus = job_server.get_ncpus()
-        jobs = list()
-        if verbose: print 'starting %i subprocesses' % ncpus
-        for i in xrange(ncpus):
-            part = (i * n // ncpus, min((i + 1) * n // ncpus + 1, n))
-            jobs.append(
-            job_server.submit(
-                func=self.f_lpmf,
-                args=(gamma[part[0]:part[1]], self.XtX, self.XtY, self.v, self.c1, self.c2, self.c3),
-                modules=('numpy', 'scipy.linalg'),
+        if job_server is None:
+            arr_lpmf = multi_lpmf_hb(gamma, self.XtX, self.XtY, self.v, self.c1, self.c2, self.c3)
+        else:
+            ncpus = job_server.get_ncpus()
+            jobs = list()
+            if verbose: print 'starting %i subprocesses' % ncpus
+            for i in xrange(ncpus):
+                part = (i * n // ncpus, min((i + 1) * n // ncpus + 1, n))
+                jobs.append(
+                job_server.submit(
+                    func=self.f_lpmf,
+                    args=(gamma[part[0]:part[1]], self.XtX, self.XtY, self.v, self.c1, self.c2, self.c3),
+                    modules=('numpy', 'scipy.linalg'),
+                    )
                 )
-            )
-        arr_lpmf = numpy.empty(n, dtype=float)
+            # wait for jobs to finish
+            job_server.wait()
 
-        # wait for jobs to finish
-        job_server.wait()
-
-        # retrieve results
-        for i in xrange(ncpus):
-            part = (i * n // ncpus, min((i + 1) * n // ncpus + 1, n))
-            arr_lpmf[part[0]:part[1]] = jobs[i]()
-
-        # kill job server
-        job_server.destroy()
+            # retrieve results
+            arr_lpmf = numpy.empty(n, dtype=float)
+            for i in xrange(ncpus):
+                part = (i * n // ncpus, min((i + 1) * n // ncpus + 1, n))
+                arr_lpmf[part[0]:part[1]] = jobs[i]()
 
         return arr_lpmf
 

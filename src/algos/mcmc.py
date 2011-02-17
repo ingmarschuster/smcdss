@@ -8,9 +8,8 @@
 '''
 
 from time import clock
-from auxpy.data import format
+from utils.data import format, data
 from numpy import *
-from auxpy.data import data
 from sys import stdout
 from scipy.stats import rv_discrete, geom
 

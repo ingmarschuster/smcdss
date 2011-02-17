@@ -26,7 +26,7 @@ def plot4(f, path, models=None):
     m = 5000 # number of pseudo samples from f
     n = 5000 # number of random draws from models
     d = f.d
-    if models is None: models = [ProductBinary, LogisticRegrBinary]
+    if models is None: models = [ProductBinary, LogisticBinary]
 
     names = []
     hist = array(3 * [zeros(2 ** d)])

@@ -7,21 +7,15 @@
     $Revision$
 '''
 
-from numpy import *
-from time import clock
-from operator import setitem
-from scipy.weave import inline, converters
-from sys import stdout
-
+import time
 import pp
-from cPickle import dump, load
-import subprocess
 
-from binary import *
-from auxpy.data import data
+from operator import setitem
+from sys import stdout
+from numpy import *
 
-if system() == 'Linux':    hasWeave = True
-else:                      hasWeave = False
+import binary
+import utils
 
 CONST_PRECISION = 1e-8
 
@@ -41,7 +35,7 @@ def run(param, verbose=True):
         ps.move()
         ps.reweight()
 
-    print "\ndone in %.3f seconds.\n" % (clock() - ps.start)
+    print "\ndone in %.3f seconds.\n" % (time.clock() - ps.start)
 
     return ps.getCsv()
 
@@ -55,11 +49,11 @@ class ParticleSystem(object):
             @param verbose verbose
         '''
         self.verbose = verbose
-        self.start = clock()
+        self.start = time.clock()
 
         ## target function
         self.f = param['f']
-        self.n_cpus = param['smc_ncpus']
+        self.job_server = pp.Server(ncpus=param['smc_ncpus'], ppservers=())
 
         ## proposal model
         self.prop = param['smc_binary_model'].uniform(self.f.d)
@@ -105,7 +99,8 @@ class ParticleSystem(object):
         # initialize particle system
         for i in xrange(self.n):
             self.X[i] = self.prop.rvs()
-            self.log_f[i] = self.f.lpmf(self.X[i])
+        self.log_f = self.f.lpmf(self.X)
+        for i in xrange(self.n):        
             self.id[i] = self.getId(self.X[i])
 
         # do first step
@@ -116,7 +111,7 @@ class ParticleSystem(object):
 
     def getCsv(self):
         return ('\t'.join(['%.8f' % x for x in self.getMean()]),
-                '\t'.join(['%.3f' % (self.n_f_evals / 1000.0), '%.3f' % (clock() - self.start)]),
+                '\t'.join(['%.3f' % (self.n_f_evals / 1000.0), '%.3f' % (time.clock() - self.start)]),
                 ','.join(['%.5f' % x for x in self.r_pd]),
                 ','.join(['%.5f' % x for x in self.r_ac]),
                 ','.join(['%.5f' % x for x in self.log_f]))
@@ -184,7 +179,7 @@ class ParticleSystem(object):
         '''
             Adjust the proposal model to the particle system.
         '''
-        sample = data(self.X, self.log_W)
+        sample = utils.data.data(self.X, self.log_W)
         # sample.distinct()
         self.prop.renew_from_data(sample, eps=self.eps, delta=self.delta, xi=self.xi, verbose=self.verbose)
 
@@ -239,12 +234,12 @@ class ParticleSystem(object):
         arr_Y, arr_log_prop_Y = self.prop.rvslpmf(self.n)
 
         print 'evaluate proposals...'
-        arr_log_f_Y = self.f.lpmf(arr_Y, ncpus=self.n_cpus, verbose=True)
+        arr_log_f_Y = self.f.lpmf(arr_Y, job_server=self.job_server, verbose=True)
 
         print 'do MH steps...'
         n_acceptance = 0
         for index in range(self.n):
-            
+
             # values proposal Y
             log_pi_Y = self.rho * arr_log_f_Y[index]
             log_prop_Y = arr_log_prop_Y[index]
@@ -253,7 +248,7 @@ class ParticleSystem(object):
             log_prop_X = self.log_prop[index]
 
             # compute acceptance probability and do MH step
-            if rand() < exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y):
+            if random.random() < exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y):
                 self.X[index] = arr_Y[index]
                 self.id[index] = self.getId(arr_Y[index])
                 self.log_f[index] = arr_log_f_Y[index]
@@ -268,8 +263,10 @@ class ParticleSystem(object):
             Resamples the particle system.
         '''
         if self.verbose: print "resample. ",
-        if hasWeave: indices = resample_weave(self.nW)
-        else: indices = resample_python(self.nW)
+        if 'cython' in utils.opts:
+            indices = utils.cython.resample(self.nW, random.random())
+        else:
+            indices = utils.python.resample(self.nW, random.random())
 
         # move objects according to resampled order
         self.id = [self.id[i] for i in indices]

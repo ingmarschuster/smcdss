@@ -9,11 +9,14 @@
 
 __version__ = "$Revision$"
 
-from binary_model import *
-from product_model import *
-from normal_model import *
-from logistic_model import *
-from loglinear_model import *
-from linear_model import *
-from hybrid_model import *
-from posterior_bvs import *
+from binary_model import Binary
+from product_model import ProductBinary
+from normal_model import HiddenNormalBinary
+from logistic_model import LogisticBinary
+from loglinear_model import LogLinearBinary
+from linear_model import LinearBinary
+from hybrid_model import HybridBinary
+from posterior_bvs import PosteriorBinary
+
+CONST_PRECISION = 1e5
+CONST_ITERATIONS = 30

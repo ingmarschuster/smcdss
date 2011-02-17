@@ -1,6 +1,9 @@
 import os, sys
 import numpy as np
 import pyximport
+import logger
+import format
+import data
 
 import python
 opts = ['python']
@@ -22,8 +25,8 @@ if os.name == 'posix':
     except Exception, exception:
         sys.stderr.write('weave exception: ' + str(exception) + '\n') 
         
-if True:
+try:
     import cython
     opts += ['cython']
-#except:
-#    print "cython error:", sys.exc_info()[0]
+except:
+    print "cython error:", sys.exc_info()[0]

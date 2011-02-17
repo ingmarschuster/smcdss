@@ -7,14 +7,14 @@
     $Revision$
 '''
 
-import sys, getopt, time, shutil, csv, os
-import auxpy.logger
-from auxpy.data import data
-import datetime
+import sys, getopt, time, shutil, csv, os, datetime
+from numpy import array, zeros
+
 import binary
 import default
 import algos
-from numpy import array, zeros
+import utils
+
 
 try:    from rpy import *
 except: pass
@@ -86,7 +86,7 @@ def _testrun(param, verbose=False):
         file.close()
 
     # setup logger
-    log_stream = auxpy.logger.Logger(sys.stdout, param['test_folder'] + '/log')
+    log_stream = utils.logger.Logger(sys.stdout, param['test_folder'] + '/log')
     log_id = os.path.splitext(os.path.basename(log_stream.logfile.name))[0]
     sys.stdout = log_stream
 
@@ -158,7 +158,6 @@ def _eval_mean(param):
         A[0][i] = X[:, i][0]
         for j, q in [(1, 1.0 - box), (2, 0.5), (3, box), (4, 1.0)]:
             A[j][i] = X[:, i][int(q * n) - 1] - A[:j + 1, i].sum()
-
 
     title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %s, NO_EVALS %.1f' % \
             (param['test_algo'].__name__, param['data_set'], param['posterior_type'], d, n, eval['TIME'], eval['NO_EVALS'])
