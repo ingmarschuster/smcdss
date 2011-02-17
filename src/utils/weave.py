@@ -11,8 +11,8 @@ import scipy.weave as weave
 import numpy as np
 
 def resample(w, u):
-    '''
-        Computes the particle indices by systematic resampling using scypy.weave.
+    ''' Computes the particle indices by systematic resampling using scypy.weave.
+        @deprecated method is not used any longer
         @param w array of weights
     '''
     code = \

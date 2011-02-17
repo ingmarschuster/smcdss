@@ -16,12 +16,11 @@ if os.name == 'nt':
     
     mingw_setup_args = { 'options': { 'build_ext': { 'compiler': 'mingw32' } } }
     pyximport.install(setup_args=mingw_setup_args)
-
-if os.name == 'posix':
+else:
     pyximport.install()
         
 try:
-    import cython
+    import cython_src
     opts += ['cython']
 except:
     print "cython error:", sys.exc_info()[0]

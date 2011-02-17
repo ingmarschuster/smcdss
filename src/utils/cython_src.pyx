@@ -8,7 +8,6 @@
 '''
 
 import numpy as np
-import utils
 cimport numpy as np
 
 cdef extern from "math.h":

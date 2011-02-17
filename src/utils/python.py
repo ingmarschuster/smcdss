@@ -69,12 +69,3 @@ def logistic_rvs(U, param):
 
 def logistic_rvslpmf(U, param):
     return utils.python._logistic_all(param, U=U)
-
-def logistic_cython_lpmf(gamma, param):
-    return utils.cython._logistic_all(param['Beta'], gamma=np.array(gamma, dtype=np.int8))[1]
-
-def logistic_cython_rvs(U, param):
-    return utils.cython._logistic_all(param['Beta'], U=U)[0]
-
-def logistic_cython_rvslpmf(U, param):
-    return utils.cython._logistic_all(param['Beta'], U=U)
