@@ -51,6 +51,9 @@ class ParticleSystem(object):
         self.verbose = verbose
         self.start = time.clock()
 
+        if 'cython' in utils.opts: self._resample=utils.cython.resample
+        else: self._resample=utils.python.resample
+
         ## target function
         self.f = param['f']
         self.job_server = pp.Server(ncpus=param['smc_ncpus'], ppservers=())
@@ -97,10 +100,12 @@ class ParticleSystem(object):
         self.__k = array([2 ** i for i in range(self.d)])
 
         # initialize particle system
+#        for i in xrange(self.n):
+#            self.X[i] = self.prop.rvs()
+#        self.log_f = self.f.lpmf(self.X)
+        self.X = self.prop.rvs(self.n, self.job_server)
+        self.log_f = self.f.lpmf(self.X, self.job_server)
         for i in xrange(self.n):
-            self.X[i] = self.prop.rvs()
-        self.log_f = self.f.lpmf(self.X)
-        for i in xrange(self.n):        
             self.id[i] = self.getId(self.X[i])
 
         # do first step
@@ -234,7 +239,7 @@ class ParticleSystem(object):
         arr_Y, arr_log_prop_Y = self.prop.rvslpmf(self.n)
 
         print 'evaluate proposals...'
-        arr_log_f_Y = self.f.lpmf(arr_Y, job_server=self.job_server, verbose=True)
+        arr_log_f_Y = self.f.lpmf(arr_Y, job_server=self.job_server)
 
         print 'do MH steps...'
         n_acceptance = 0
@@ -263,10 +268,7 @@ class ParticleSystem(object):
             Resamples the particle system.
         '''
         if self.verbose: print "resample. ",
-        if 'cython' in utils.opts:
-            indices = utils.cython.resample(self.nW, random.random())
-        else:
-            indices = utils.python.resample(self.nW, random.random())
+        indices = self._resample(self.nW, random.random())
 
         # move objects according to resampled order
         self.id = [self.id[i] for i in indices]
@@ -276,59 +278,14 @@ class ParticleSystem(object):
         if self.verbose: print 'pD: %.3f' % self.pD
 
         # update log proposal values
-        self.log_prop[0] = self.prop.lpmf(self.X[0])
-        for i in xrange(1, self.n):
-           if (self.log_prop[i] == self.log_prop[i - 1]).all():
-               self.log_prop[i] = self.log_prop[i - 1]
-           else:
-               self.log_prop[i] = self.prop.lpmf(self.X[i])
+        self.log_prop=self.prop.lpmf(self.X)
+        
+#        self.log_prop[0] = self.prop.lpmf(self.X[0])
+#        for i in xrange(1, self.n):
+#           if (self.log_prop[i] == self.log_prop[i - 1]).all():
+#               self.log_prop[i] = self.log_prop[i - 1]
+#           else:
+#               self.log_prop[i] = self.prop.lpmf(self.X[i])
 
     nW = property(fget=getNWeight, doc="normalized weights")
     pD = property(fget=getParticleDiversity, doc="particle diversity")
-
-def resample_python(w):
-    '''
-        Computes the particle indices by systematic resampling.
-        @param w array of weights
-    '''
-    n = w.shape[0]
-    u = random.uniform(size=1, low=0, high=1)
-    cnw = n * cumsum(w)
-    j = 0
-    indices = empty(n, dtype="int")
-    for k in xrange(n):
-        while cnw[j] < u:
-            j = j + 1
-        indices[k] = j
-        u = u + 1.
-    return indices
-
-def resample_weave(w):
-    '''
-        Computes the particle indices by systematic resampling using scypy.weave.
-        @param w array of weights
-    '''
-    code = \
-    """
-    int j = 0;
-    double cumsum = weights(0);
-    
-    for(int k = 0; k < n; k++)
-    {
-        while(cumsum < u)
-        {
-        j++;
-        cumsum += weights(j);
-        }
-        indices(k) = j;
-        u = u + 1.;
-    }
-    """
-    n = w.shape[0]
-    u = float(random.uniform(size=1, low=0, high=1)[0])
-    weights = n * w
-
-    indices = zeros(n, dtype="int")
-    inline(code, ['u', 'n', 'weights', 'indices'], \
-                 type_converters=converters.blitz, compiler='gcc')
-    return indices

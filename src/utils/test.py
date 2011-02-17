@@ -14,43 +14,30 @@ import utils
 import data
 from binary import logistic_model, normal_model
 
-def test_log_regr(d=4, n=100):
-
-    q = logistic_model.LogisticBinary.random(d)
-    s = data.data()
-    s.sample(q=q, size=n)
-    b = logistic_model.LogisticBinary.from_data(s)
-    print s
-    print b.marginals()
-
-
-def test_log_regr_rvs(d=10, n=5000):
+def test_log_regr_rvs(d=100, n=5000):
 
     b = logistic_model.LogisticBinary.random(d)
     r = list()
     print 'sampling'
     for name in utils.opts:
         np.random.seed(0)
-        f = getattr(sys.modules['utils.' + name], 'log_regr_rvs')
+        f = getattr(sys.modules['utils.' + name], 'logistic_rvs')
         t = time.clock()
         s = list()
-        for i in range(n):
-            u = np.random.random(d)
-            s.append(f(b.Beta, u=u))
-        r.append(s)
+        U = np.random.random((n, d))
+        r.append(f(U=U, param=b.param))
         print '%s:\t%.3f' % (name, time.clock() - t)
     print '\nevaluating'
     for name in utils.opts:
-        f = getattr(sys.modules['utils.' + name], 'log_regr_rvs')
+        f = getattr(sys.modules['utils.' + name], 'logistic_lpmf')
         t = time.clock()
-        for i in range(n):
-            assert abs(f(b.Beta, gamma=r[0][i][0])[1] - r[0][i][1]) < 1e-8
+        f(gamma=r[0], param=b.param)
         print '%s:\t%.3f' % (name, time.clock() - t)
 
     if n < 5:
         for i in range(n):
-            for x in r:
-                print x[i][0], x[i][1]
+            print r[0][i]
+            print r[1][i]
 
 def test_resample(n=5e5):
     w = np.random.random(n)
@@ -66,8 +53,8 @@ def test_resample(n=5e5):
 
 def main():
     #test_resample()
-    #test_log_regr_rvs()
-    test_log_regr()
+    test_log_regr_rvs()
+    #test_log_regr()
 
 if __name__ == "__main__":
     main()

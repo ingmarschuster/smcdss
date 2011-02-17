@@ -9,12 +9,11 @@
 
 __version__ = "$Revision$"
 
-from utils.data import *
-from numpy import array, ones, zeros, log
-from numpy.random import rand
-from scipy.stats import rv_discrete
+import scipy.stats
+from numpy import *
+import utils
 
-class Binary(rv_discrete):
+class Binary(scipy.stats.rv_discrete):
     '''
         A multivariate Bernoulli.
     '''
@@ -24,41 +23,112 @@ class Binary(rv_discrete):
             @param name name
             @param longname longname
         '''
-        rv_discrete.__init__(self, name=name, longname=longname)
+        scipy.stats.rv_discrete.__init__(self, name=name, longname=longname)
+        self.f_lpmf = None
+        self.f_rvs = None
+        self.f_rvslpmf = None
+        self.param = None
 
-    def pmf(self, gamma):
-        '''
-            Probability mass function.
-            @param gamma: binary vector
-        '''
-        if self.d == 0: return 1.0
-        return self._pmf(gamma)
-
-    def lpmf(self, gamma):
-        '''
-            Log-probability mass function.
+    def pmf(self, gamma, job_server=None):
+        ''' Probability mass function.
             @param gamma binary vector
         '''
-        if self.d == 0: return 0.0
-        return self._lpmf(gamma)
+        return exp(self.lpmf(gamma, job_server=job_server))
 
-    def rvs(self):
+    def lpmf(self, gamma, job_server=None):
+        ''' Log-probability mass function.
+            @param gamma binary vector
+            @param job_server parallel python job server
         '''
-            Generates a random variable.
-        '''
-        if self.d == 0: return array([])
-        return self._rvs()
+        if len(gamma.shape) == 1: gamma = gamma[newaxis, :]
+        size = gamma.shape[0]
+        ncpus, job_server = _check_job_server(size, job_server)
+        L = empty(size, dtype=float)
 
-    def rvslpmf(self, n=None):
+        if not job_server is None:
+            # start jobs
+            print 'run %i jobs' % ncpus
+            jobs = _parts_job_server(size, ncpus)
+            for i, (start, end) in enumerate(jobs):
+                jobs[i].append(
+                    job_server.submit(
+                    func=self.f_lpmf,
+                    args=(gamma[start:end], self.param),
+                    modules=('numpy', 'scipy.linalg', 'utils')))
+
+            # wait and retrieve results
+            job_server.wait()
+            for start, end, job in jobs:
+                L[start:end] = job()
+        else:
+            # no job server
+            L = self.f_lpmf(gamma, param=self.param)
+
+        if size == 1: return L[0]
+        else: return L
+
+    def rvs(self, size=1, job_server=None):
+        ''' Sample random variables.
+            @param size number of variables
+            @return random variable
         '''
-            Generates a random variable and computes its probability.
+        ncpus, job_server = _check_job_server(size, job_server)
+        Y = empty((size, self.d), dtype=bool)
+        U = random.random((size, self.d))
+
+        if not job_server is None:
+            # start jobs
+            jobs = _parts_job_server(size, ncpus)
+            for i, (start, end) in enumerate(jobs):
+                jobs[i].append(
+                    job_server.submit(
+                    func=self.f_rvs,
+                    args=(U[start:end], self.param),
+                    modules=('numpy', 'scipy.linalg', 'utils')
+                    ))
+
+            # wait and retrieve results
+            job_server.wait()
+            for start, end, job in jobs:
+                Y[start:end] = job()
+        else:
+            # no job server
+            Y = self.f_rvs(U=U, param=self.param)
+
+        if size == 1: return Y[0]
+        else: return Y
+
+    def rvslpmf(self, size=1, job_server=None):
+        ''' Sample random variables and computes the probabilities.
+            @param size number of variables
+            @return random variable
         '''
-        if n is None: return self.rvslpmf()
-        arr_Y = empty((n, self.d), dtype=bool)
-        arr_log_f = empty(n, dtype=float)
-        for index in xrange(n):
-            arr_Y[index], arr_log_f[index] = self._rvslpmf()
-        return arr_Y, arr_log_f
+        ncpus, job_server = _check_job_server(size, job_server)
+        Y = empty((size, self.d), dtype=bool)
+        U = random.random((size, self.d))
+        L = empty(size, dtype=float)
+
+        if not job_server is None:
+            # start jobs
+            jobs = _parts_job_server(size, ncpus)
+            for i, (start, end) in enumerate(jobs):
+                jobs[i].append(
+                    job_server.submit(
+                    func=self.f_rvslpmf,
+                    args=(U[start:end], self.param),
+                    modules=('numpy', 'scipy.linalg', 'utils'),
+                    depfuncs=(self.f_rvs, self.f_lpmf)))
+
+            # wait and retrieve results
+            job_server.wait()
+            for start, end, job in jobs:
+                Y[start:end], L[start:end] = job()
+        else:
+            # no job server
+            Y, L = self.f_rvslpmf(U=U, param=self.param)
+
+        if size == 1: return Y[0], L[0]
+        else: return Y, L
 
     def rvstest(self, n):
         '''
@@ -81,3 +151,14 @@ class Binary(rv_discrete):
             bin = dec2bin(dec, self.d)
             sample.append(bin, self.lpmf(bin))
         return sample
+
+def _parts_job_server(size, ncpus):
+    return [[i * size // ncpus, min((i + 1) * size // ncpus + 1, size)] for i in range(ncpus)]
+
+def _check_job_server(size, job_server):
+    ncpus = 0
+    if size == 1: job_server = None
+    if not job_server is None:
+        ncpus = job_server.get_ncpus()
+        if ncpus == 0: job_server = None
+    return ncpus, job_server

@@ -8,9 +8,8 @@
     
 '''
 
-import sys
-import time, datetime
-from numpy.random import randint
+import sys, time, datetime
+import numpy
 
 class Logger:
     '''
@@ -18,7 +17,7 @@ class Logger:
         but still allow them to be printed on the screen.
     '''
     def __init__(self, stdout, filename):
-        filename += '%06i.txt' % randint(1e6)
+        filename += '%06i.txt' % numpy.random.randint(1e6)
         self.stdout = stdout
         self.logfile = file(filename, 'w')
         self.logfile.write('\n\nLoggig run at %s\n\n' % time.ctime())

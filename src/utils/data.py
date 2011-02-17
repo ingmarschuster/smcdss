@@ -302,7 +302,7 @@ class data(object):
         '''
         return copy.deepcopy(self)
 
-    def sample(self, q, size, verbose=False):
+    def sample(self, f, size, verbose=False):
         '''
             Samples from a random generator.
             @param q random generator
@@ -313,10 +313,10 @@ class data(object):
             t = time.clock()
             bars = 20
             drawn = 0
-            print 'Sampling from ' + q.name + '...'
+            print 'Sampling from ' + f.name + '...'
             sys.stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
         for i in range(1, size + 1):
-            self.append(q.rvs())
+            self.append(f.rvs())
             if verbose:
                 n = bars * i / size - drawn
                 if n > 0:

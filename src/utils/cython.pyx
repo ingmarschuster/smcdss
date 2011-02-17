@@ -8,6 +8,7 @@
 '''
 
 import numpy as np
+import utils
 cimport numpy as np
 
 cdef extern from "math.h":
@@ -32,33 +33,43 @@ def resample(np.ndarray[dtype=np.float64_t, ndim=1] w, double u):
        u = u + 1.0
    return i
 
-# workaround for cython accepts has no numpy datatype bool_t
-def log_regr_rvs(Beta, u=None, gamma=None):
-    if not gamma is None: gamma = np.array(gamma, dtype=np.int8)
-    return _log_regr_rvs(Beta, u=u, gamma=gamma)
 
-def _log_regr_rvs(np.ndarray[dtype=np.float64_t, ndim=2] Beta,
-                  np.ndarray[dtype=np.float64_t, ndim=1] u=None,
-                  np.ndarray[dtype=np.int8_t, ndim=1] gamma=None):
+def _logistic_all(np.ndarray[dtype=np.float64_t, ndim=2] Beta,
+                  np.ndarray[dtype=np.float64_t, ndim=2] U=None,
+                  np.ndarray[dtype=np.int8_t, ndim=2] gamma=None):
+    ''' Generates a random variable.
+        @param U uniform variables
+        @param param parameters
+        @return binary variables
+    '''
     cdef int d = Beta.shape[0]
-    cdef int i
+    cdef int i, size
     cdef double logp = 0.0
     cdef double sum
-    if not u is None:
-        gamma = np.empty(d, dtype=np.int8)
+ 
+    if U is not None:
+        size = U.shape[0]
+        gamma = np.empty((size, U.shape[1]), dtype=np.int8)
+    
+    if gamma is not None:
+        size = gamma.shape[0]
 
-    for i in xrange(0, d):
-        # Compute log conditional probability that gamma(i) is one
-        sum = Beta[i, i]
-        for j in xrange(i):
-            sum += Beta[i, j] * gamma[j]
-        logcprob = -log(1 + exp(-sum))
+    L = np.zeros(size, dtype=np.float64)
+    
+    for k in xrange(size):
 
-        # Generate the ith entry
-        if u is not None: gamma[i] = log(u[i]) < logcprob
+        for i in xrange(0, d):
+            # Compute log conditional probability that gamma(i) is one
+            sum = Beta[i, i]
+            for j in xrange(i):
+                sum += Beta[i, j] * gamma[k,j]
+            logcprob = -log(1 + exp(-sum))
+    
+            # Generate the ith entry
+            if U is not None: gamma[k,i] = log(U[k,i]) < logcprob
+    
+            # Add to log conditional probability
+            L[k] += logcprob
+            if not gamma[k,i]: L[k] -= sum
 
-        # Add to log conditional probability
-        logp += logcprob
-        if not gamma[i]: logp -= sum
-
-    return np.array(gamma, dtype=bool), logp
+    return np.array(gamma, dtype=bool), L

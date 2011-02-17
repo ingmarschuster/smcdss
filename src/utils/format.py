@@ -7,6 +7,8 @@
     $Revision: 71 $
 '''
 
+from numpy import *
+
 def format(X, name=''):
     '''
         Formats a vector or matrix for output on stdout

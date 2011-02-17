@@ -8,6 +8,7 @@
 '''
 
 import numpy as np
+import utils
 
 def resample(w, u):
     '''
@@ -25,23 +26,55 @@ def resample(w, u):
         u = u + 1.
     return i
 
-def log_regr_rvs(Beta, u=None, gamma=None):
-    d = Beta.shape[0]
-    if u is not None:
-        gamma = np.empty(d, dtype=bool)
-        logu = np.log(u)
+def _logistic_all(param, U=None, gamma=None):
+    ''' Generates a random variable.
+        @param U uniform variables
+        @param param parameters
+        @return binary variables
+    '''
+    Beta = param['Beta']
+    if U is not None:
+        size = U.shape[0]
+        d = U.shape[1]
+        gamma = np.empty((size, U.shape[1]), dtype=bool)
+        logU = np.log(U)
 
-    logp = 0
-    for i in xrange(0, d):
-        # Compute log conditional probability that gamma(i) is one
-        sum = Beta[i][i] + np.dot(Beta[i, 0:i], gamma[0:i])
-        logcprob = -np.log(1 + np.exp(-sum))
+    if gamma is not None:
+        size = gamma.shape[0]
+        d = gamma.shape[1]
 
-        # Generate the ith entry
-        if u is not None: gamma[i] = logu[i] < logcprob
+    L = np.zeros(size, dtype=float)
 
-        # Add to log conditional probability
-        logp += logcprob
-        if not gamma[i]: logp -= sum
+    for k in xrange(size):
 
-    return gamma, logp
+        for i in xrange(d):
+            # Compute log conditional probability that gamma(i) is one
+            sum = Beta[i, i] + np.dot(Beta[i, 0:i], gamma[k, 0:i])
+            logcprob = -np.log(1 + np.exp(-sum))
+
+            # Generate the ith entry
+            if U is not None: gamma[k, i] = logU[k, i] < logcprob
+
+            # Add to log conditional probability
+            L[k] += logcprob
+            if not gamma[k, i]: L[k] -= sum
+
+    return gamma, L
+
+def logistic_lpmf(gamma, param):
+    return utils.python._logistic_all(param, gamma=gamma)[1]
+
+def logistic_rvs(U, param):
+    return utils.python._logistic_all(param, U=U)[0]
+
+def logistic_rvslpmf(U, param):
+    return utils.python._logistic_all(param, U=U)
+
+def logistic_cython_lpmf(gamma, param):
+    return utils.cython._logistic_all(param['Beta'], gamma=np.array(gamma, dtype=np.int8))[1]
+
+def logistic_cython_rvs(U, param):
+    return utils.cython._logistic_all(param['Beta'], U=U)[0]
+
+def logistic_cython_rvslpmf(U, param):
+    return utils.cython._logistic_all(param['Beta'], U=U)

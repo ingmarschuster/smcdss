@@ -14,28 +14,35 @@ import scipy
 from numpy import *
 
 import binary
+import inspect
 import utils
 
 class LogisticBinary(binary.ProductBinary):
     ''' A binary model with conditionals based on logistic regressions. '''
 
-    def __init__(self, Beta):
+    def __init__(self, Beta, name='logistic binary',
+                 longname='A binary model with conditionals based on logistic regressions.'):
         ''' Constructor.
             @param Beta matrix of regression coefficients
         '''
 
-        ## matrix of regression coefficients 
-        self.Beta = Beta
+        binary.ProductBinary.__init__(self, name=name, longname=longname)
 
-        if 'cython' in utils.opts: self.__rvslpmf = utils.cython.log_regr_rvs
-        else: self.__rvslpmf = utils.python.log_regr_rvs
+        if 'cython' in utils.opts:
+            self.f_rvslpmf = utils.python.logistic_cython_rvslpmf
+            self.f_lpmf = utils.python.logistic_cython_lpmf
+            self.f_rvs = utils.python.logistic_cython_rvs
+        else:
+            self.f_rvslpmf = utils.python.logistic_rvslpmf
+            self.f_lpmf = utils.python.logistic_lpmf
+            self.f_rvs = utils.python.logistic_rvs
 
-        binary.ProductBinary.__init__(self, name='logistic-regression-binary',
-                               longname='A binary model with conditionals based on logistic regressions.')
+        self.param = dict(Beta=Beta)
 
     @classmethod
     def independent(cls, p):
         ''' Constructs a logistic binary model with independent components.
+            @param cls instance
             @param p mean
             @return logistic model
         '''
@@ -46,7 +53,8 @@ class LogisticBinary(binary.ProductBinary):
     @classmethod
     def uniform(cls, d):
         ''' Constructs a uniform logistic binary model.
-            @param p mean
+            @param cls instance
+            @param d dimension
             @return logistic model
         '''
         Beta = zeros((d, d))
@@ -55,6 +63,7 @@ class LogisticBinary(binary.ProductBinary):
     @classmethod
     def random(cls, d, dep=3.0):
         ''' Constructs a random logistic binary model.
+            @param cls instance
             @param d dimension
             @param dep strength of dependencies [0,inf)
             @return logistic model
@@ -62,13 +71,14 @@ class LogisticBinary(binary.ProductBinary):
         cls = LogisticBinary.independent(p=random.random(d))
         Beta = random.normal(scale=dep, size=(d, d))
         Beta *= dot(Beta, Beta)
-        for i in xrange(d): Beta[i, i] = cls.Beta[i, i]
-        cls.Beta = Beta
+        for i in xrange(d): Beta[i, i] = cls.param['Beta'][i, i]
+        cls.param['Beta'] = Beta
         return cls
 
     @classmethod
     def from_data(cls, sample, Init=None, eps=0.02, delta=0.075, xi=0, verbose=False):
         ''' Construct a logistic-regression binary model from data.
+            @param cls instance
             @param sample a sample of binary data
             @param Init matrix with inital values
             @param eps marginal probs in [eps,1-eps] > logistic model
@@ -89,20 +99,21 @@ class LogisticBinary(binary.ProductBinary):
             @return logistic model
         '''
         # Compute new parameter from data.
-        newBeta = calc_Beta(sample=sample, Init=self.Beta,
+        newBeta = calc_Beta(sample=sample, Init=self.param['Beta'],
                             eps=eps, delta=delta, verbose=verbose)
 
         # Set convex combination of old and new parameter.
-        self.Beta = (1 - lag) * newBeta + lag * self.Beta
+        self.param['Beta'] = (1 - lag) * newBeta + lag * self.param['Beta']
 
     @classmethod
     def from_loglinear_model(cls, llmodel):
         ''' Constructs a logistic model that approximates a log-linear model.
+            @param cls instance
             @param llmodel log-linear model
         '''
         d = llmodel.d
         Beta = zeros((d, d))
-        Beta[0, 0] = llmodel.p_0
+        Beta[0, 0] = utils.logit(llmodel.p_0)
 
         A = copy(llmodel.A)
         for i in xrange(d - 1, 0, -1):
@@ -112,46 +123,14 @@ class LogisticBinary(binary.ProductBinary):
 
         return cls(Beta)
 
-    def _pmf(self, gamma):
-        '''
-            Probability mass function.
-            @param gamma: binary vector
-        '''
-        return exp(self._lpmf(gamma))
-
-    def _lpmf(self, gamma):
-        '''
-            Log-probability mass function.
-            @param gamma binary vector    
-        '''
-        return self.__rvslpmf(self.Beta, gamma=gamma)[1]
-
-    def _rvs(self):
-        '''
-            Samples from the model.
-            @return random variable
-        '''
-        return self._rvslpmf()[0]
-
-    def _rvslpmf(self):
-        '''
-            Generates a random variable and computes its probability.
-            @param n number of variables.
-            @return random variable
-        '''
-        u = random.random(self.d)
-        return self.__rvslpmf(self.Beta, u=u)
-
     def getD(self):
-        '''
-            Get dimension.
+        ''' Get dimension.
             @return dimension 
         '''
-        return self.Beta.shape[0]
+        return self.param['Beta'].shape[0]
 
     def getModelSize(self):
-        '''
-            Get ratio of used parameters over d*(d+1)/2.
+        ''' Get ratio of used parameters over d*(d+1)/2.
             @return dimension 
         '''
         return '%i/%i' % ((self.Beta <> 0.0).sum(), self.d * (self.d + 1) / 2.0)
@@ -161,10 +140,11 @@ class LogisticBinary(binary.ProductBinary):
 
     d = property(fget=getD, doc="dimension")
 
-
 def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
     ''' Computes the logistic regression coefficients of all conditionals. 
         @param sample binary data
+        @param eps marginal probs in [eps,1-eps] > logistic model
+        @param delta abs correlation in  [delta,1] > association
         @param Init matrix with initial values
         @param verbose print to stdout 
         @return matrix of regression coefficients
@@ -182,7 +162,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, verbose=False):
 
     # Compute slightly adjusted mean and real log odds.
     p = 1e-08 * 0.5 + (1.0 - 1e-08) * X[:, 0:d].sum(axis=0) / float(n)
-    logit = log(p / (1 - p))
+    logit = utils.logit(p)
 
     # Find strong associations
     L = abs(sample.cor) > delta

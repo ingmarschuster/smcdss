@@ -19,14 +19,23 @@ if os.name == 'nt':
 
 if os.name == 'posix':
     pyximport.install()
-    try:
-        import weave
-        opts += ['weave']
-    except Exception, exception:
-        sys.stderr.write('weave exception: ' + str(exception) + '\n') 
         
 try:
     import cython
     opts += ['cython']
 except:
     print "cython error:", sys.exc_info()[0]
+
+
+def inv_logit(x):
+    return 1 / (1 + np.exp(-x))
+
+def logit(p):
+    return np.log(p / (1 - p))
+
+
+#    try:
+#        import weave
+#        opts += ['weave']
+#    except Exception, exception:
+#        sys.stderr.write('weave exception: ' + str(exception) + '\n') 

@@ -3,6 +3,8 @@
 
 '''
     @author Christian Schäfer
+    @deprecated The model is hopefully not needed any longer since the
+                general model can now handle degenerate distributions.
     $Date$
     $Revision$
 '''
