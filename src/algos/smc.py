@@ -35,7 +35,7 @@ def run(param, verbose=True):
         ps.move()
         ps.reweight()
 
-    print "\ndone in %.3f seconds.\n" % (time.clock() - ps.start)
+    print "\ndone in %.3f seconds.\n" % (time.time() - ps.start)
 
     return ps.getCsv()
 
@@ -45,14 +45,14 @@ class ParticleSystem(object):
     def __init__(self, param, verbose=True):
         '''
             Constructor.
-            @param f target function
+            @param param parameters
             @param verbose verbose
         '''
         self.verbose = verbose
-        self.start = time.clock()
+        self.start = time.time()
 
-        if 'cython' in utils.opts: self._resample=utils.cython.resample
-        else: self._resample=utils.python.resample
+        if 'cython' in utils.opts: self._resample = utils.cython.resample
+        else: self._resample = utils.python.resample
 
         ## target function
         self.f = param['f']
@@ -79,7 +79,6 @@ class ParticleSystem(object):
 
         ## annealing parameter
         self.rho = 0
-
         ## move step counter
         self.n_moves = 0
         ## target function evaluation counter
@@ -100,9 +99,6 @@ class ParticleSystem(object):
         self.__k = array([2 ** i for i in range(self.d)])
 
         # initialize particle system
-#        for i in xrange(self.n):
-#            self.X[i] = self.prop.rvs()
-#        self.log_f = self.f.lpmf(self.X)
         self.X = self.prop.rvs(self.n, self.job_server)
         self.log_f = self.f.lpmf(self.X, self.job_server)
         for i in xrange(self.n):
@@ -116,7 +112,7 @@ class ParticleSystem(object):
 
     def getCsv(self):
         return ('\t'.join(['%.8f' % x for x in self.getMean()]),
-                '\t'.join(['%.3f' % (self.n_f_evals / 1000.0), '%.3f' % (time.clock() - self.start)]),
+                '\t'.join(['%.3f' % (self.n_f_evals / 1000.0), '%.3f' % (time.time() - self.start)]),
                 ','.join(['%.5f' % x for x in self.r_pd]),
                 ','.join(['%.5f' % x for x in self.r_ac]),
                 ','.join(['%.5f' % x for x in self.log_f]))
@@ -133,8 +129,7 @@ class ParticleSystem(object):
         return dot(self.__k, array(x, dtype=int))
 
     def getEss(self, alpha=None):
-        '''
-            Computes the effective sample size (ess).
+        ''' Computes the effective sample size (ess).
             @param alpha advance of the geometric bridge
             @return ess
         '''
@@ -145,8 +140,7 @@ class ParticleSystem(object):
         return 1 / (self.n * pow(w, 2).sum())
 
     def getParticleDiversity(self):
-        '''
-            Computes the particle diversity.
+        ''' Computes the particle diversity.
             @return particle diversity
         '''
         dic = {}
@@ -154,8 +148,8 @@ class ParticleSystem(object):
         return len(dic.keys()) / float(self.n)
 
     def reweight(self):
-        '''
-            Computes an advance of the geometric bridge such that ess = tau and updates the log weights.
+        ''' Computes an advance of the geometric bridge such that ess = tau and updates the log weights.
+            @todo this should be replaced by cython code.
         '''
         l = 0.0; u = 1.05 - self.rho
         alpha = min(0.05, u)
@@ -181,8 +175,8 @@ class ParticleSystem(object):
         print '\n' + str(self) + '\n'
 
     def fit_proposal(self):
-        '''
-            Adjust the proposal model to the particle system.
+        ''' Adjust the proposal model to the particle system.
+            @todo sample.distinct could ba activated for speedup
         '''
         sample = utils.data.data(self.X, self.log_W)
         # sample.distinct()
@@ -206,8 +200,7 @@ class ParticleSystem(object):
         return str(k) + ' %i ' % sum(k)
 
     def move(self):
-        '''
-            Moves the particle system according to an independent Metropolis-Hastings kernel
+        ''' Moves the particle system according to an independent Metropolis-Hastings kernel
             to fight depletion of the particle system.
         '''
 
@@ -232,41 +225,41 @@ class ParticleSystem(object):
     def kernel(self):
         '''
             Propagates the particle system via an independent Metropolis Hasting kernel.
+            @todo do accept/reject step vectorized
         '''
 
         self.n_f_evals += self.n
         print 'sample proposals...'
-        arr_Y, arr_log_prop_Y = self.prop.rvslpmf(self.n)
+        Y, log_prop_Y = self.prop.rvslpmf(self.n, self.job_server)
 
         print 'evaluate proposals...'
-        arr_log_f_Y = self.f.lpmf(arr_Y, job_server=self.job_server)
+        log_f_Y = self.f.lpmf(Y, self.job_server)
 
         print 'do MH steps...'
         n_acceptance = 0
         for index in range(self.n):
 
             # values proposal Y
-            log_pi_Y = self.rho * arr_log_f_Y[index]
-            log_prop_Y = arr_log_prop_Y[index]
+            log_pi_y = self.rho * log_f_Y[index]
+            log_prop_y = log_prop_Y[index]
             # values state X
             log_pi_X = self.rho * self.log_f[index]
             log_prop_X = self.log_prop[index]
 
             # compute acceptance probability and do MH step
-            if random.random() < exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y):
-                self.X[index] = arr_Y[index]
-                self.id[index] = self.getId(arr_Y[index])
-                self.log_f[index] = arr_log_f_Y[index]
-                self.log_prop[index] = arr_log_prop_Y[index]
+            if random.random() < exp(log_pi_y - log_pi_X + log_prop_X - log_prop_y):
+                self.X[index] = Y[index]
+                self.id[index] = self.getId(Y[index])
+                self.log_f[index] = log_f_Y[index]
+                self.log_prop[index] = log_prop_Y[index]
                 n_acceptance += 1
 
         print 'move completed.\n'
         return n_acceptance
 
     def resample(self):
-        '''
-            Resamples the particle system.
-        '''
+        ''' Resamples the particle system. '''
+        
         if self.verbose: print "resample. ",
         indices = self._resample(self.nW, random.random())
 
@@ -275,17 +268,19 @@ class ParticleSystem(object):
         self.X = self.X[indices]
         self.log_f = self.log_f[indices]
 
-        if self.verbose: print 'pD: %.3f' % self.pD
+        pD = self.pD
+        if self.verbose: print 'pD: %.3f' % pD
 
         # update log proposal values
-        self.log_prop=self.prop.lpmf(self.X)
-        
-#        self.log_prop[0] = self.prop.lpmf(self.X[0])
-#        for i in xrange(1, self.n):
-#           if (self.log_prop[i] == self.log_prop[i - 1]).all():
-#               self.log_prop[i] = self.log_prop[i - 1]
-#           else:
-#               self.log_prop[i] = self.prop.lpmf(self.X[i])
+        if pD > 0.5:
+            self.log_prop = self.prop.lpmf(self.X, self.job_server)
+        else:
+            self.log_prop[0] = self.prop.lpmf(self.X[0])
+            for i in xrange(1, self.n):
+               if (self.log_prop[i] == self.log_prop[i - 1]).all():
+                   self.log_prop[i] = self.log_prop[i - 1]
+               else:
+                   self.log_prop[i] = self.prop.lpmf(self.X[i])
 
     nW = property(fget=getNWeight, doc="normalized weights")
     pD = property(fget=getParticleDiversity, doc="particle diversity")

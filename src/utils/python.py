@@ -50,7 +50,8 @@ def _logistic_all(param, U=None, gamma=None):
         for i in xrange(d):
             # Compute log conditional probability that gamma(i) is one
             sum = Beta[i, i] + np.dot(Beta[i, 0:i], gamma[k, 0:i])
-            logcprob = -np.log(1 + np.exp(-sum))
+            if sum > -50: logcprob = -np.log(1 + np.exp(-sum))
+            else: logcprob = sum
 
             # Generate the ith entry
             if U is not None: gamma[k, i] = logU[k, i] < logcprob

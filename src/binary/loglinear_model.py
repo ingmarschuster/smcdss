@@ -7,7 +7,8 @@
     $Revision$
 '''
 
-from numpy import *
+import numpy
+
 from utils.data import *
 from binary import ProductBinary
 
@@ -18,8 +19,10 @@ class LogLinearBinary(ProductBinary):
             Constructor.
             @param A coefficient matrix
         '''
-        self.A = A
-        self.p_0 = p_0
+        self.f_lpmf = _lpmf
+        self.f_rvs = None
+        self.f_rvslpmf = None
+        self.param = dict(A=A, p_0=p_0)
 
     @classmethod
     def independent(cls, p):
@@ -29,8 +32,8 @@ class LogLinearBinary(ProductBinary):
             @param p mean
         '''
         d = p.shape[0]
-        logOdds = log(p / (ones(d) - p))
-        return cls(diag(logOdds), p[0])
+        logOdds = numpy.log(p / (numpy.ones(d) - p))
+        return cls(numpy.diag(logOdds), p[0])
 
     @classmethod
     def random(cls, d, scale=0.5):
@@ -41,7 +44,7 @@ class LogLinearBinary(ProductBinary):
             @param scale standard deviation of the off-diagonal elements
         '''
         p = random.random(d)
-        logratio = log(p / (1 - p))
+        logratio = numpy.log(p / (1 - p))
         A = diag(logratio)
         for i in range(d):
             if scale > 0.0: A[i, :i] = random.normal(scale=scale, size=i)
@@ -51,7 +54,7 @@ class LogLinearBinary(ProductBinary):
         sample = data()
         for dec in range(2 ** d):
             bin = dec2bin(dec, d)
-            prob = exp(float(dot(dot(bin[newaxis, :], A), bin[:, newaxis])))
+            prob = exp(float(numpy.dot(numpy.dot(bin[newaxis, :], A), bin[:, newaxis])))
             sample.append(bin, prob)
         p_0 = sample.getMean(weight=True)[0]
 
@@ -66,34 +69,29 @@ class LogLinearBinary(ProductBinary):
         '''
         return cls(calc_A(sample), sample.getMean(weight=True)[0])
 
-    def _pmf(self, gamma):
-        '''
-            Probability mass function of the underlying log-linear model.
-            @return random variable
-        '''
-        return exp(self._lpmf(gamma))
-
-    def _lpmf(self, gamma):
-        '''
-            Log probability mass function of the underlying log-linear model.
-            @return random variable
-        '''
-        gamma = gamma[newaxis, :]
-        return float(dot(dot(gamma, self.A), gamma.T))
-
     def getD(self):
         '''
             Get dimension.
             @return dimension 
         '''
-        return self.A.shape[0]
+        return self.param['A'].shape[0]
 
     d = property(fget=getD, doc="dimension")
 
+def _lpmf(gamma, param):
+    '''
+        Log probability mass function of the underlying log-linear model.
+        @return random variable
+    '''
+    A = param['A']
+    L = numpy.empty(gamma.shape[0])
+    for k in xrange(gamma.shape[0]):
+        L[k] = float(numpy.dot(numpy.dot(gamma, param['A']), gamma.T))
+    return L
 
 def calc_A(sample):
     cor = sample.getCor(weight=True)
-    
+
     return A
 
 def sech(x):
@@ -117,12 +115,12 @@ def calc_marginal(A, logc=0.0):
     d = A.shape[0]
 
     # normalization constant
-    logc += log(1 + exp(A[d - 1, d - 1]))
+    logc += numpy.log(1 + exp(A[d - 1, d - 1]))
 
     # coefficient matrix
     b = A[d - 1, :d - 1]
     A = (A[:d - 1, :d - 1] +
          (1 + tanh(0.5 * A[d - 1, d - 1])) * diag(b) +
-          0.5 * sech(0.5 * A[d - 1, d - 1]) ** 2 * dot(b[:, newaxis], b[newaxis, :]))
+          0.5 * sech(0.5 * A[d - 1, d - 1]) ** 2 * numpy.dot(b[:, newaxis], b[newaxis, :]))
 
     return A, logc

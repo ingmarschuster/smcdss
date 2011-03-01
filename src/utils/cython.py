@@ -8,12 +8,13 @@
 '''
 
 import utils
+import numpy
 
 def resample(w, u):
     return utils.cython_src.resample(w, u)
 
 def logistic_lpmf(gamma, param):
-    return utils.cython_src._logistic_all(param['Beta'], gamma=np.array(gamma, dtype=np.int8))[1]
+    return utils.cython_src._logistic_all(param['Beta'], gamma=numpy.array(gamma, dtype=numpy.int8))[1]
 
 def logistic_rvs(U, param):
     return utils.cython_src._logistic_all(param['Beta'], U=U)[0]

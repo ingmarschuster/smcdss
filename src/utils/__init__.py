@@ -4,8 +4,9 @@ import pyximport
 import logger
 import format
 import data
-
 import python
+import cython
+
 opts = ['python']
 
 if os.name == 'nt':
@@ -21,7 +22,7 @@ else:
         
 try:
     import cython_src
-    opts += ['cython']
+    #opts += ['cython']
 except:
     print "cython error:", sys.exc_info()[0]
 

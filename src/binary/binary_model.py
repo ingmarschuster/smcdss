@@ -146,9 +146,9 @@ class Binary(scipy.stats.rv_discrete):
             @remark Evaluation of the marginals requires exponential time. Do not do it.
             @return a string representation of the marginals 
         '''
-        sample = data()
+        sample = utils.data.data()
         for dec in range(2 ** self.d):
-            bin = dec2bin(dec, self.d)
+            bin = utils.format.dec2bin(dec, self.d)
             sample.append(bin, self.lpmf(bin))
         return sample
 

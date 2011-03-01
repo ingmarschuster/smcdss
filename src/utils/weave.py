@@ -72,3 +72,26 @@ def log_regr_rvs(Beta, u=None, gamma=None):
     weave.inline(code, ['d', 'logu', 'Beta', 'gamma', 'logp', 'sample'],
                  type_converters=weave.converters.blitz, compiler='gcc')
     return gamma, logp[0]
+
+def nr(beta, X, y, P, d, n, v):
+    code = \
+    """
+    double p, Xbeta;
+    
+    for (int i = 0; i < n; i++)
+    {
+        Xbeta = 0;
+        for(int k = 0; k <= d; k++)
+        {
+            Xbeta += X(i,k) * beta(k);
+        }
+        p = 1 / (1 + exp(-Xbeta));
+        P(i) = p * (1-p);
+        v(i) = P(i) * Xbeta + y(i) - p;
+    }
+    """
+    inline(code, ['beta', 'X', 'y', 'P', 'd', 'n', 'v'], \
+    type_converters=converters.blitz, compiler='gcc')
+
+    if P[0] != P[0]:
+        print '\n\n\nNUMERICAL ERROR USING WEAVE!\n\n\n'

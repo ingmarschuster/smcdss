@@ -7,10 +7,12 @@
     $Revision$
 '''
 
-from numpy import *
-from utils.data import *
+import numpy
+import utils
+import binary
+
 from binary import Binary
-from scipy.linalg import cholesky, LinAlgError
+import scipy.linalg
 
 class LinearBinary(Binary):
     '''
@@ -26,16 +28,19 @@ class LinearBinary(Binary):
         Binary.__init__(self, name='linear-binary', longname='A multivariate Bernoulli with additive probability mass function.')
 
         ## probability of zero vector
-        self.a = a
-        ## matrix of coefficients 
-        self.Beta = Beta
-        ## normalization constant
-        self.c = 2 ** self.d * (self.a + 0.25 * (self.Beta.sum() + diag(self.Beta).sum()))
+        self.f_lpmf = None
+        self.f_rvs = None
+        self.f_rvslpmf = None
+        self.param = dict(Beta=Beta, a=a)
 
-        try:
-            cholesky(self.Beta)
-        except LinAlgError:
-            print 'Warning: The linear model might not be a proper distribution.'
+        ## normalization constant
+        c = 2 ** self.d * (a + 0.25 * (Beta.sum() + numpy.diag(Beta).sum()))
+        self.param.update({'c':c})
+
+        #try:
+        #    cholesky(self.Beta)
+        #except LinAlgError:
+        #    print 'Warning: The linear model might not be a proper distribution.'
 
     @classmethod
     def random(cls, d):
@@ -69,13 +74,11 @@ class LinearBinary(Binary):
         '''
         return cls.from_moments(sample.mean, sample.cor)
 
-    def _pmf(self, gamma):
+    def pmf(self, gamma, job_server=None):
+        ''' Probability mass function.
+            @param gamma binary vector
         '''
-            Probability mass function.
-            @param gamma: binary vector
-        '''
-        v = float(dot(dot(gamma[newaxis, :], self.Beta), gamma[:, newaxis]))
-        return (self.a + v) / self.c
+        return _pmf(gamma, self.param)
 
     def _rvs(self):
         '''
@@ -116,7 +119,7 @@ class LinearBinary(Binary):
             Get dimension.
             @return dimension 
         '''
-        return self.Beta.shape[0]
+        return self.param['Beta'].shape[0]
 
     def getP(self):
         '''
@@ -124,7 +127,7 @@ class LinearBinary(Binary):
             @return dimension 
         '''
         if not hasattr(self, '__p'):
-            self.__p = 0.5 + self.Beta.sum(axis=0) * 2 ** (self.d - 2) / self.c
+            self.__p = 0.5 + self.param['Beta'].sum(axis=0) * 2 ** (self.d - 2) / self.param['c']
         return self.__p
 
     def getR(self):
@@ -146,7 +149,25 @@ class LinearBinary(Binary):
     R = property(fget=getR, doc="correlation")
 
 
-def tau(i,j):
+
+def _pmf(gamma, param):
+    '''
+        Log probability mass function of the underlying log-linear model.
+        @return random variable
+    '''
+    Beta = param['Beta']
+    a = param['a']
+    c = param['c']
+    gamma = gamma[numpy.newaxis, :]
+    L = numpy.empty(gamma.shape[0])
+    for k in xrange(gamma.shape[0]):
+        v = float(numpy.dot(numpy.dot(gamma, Beta), gamma.T))
+        L[k] = (a + v) / c
+
+    if gamma.shape[0] == 1: return L[0]
+    else: return L
+
+def tau(i, j):
     '''
         Maps the indices of a symmetric matrix onto the indices of a vector.
         @param i matrix index
@@ -163,7 +184,7 @@ def m2v(A):
         @return vector
     '''
     d = A.shape[0]
-    a = zeros(d * (d + 1) / 2)
+    a = numpy.zeros(d * (d + 1) / 2)
     for i in range(d):
         for j in range(i, d):
             a[tau(i, j)] = A[i, j]
@@ -176,8 +197,8 @@ def v2m(a):
         @return matrix
     '''
     d = a.shape[0]
-    d = int((sqrt(1 + 8 * d) - 1) / 2)
-    A = zeros((d, d))
+    d = int((numpy.sqrt(1 + 8 * d) - 1) / 2)
+    A = numpy.zeros((d, d))
     for i in range(d):
         for j in range(i, d):
             A[i, j] = a[tau(i, j)]
@@ -191,7 +212,7 @@ def generate_Z(d):
         @return design matrix
     '''
     dd = d * (d + 1) / 2 + 1;
-    Z = ones((dd, dd))
+    Z = numpy.ones((dd, dd))
     for i in range(d):
         for j in range(i, d):
             for k in range(d):
@@ -217,16 +238,85 @@ def calc_Beta(p, R):
 
     # compute second raw moment
     var = p * (1 - p)
-    S = R * sqrt(dot(var[:, newaxis], var[newaxis, :])) + dot(p[:, newaxis], p[newaxis, :])
-    S = 2 * S - diag(diag(S))
+    S = R * numpy.sqrt(numpy.dot(var[:, numpy.newaxis], var[numpy.newaxis, :])) + numpy.dot(p[:, numpy.newaxis], p[numpy.newaxis, :])
+    S = 2 * S - numpy.diag(numpy.diag(S))
 
     # convert moments to vector
     s = m2v(S)
 
     # add normalization constant
-    s = array(list(s) + [1.0])
+    s = numpy.array(list(s) + [1.0])
 
     # solve moment equation
-    x = linalg.solve(Z, s)
+    x = scipy.linalg.solve(Z, s)
 
     return x[-1], v2m(x[:-1])
+
+
+
+
+
+def random_problem(d, eps=0.05):
+    '''
+        Creates a random mean vector and correlation matrix that are consistent with the constraints on binary data.
+        @param d dimension
+        @param eps minmum distance to constraint limit
+        @return p,R mean vector, correlation matrix
+    '''
+    p = eps + numpy.random.random(d) * (1 - 2 * eps)
+    R = numpy.empty((d, d))
+    for i in range(d):
+        R[i, i] = p[i]
+        for j in range(i):
+            low = max(0, p[i] + p[j] - 1)
+            high = min(p[i], p[j]) - eps
+            R[i, j] = low + numpy.random.random()*max(high - low, 0)
+            R[j, i] = R[i, j]
+    V = R.diagonal()[numpy.newaxis, :]
+    R = R / numpy.sqrt(numpy.dot(V.T, V))
+    return p, R
+
+def fit_logistic_model(d=6, n=5000):
+    '''
+        Constructs a linear binary model with given mean and correlations.
+        Generates a (not necessarily random) weighted sample, where the weights
+        are allowed to be negative. Fits a logistic model to the weighted sample.
+        @param d dimension
+        @param n sample size
+        @todo The fact that the weights are partially negative cause the likelihood function
+        to be not necessarily unimodal. Also, the concept of complete separation has to be
+        adapted to the case of weighted samples. There is an analytical analysis to be done
+        before trying to master the numerics.
+    '''
+
+    # Construct random problem.
+    p, R = random_problem(d)
+
+    # construct a linear binary model from p and R
+    b = LinearBinary.from_moments(p, R)
+    print utils.format.format(p, 'p')
+    print utils.format.format(R, 'R')
+
+    sample = utils.data.data()
+
+    if n > 2 ** d:
+        # Enumerate the state space.
+        for dec in range(2 ** d):
+            y = utils.format.dec2bin(dec, b.d)
+            sample.append(y, b.pmf(y))
+    else:
+        # Sample states uniformly.
+        logistic = binary.logistic_model.LogisticBinary.uniform(d)
+        for i in range(n):
+            y, logprob = logistic.rvslpmf()
+            sample.append(y, b.pmf(y) / numpy.exp(logprob))
+
+    logistic = binary.logistic_model.LogisticBinary.from_data(sample, verbose=True)
+    print logistic.marginals()
+
+
+def main():
+    fit_logistic_model(d=6, n=5000)
+
+if __name__ == "__main__":
+    main()

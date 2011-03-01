@@ -30,7 +30,8 @@ class data(object):
         self.__order = None
 
     def __str__(self):
-        return format(self.getMean(weight=True), 'mean') + '\n' + \
+        return ('sum =\n%.3f \n\n' % sum(self._W)) + \
+               format(self.getMean(weight=True), 'mean') + '\n' + \
                format(self.getCor(weight=True), 'correlation')
 
     def fraction(self, fraction=1.0):
