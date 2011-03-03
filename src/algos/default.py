@@ -82,16 +82,16 @@ RUN_N_CPUS = None
 RUN_ALGO = smc
 
 # The default path to test run directory.
-RUN_PATH = normcase('data/testruns'),
+RUN_PATH = normcase('data/testruns')
 
 # Write result into an output file.
-RUN_OUTPUT = True,
+RUN_OUTPUT = True
 
 # Write extensive information to stdout.
-RUN_VERBOSE = False,
+RUN_VERBOSE = False
 
 # The number of runs to be performed.
-RUN_N = 200,
+RUN_N = 200
 
 
 #---------------------------------------------------------------------------
@@ -143,23 +143,23 @@ EVAL_TITLE_LINE = 1
 #---------------------------------------------------------------------------
 
 # The number of particles to use for the Cross entropy method.
-CE_N = 5000
+# CE_N = 5000
 
 # The binary model to used in th SMC algorithm. This should either be
 # LogisticBinary or ProductBinary.
-CE_BINARY_MODEL = LogisticBinary
+# CE_BINARY_MODEL = LogisticBinary
 
 # The elite fraction used to estimate the mean.
-CE_ELITE = 0.5
+# CE_ELITE = 0.5
 
 # The lag in the mean update.
-CE_LAG = 0.2
+# CE_LAG = 0.2
 
 # Epsilon.
-CE_EPS = 0.075
+# CE_EPS = 0.075
 
 # Delta.
-CE_DELTA = 0.1
+# CE_DELTA = 0.1
 
 
 #---------------------------------------------------------------------------
@@ -168,10 +168,10 @@ CE_DELTA = 0.1
 
 # The Markov kernel to be used in the algorithm. Possible kernels are
 # SymmetricMetropolisHastings, AdaptiveMetropolisHastings and Gibbs
-SA_KERNEL = 'mh'
+# SA_KERNEL = 'mh'
 
 # The maximal running time in minutes.
-SA_MAX_TIME = 30.0
+# SA_MAX_TIME = 30.0
 
 # The maximal number of iterations to perform.
-SA_MAX_ITER = inf
+# SA_MAX_ITER = inf
