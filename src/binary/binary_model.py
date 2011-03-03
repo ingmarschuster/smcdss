@@ -47,7 +47,6 @@ class Binary(scipy.stats.rv_discrete):
 
         if not job_server is None:
             # start jobs
-            print 'run %i jobs' % ncpus
             jobs = _parts_job_server(size, ncpus)
             for i, (start, end) in enumerate(jobs):
                 jobs[i].append(

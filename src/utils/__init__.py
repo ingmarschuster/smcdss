@@ -22,7 +22,7 @@ else:
         
 try:
     import cython_src
-    #opts += ['cython']
+    opts += ['cython']
 except:
     print "cython error:", sys.exc_info()[0]
 

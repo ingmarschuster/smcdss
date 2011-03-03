@@ -60,15 +60,6 @@ class LogLinearBinary(ProductBinary):
 
         return LogLinearBinary(A, p_0)
 
-    @classmethod
-    def from_data(cls, sample):
-        '''
-            Construct a log-linear-binary model from data.
-            @param cls class
-            @param sample a sample of binary data
-        '''
-        return cls(calc_A(sample), sample.getMean(weight=True)[0])
-
     def getD(self):
         '''
             Get dimension.
@@ -89,11 +80,6 @@ def _lpmf(gamma, param):
         L[k] = float(numpy.dot(numpy.dot(gamma, param['A']), gamma.T))
     return L
 
-def calc_A(sample):
-    cor = sample.getCor(weight=True)
-
-    return A
-
 def sech(x):
     '''
         Hyperbolic secant.
@@ -111,6 +97,8 @@ def calc_marginal(A, logc=0.0):
         @param logc log normalization constant
         @return coefficient matrix the approximate marginal distribution
         @return log normalization constant of the approximate marginal distribution
+        @todo The code needs to be extended such that not only the last but any component can
+        be margined out approximately.
         '''
     d = A.shape[0]
 

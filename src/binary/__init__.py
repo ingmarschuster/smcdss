@@ -19,4 +19,4 @@ from hybrid_model import HybridBinary
 from posterior_bvs import PosteriorBinary
 
 CONST_PRECISION = 1e-5
-CONST_ITERATIONS = 200
+CONST_ITERATIONS = 50

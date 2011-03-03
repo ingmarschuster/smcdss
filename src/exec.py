@@ -8,13 +8,13 @@
 '''
 
 import sys, getopt, time, shutil, csv, os, datetime
+
+import pp
 from numpy import array, zeros
 
 import binary
 import default
-import algos
 import utils
-
 
 try:    from rpy import *
 except: pass
@@ -86,15 +86,24 @@ def _testrun(param, verbose=False):
         file.close()
 
     # setup logger
-    log_stream = utils.logger.Logger(sys.stdout, param['test_folder'] + '/log')
-    log_id = os.path.splitext(os.path.basename(log_stream.logfile.name))[0]
-    sys.stdout = log_stream
+    if param['test_verbose']:
+        log_stream = utils.logger.Logger(sys.stdout, param['test_folder'] + '/log')
+        log_id = os.path.splitext(os.path.basename(log_stream.logfile.name))[0]
+        sys.stdout = log_stream
+    else:
+        log_id = str(0)
+
+    if not param['smc_ncpus'] is None:
+        sys.stdout.write('starting jobserver...')
+        t = time.time()
+        param.update({'job_server':pp.Server(ncpus=param['smc_ncpus'], ppservers=())})
+        print '\rjob server (%i) started in %.2f sec' % (param['job_server'].get_ncpus(), time.time() - t)
 
     print 'start test suite of %i runs...' % param['test_runs']
     for i in xrange(param['test_runs']):
 
         print '\nstarting %i/%i' % (i + 1, param['test_runs'])
-        result = param['test_algo'].run(param, verbose=verbose)
+        result = param['test_algo'].run(param)
 
         for j in range(5):
             try:
@@ -170,7 +179,7 @@ def _eval_mean(param):
     pdf_name = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + "/eval.pdf"
     r.pdf(file=pdf_name, width=param['eval_width'], height=param['eval_height'])
     r.par(oma=param['eval_outer_margin'], mar=param['eval_inner_margin'])
-    r.barplot(A, ylim=[0, 1], names=names, las=2, cex_names=0.5, cex_axis=0.75, axes=True, col=param['eval_color'])
+    r.barplot(A, ylim=[0, 1], names=names, las=2, cex_names=0.5, cex_axis=0.75, axes=True, col=param['eval_color'], xaxs="i", xlim=(-3, A.shape[1]*1.2 + 3))
     if param['eval_title']:
         r.title(main=title,
                 line=param['eval_title_line'],

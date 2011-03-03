@@ -7,23 +7,20 @@
     $Revision$
 '''
 
-import time
-import pp
+import time, datetime, sys
 
 from operator import setitem
-from sys import stdout
 from numpy import *
 
-import binary
 import utils
 
 CONST_PRECISION = 1e-8
 
 header = lambda: ['NO_EVALS', 'TIME']
 
-def run(param, verbose=True):
+def run(param):
 
-    print 'running smc...\n'
+    sys.stdout.write('running smc')
 
     ps = ParticleSystem(param)
 
@@ -35,20 +32,22 @@ def run(param, verbose=True):
         ps.move()
         ps.reweight()
 
-    print "\ndone in %.3f seconds.\n" % (time.time() - ps.start)
+    sys.stdout.write('\rsmc completed in %s.\n' % (str(datetime.timedelta(seconds=time.time() - ps.start))))
 
     return ps.getCsv()
 
 
 class ParticleSystem(object):
 
-    def __init__(self, param, verbose=True):
+    def __init__(self, param):
         '''
             Constructor.
             @param param parameters
             @param verbose verbose
         '''
-        self.verbose = verbose
+        self.verbose = param['test_verbose']
+        if self.verbose: sys.stdout.write('...\n\n')
+
         self.start = time.time()
 
         if 'cython' in utils.opts: self._resample = utils.cython.resample
@@ -56,7 +55,7 @@ class ParticleSystem(object):
 
         ## target function
         self.f = param['f']
-        self.job_server = pp.Server(ncpus=param['smc_ncpus'], ppservers=())
+        self.job_server=param['job_server']
 
         ## proposal model
         self.prop = param['smc_binary_model'].uniform(self.f.d)
@@ -66,12 +65,8 @@ class ParticleSystem(object):
         ## number of particles
         self.n = param['smc_n']
 
-        ## array of particles
-        self.X = resize(empty(self.n * self.d, dtype=bool), (self.n, self.d))
         ## array of log weights
         self.log_W = zeros(self.n, dtype=float)
-        ## array of log evaluations of f
-        self.log_f = empty(self.n, dtype=float)
         ## array of log evaluation of the proposal model
         self.log_prop = empty(self.n, dtype=float)
         ## array of ids
@@ -93,16 +88,16 @@ class ParticleSystem(object):
         self.eps = param['smc_eps']
         ## min correlation to be considered part of a logistic model
         self.delta = param['smc_delta']
-        ## min mean distance from the boundaries of [0,1] to be considered random
-        self.xi = param['smc_xi']
 
-        self.__k = array([2 ** i for i in range(self.d)])
+        self.__k = array([2 ** i for i in xrange(self.d)])
 
-        # initialize particle system
+        if self.verbose:
+            sys.stdout.write('initializing...')
+            t = time.time()
         self.X = self.prop.rvs(self.n, self.job_server)
         self.log_f = self.f.lpmf(self.X, self.job_server)
-        for i in xrange(self.n):
-            self.id[i] = self.getId(self.X[i])
+        for i in xrange(self.n): self.id[i] = self.getId(self.X[i])
+        if self.verbose: print '\rinitialized in %.2f sec' % (time.time() - t)
 
         # do first step
         self.reweight()
@@ -148,16 +143,14 @@ class ParticleSystem(object):
         return len(dic.keys()) / float(self.n)
 
     def reweight(self):
-        ''' Computes an advance of the geometric bridge such that ess = tau and updates the log weights.
-            @todo this should be replaced by cython code.
-        '''
+        ''' Computes an advance of the geometric bridge such that ess = tau and updates the log weights. '''
         l = 0.0; u = 1.05 - self.rho
         alpha = min(0.05, u)
 
         tau = 0.9
 
         # run bisectional search
-        for iter in range(30):
+        for iter in xrange(30):
 
             if self.getEss(alpha) < tau:
                 u = alpha; alpha = 0.5 * (alpha + l)
@@ -171,16 +164,23 @@ class ParticleSystem(object):
         self.rho += alpha
         self.log_W = alpha * self.log_f
 
-        if self.verbose: print 'progress %.1f' % (100 * self.rho) + '%'
-        print '\n' + str(self) + '\n'
+        if self.verbose:
+            print 'progress %.1f' % (100 * self.rho) + '%'
+            print '\n' + str(self) + '\n'
+        else:
+            sys.stdout.write('\rrunning smc %.1f' % (100 * self.rho) + '%')
 
     def fit_proposal(self):
         ''' Adjust the proposal model to the particle system.
             @todo sample.distinct could ba activated for speedup
         '''
+        if self.verbose:
+            sys.stdout.write('fitting proposal...')
+            t = time.time()
         sample = utils.data.data(self.X, self.log_W)
         # sample.distinct()
-        self.prop.renew_from_data(sample, eps=self.eps, delta=self.delta, xi=self.xi, verbose=self.verbose)
+        self.prop.renew_from_data(sample, job_server=self.job_server, eps=self.eps, delta=self.delta, verbose=False)
+        if self.verbose: print '\rfitted proposal in %.2f sec' % (time.time() - t)
 
     def getNWeight(self):
         '''
@@ -196,7 +196,7 @@ class ParticleSystem(object):
         '''
         id_set = set(self.id)
         l = [ self.id.count(i) for i in id_set ]
-        k = [ l.count(i) * i for i in range(1, 101) ]
+        k = [ l.count(i) * i for i in xrange(1, 101) ]
         return str(k) + ' %i ' % sum(k)
 
     def move(self):
@@ -206,16 +206,12 @@ class ParticleSystem(object):
 
         prev_pD = 0
         self.r_ac += [0]
-        for iter in range(10):
-
+        for iter in xrange(10):
             self.n_moves += 1
-            # pass particle system through transition kernel
-            n_acceptance = self.kernel()
-
+            accept = self.kernel()
+            self.r_ac[-1] += accept
             pD = self.pD
-            if self.verbose: print "\naR: %.3f, pD: %.3f" % (n_acceptance / float(self.n), pD)
-            self.r_ac[-1] += n_acceptance
-
+            if self.verbose: print "moved with aR: %.3f, pD: %.3f" % (accept / float(self.n), pD)
             if pD - prev_pD < 0.04 or pD > 0.93: break
             else: prev_pD = pD
 
@@ -229,38 +225,41 @@ class ParticleSystem(object):
         '''
 
         self.n_f_evals += self.n
-        print 'sample proposals...'
+
+        # sample
+        if self.verbose:
+            sys.stdout.write('sampling...')
+            t = time.time()
         Y, log_prop_Y = self.prop.rvslpmf(self.n, self.job_server)
+        if self.verbose: print '\rsampled in %.2f sec' % (time.time() - t)
 
-        print 'evaluate proposals...'
+        # evaluate
+        if self.verbose:
+            sys.stdout.write('evaluating...')
+            t = time.time()
         log_f_Y = self.f.lpmf(Y, self.job_server)
+        if self.verbose: print '\revaluated in %.2f sec' % (time.time() - t)
 
-        print 'do MH steps...'
-        n_acceptance = 0
-        for index in range(self.n):
+        # move
+        log_pi_Y = self.rho * log_f_Y
+        log_pi_X = self.rho * self.log_f
+        log_prop_X = self.log_prop
 
-            # values proposal Y
-            log_pi_y = self.rho * log_f_Y[index]
-            log_prop_y = log_prop_Y[index]
-            # values state X
-            log_pi_X = self.rho * self.log_f[index]
-            log_prop_X = self.log_prop[index]
-
-            # compute acceptance probability and do MH step
-            if random.random() < exp(log_pi_y - log_pi_X + log_prop_X - log_prop_y):
-                self.X[index] = Y[index]
+        accept = random.random(self.n) < exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y)
+        self.X[accept] = Y[accept]
+        self.log_f[accept] = log_f_Y[accept]
+        self.log_prop[accept] = log_prop_Y[accept]
+        for index in xrange(self.n):
+            if accept[index]:
                 self.id[index] = self.getId(Y[index])
-                self.log_f[index] = log_f_Y[index]
-                self.log_prop[index] = log_prop_Y[index]
-                n_acceptance += 1
-
-        print 'move completed.\n'
-        return n_acceptance
+        return accept.sum()
 
     def resample(self):
         ''' Resamples the particle system. '''
-        
-        if self.verbose: print "resample. ",
+
+        if self.verbose:
+            t = time.time()
+            sys.stdout.write('resampling...')
         indices = self._resample(self.nW, random.random())
 
         # move objects according to resampled order
@@ -269,18 +268,20 @@ class ParticleSystem(object):
         self.log_f = self.log_f[indices]
 
         pD = self.pD
-        if self.verbose: print 'pD: %.3f' % pD
 
         # update log proposal values
-        if pD > 0.5:
+        if self.job_server.get_ncpus() > 1:
             self.log_prop = self.prop.lpmf(self.X, self.job_server)
         else:
             self.log_prop[0] = self.prop.lpmf(self.X[0])
             for i in xrange(1, self.n):
-               if (self.log_prop[i] == self.log_prop[i - 1]).all():
-                   self.log_prop[i] = self.log_prop[i - 1]
-               else:
-                   self.log_prop[i] = self.prop.lpmf(self.X[i])
+                if (self.log_prop[i] == self.log_prop[i - 1]).all():
+                    self.log_prop[i] = self.log_prop[i - 1]
+                else:
+                    self.log_prop[i] = self.prop.lpmf(self.X[i])
+
+        if self.verbose:
+            print '\rresampled in %.2f sec, pD: %.3f' % (time.time() - t, pD)
 
     nW = property(fget=getNWeight, doc="normalized weights")
     pD = property(fget=getParticleDiversity, doc="particle diversity")

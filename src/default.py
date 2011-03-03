@@ -1,16 +1,6 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    This module hold a dictionary with default settings.
-
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
-
-__version__ = "$Revision$"
-
 from numpy import inf
 from binary import *
 from algos import *
@@ -19,12 +9,10 @@ from os.path import normcase
 param = dict(
 
 
-
-
     #---------------------------------------------------- Sequential Monte Carlo
 
     # number of cpus
-    smc_ncpus='autodetect',
+    smc_ncpus=None,
 
     # number of particles
     smc_n=20000,

@@ -9,13 +9,10 @@
 
 __version__ = "$Revision$"
 
-import time, sys
-
-import scipy
-from numpy import *
+import time
+import scipy, numpy
 
 import binary
-import inspect
 import utils
 
 class LogisticBinary(binary.ProductBinary):
@@ -48,7 +45,7 @@ class LogisticBinary(binary.ProductBinary):
             @return logistic model
         '''
         d = p.shape[0]
-        Beta = diag(log(p / (1 - p)))
+        Beta = numpy.diag(numpy.log(p / (1 - p)))
         return cls(Beta)
 
     @classmethod
@@ -58,7 +55,7 @@ class LogisticBinary(binary.ProductBinary):
             @param d dimension
             @return logistic model
         '''
-        Beta = zeros((d, d))
+        Beta = numpy.zeros((d, d))
         return cls(Beta)
 
     @classmethod
@@ -69,15 +66,15 @@ class LogisticBinary(binary.ProductBinary):
             @param dep strength of dependencies [0,inf)
             @return logistic model
         '''
-        cls = LogisticBinary.independent(p=random.random(d))
-        Beta = random.normal(scale=dep, size=(d, d))
-        Beta *= dot(Beta, Beta)
+        cls = LogisticBinary.independent(p=numpy.random.random(d))
+        Beta = numpy.random.normal(scale=dep, size=(d, d))
+        Beta *= numpy.dot(Beta, Beta)
         for i in xrange(d): Beta[i, i] = cls.param['Beta'][i, i]
         cls.param['Beta'] = Beta
         return cls
 
     @classmethod
-    def from_data(cls, sample, Init=None, eps=0.02, delta=0.075, xi=0, verbose=False):
+    def from_data(cls, sample, Init=None, job_server=None, eps=0.02, delta=0.075, verbose=False):
         ''' Construct a logistic-regression binary model from data.
             @param cls instance
             @param sample a sample of binary data
@@ -88,9 +85,9 @@ class LogisticBinary(binary.ProductBinary):
             @param verbose detailed output
             @return logistic model
         '''
-        return cls(calc_Beta(sample, Init=Init, verbose=verbose))
+        return cls(calc_Beta(sample, Init=Init, job_server=job_server, eps=eps, delta=delta, verbose=verbose))
 
-    def renew_from_data(self, sample, eps=0.02, delta=0.075, xi=0, lag=0, verbose=False):
+    def renew_from_data(self, sample, job_server=None, eps=0.02, delta=0.075, lag=0, verbose=False):
         ''' Construct a logistic-regression binary model from data.
             @param sample a sample of binary data
             @param eps marginal probs in [eps,1-eps] > logistic model
@@ -100,8 +97,7 @@ class LogisticBinary(binary.ProductBinary):
             @return logistic model
         '''
         # Compute new parameter from data.
-        newBeta = calc_Beta(sample=sample, Init=self.param['Beta'],
-                            eps=eps, delta=delta, verbose=verbose)
+        newBeta = calc_Beta(sample=sample, Init=self.param['Beta'], job_server=job_server, eps=eps, delta=delta, verbose=verbose)
 
         # Set convex combination of old and new parameter.
         self.param['Beta'] = (1 - lag) * newBeta + lag * self.param['Beta']
@@ -111,12 +107,14 @@ class LogisticBinary(binary.ProductBinary):
         ''' Constructs a logistic model that approximates a log-linear model.
             @param cls instance
             @param llmodel log-linear model
+            @todo Instead of margining out in arbitrary order, we could use a greedy approach
+            which picks the next dimension by minimizing the error made in the Taylor approximation. 
         '''
         d = llmodel.d
-        Beta = zeros((d, d))
+        Beta = numpy.zeros((d, d))
         Beta[0, 0] = utils.logit(llmodel.p_0)
 
-        A = copy(llmodel.A)
+        A = numpy.copy(llmodel.A)
         for i in xrange(d - 1, 0, -1):
             Beta[i, 0:i] = A[i, :i] * 2.0
             Beta[i, i] = A[i, i]
@@ -141,87 +139,105 @@ class LogisticBinary(binary.ProductBinary):
 
     d = property(fget=getD, doc="dimension")
 
-def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, negative_weights=True, verbose=True):
+def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative_weights=False, verbose=True):
     ''' Computes the logistic regression coefficients of all conditionals. 
         @param sample binary data
         @param eps marginal probs in [eps,1-eps] > logistic model
         @param delta abs correlation in  [delta,1] > association
         @param Init matrix with initial values
+        @param job_server job server
         @param verbose print to stdout 
         @return matrix of regression coefficients
     '''
 
-    if sample.d == 0: return array([])
+    if sample.d == 0: return numpy.array([])
 
-    t = time.clock()
+    t = time.time()
     n = sample.size
     d = sample.d
 
-    X = column_stack((sample.proc_data(dtype=float), ones(n, dtype=float)[:, newaxis]))
+    X = numpy.column_stack((sample.proc_data(dtype=float), numpy.ones(n, dtype=float)[:, numpy.newaxis]))
 
     # Compute weighted sample.
     if negative_weights:
-        w = array(sample._W); w /= w.sum()
-        XW = w[:, newaxis] * X
+        w = numpy.array(sample._W); w /= w.sum()
+        XW = w[:, numpy.newaxis] * X
     else:
-        if sample.ess > 0.1:
-            w = array(sample.nW)
-            XW = w * X
-        else:
-            w = None
-            XW = X / float(n)
+        w = numpy.array(sample.nW)
+        XW = w[:, numpy.newaxis] * X
 
     # Compute slightly adjusted mean and real log odds.
     p = 1e-10 * 0.5 + (1.0 - 1e-10) * XW[:, 0:d].sum(axis=0)
 
     # Assure that p is in the unit interval.
-    if negative_weights: p = array([max(min(x, 1.0 - 1e-10), 1e-10) for x in p])
+    if negative_weights: p = numpy.array([max(min(x, 1.0 - 1e-10), 1e-10) for x in p])
 
     # Compute logits.
     logit = utils.logit(p)
 
     # Find strong associations.
-    L = abs(utils.data.calc_cor(XW[:, 0:d])) > delta
+    L = abs(utils.data.calc_cor(X[:, 0:d], w=w)) > delta
 
     # Remove components with extreme marginals.
     for i, m in enumerate(p):
         if m < eps or m > 1.0 - eps:
-            L[i, :] = zeros(d, dtype=bool)
+            L[i, :] = numpy.zeros(d, dtype=bool)
 
     # Initialize Beta with logits on diagonal.
-    Beta = diag(logit)
-    if Init is None: Init = Beta
-
-    if verbose: stats = dict(regressions=0.0, failures=0, iterations=0, product=d - diag(L).sum(), logistic=diag(L).sum())
+    Beta = numpy.zeros((d, d))
+    if Init is None: Init = numpy.diag(logit)
+    
+    if verbose: stats = dict(regressions=0.0, failures=0, iterations=0, product=d, logistic=0)
 
     # Loop over all dimensions compute logistic regressions.
-    for i in range(1, d):
-        l = list(where(L[i, 0:i])[0])
+    jobs = list()
+    for i in range(d):
+        l = list(numpy.where(L[i, 0:i])[0])
         if len(l) > 0:
-            if verbose: print 'i=%i' % i
-            beta, iterations = calc_log_regr(y=X[:, i], X=X[:, l + [d]],
-                                             XW=XW[:, l + [d]], init=Init[i, l + [i]], w=w, verbose=verbose)
-            if verbose:
-                stats['iterations'] = iterations
-                stats['regressions'] += 1.0
-
-            if beta is None:
-                stats['failures'] += 1
-                Beta[i, i] = logit[i]
+            if not job_server is None:
+                jobs.append([i, l + [i],
+                        (job_server.submit(
+                        func=calc_log_regr,
+                        args=(X[:, i], X[:, l + [d]], XW[:, l + [d]], Init[i, l + [i]], w, False),
+                        modules=('numpy', 'scipy.linalg', 'binary')))
+                ])
             else:
-                Beta[i, l + [i]] = beta
+                jobs.append([i, l + [i], (calc_log_regr(
+                              X[:, i], X[:, l + [d]], XW[:, l + [d]], Init[i, l + [i]], w, False))
+                ])
+
+        else:
+            Beta[i, i] = logit[i]
+
+    # wait and retrieve results
+    if not job_server is None: job_server.wait()
+
+    # write results to Beta matrix
+    for i, l, job in jobs:
+        if isinstance(job, tuple): beta, iterations = job
+        else: beta, iterations = job()
+
+        if verbose:
+            stats['iterations'] = iterations
+            stats['regressions'] += 1.0
+            stats['product'] -= 1
+            stats['logistic'] += 1
+
+        if not beta is None:
+            Beta[i, l] = beta
+        else:
+            if verbose: stats['failures'] += 1
+            Beta[i, i] = logit[i]
 
     if verbose:
-        stats.update(dict(product=stats['product'] + stats['failures'],
-                          logistic=stats['logistic'] - stats['failures'],
-                          time=time.clock() - t))
+        stats.update({'time':time.time() - t})
         if stats['regressions'] > 0: stats['iterations'] /= stats['regressions']
-        print 'Logistic model: (p %(product)i, l %(logistic)i), loops %(iterations).3f,failures %(failures)i, time %(time).3f\n' % stats
+        print 'Logistic model: (p %(product)i, l %(logistic)i), loops %(iterations).3f, failures %(failures)i, time %(time).3f\n' % stats
 
     return Beta
 
 
-def calc_log_regr(y, X, XW, init=None, w=None, verbose=False):
+def calc_log_regr(y, X, XW, init, w=None, verbose=False):
     '''
         Computes the logistic regression coefficients.. 
         @param y explained variable
@@ -234,12 +250,11 @@ def calc_log_regr(y, X, XW, init=None, w=None, verbose=False):
     # Initialize variables. 
     n = X.shape[0]
     d = X.shape[1]
-    if init is None: beta = zeros(d)
-    else:            beta = init
-    if w is None:    w = ones(n)
-    v = empty(n)
-    P = empty(n)
-    llh = -inf
+    beta = init
+    if w is None: w = numpy.ones(n) / float(n)
+    v = numpy.empty(n)
+    P = numpy.empty(n)
+    llh = -numpy.inf
     _lambda = 1e-8
 
     for i in range(binary.CONST_ITERATIONS):
@@ -249,21 +264,21 @@ def calc_log_regr(y, X, XW, init=None, w=None, verbose=False):
         last_beta = beta.copy()
 
         # Compute Fisher information at beta
-        Xbeta = dot(X, beta)
-        p = pow(1 + exp(-Xbeta), -1)
+        Xbeta = numpy.dot(X, beta)
+        p = numpy.power(1 + numpy.exp(-Xbeta), -1)
         P = p * (1 - p)
-        XWPX = dot(XW.T, P[:, newaxis] * X) + _lambda * eye(d)
+        XWPX = numpy.dot(XW.T, P[:, numpy.newaxis] * X) + _lambda * numpy.eye(d)
         v = P * Xbeta + y - p
 
         # Solve Newton-Raphson equation.
         try:
-            beta = scipy.linalg.solve(XWPX, dot(XW.T, v), sym_pos=True)
+            beta = scipy.linalg.solve(XWPX, numpy.dot(XW.T, v), sym_pos=True)
         except:
             if verbose: print '> likelihood not unimodal'
-            beta = scipy.linalg.solve(XWPX, dot(XW.T, v), sym_pos=False)
+            beta = scipy.linalg.solve(XWPX, numpy.dot(XW.T, v), sym_pos=False)
 
         # Compute the log-likelihood.
-        llh = -0.5 * _lambda * dot(beta, beta) + (w * (y * Xbeta + log(1 + exp(Xbeta)))).sum()
+        llh = -0.5 * _lambda * numpy.dot(beta, beta) + (w * (y * Xbeta + numpy.log(1 + numpy.exp(Xbeta)))).sum()
 
         if abs(beta).max() > 1e4:
             if verbose: print 'convergence failure\n'
@@ -278,10 +293,13 @@ def calc_log_regr(y, X, XW, init=None, w=None, verbose=False):
             if verbose: print 'no change in likelihood\n'
             break
 
-    return beta, i
+    return beta, i + 1
 
+def main():
+    pass
 
-
+if __name__ == "__main__":
+    main()
 
 
 #        if len(adjIndex) == 0:

@@ -379,7 +379,7 @@ def calc_cov(X, w=None):
         return (dot(X.T, X) - n * dot(mean.T, mean)) / float(n - 1)
     else:
         mean = calc_mean(X, w)[newaxis, :]
-        return (dot(X.T, w[:, newaxis] * X) - dot(mean.T, mean)) / (1 - pow(w, 2).sum())
+        return (dot(X.T, w[:, newaxis] * X) - dot(mean.T, mean)) / (1 - power(w, 2).sum())
 
 def calc_cor(X, w=None):
     '''
@@ -389,7 +389,7 @@ def calc_cor(X, w=None):
         @return correlation matrix
     '''
     d = X.shape[1]
-    cov = calc_cov(X, w) + exp(-10) * eye(d)
+    cov = calc_cov(X, w) + 1e-10 * eye(d)
     var = cov.diagonal()[newaxis, :]
     return cov / sqrt(dot(var.T, var))
 
