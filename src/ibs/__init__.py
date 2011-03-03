@@ -1,6 +1,7 @@
 from binary import ProductBinary, LogisticBinary
 from numpy import inf
 
+
 #---------------------------------------------------------------------------
 # Sequential Monte Carlo
 #---------------------------------------------------------------------------
@@ -34,7 +35,7 @@ SMC_BINARY_MODEL = LogisticBinary
 
 # The Markov kernel to be used in the algorithm. Possible kernels are
 # SymmetricMetropolisHastings, AdaptiveMetropolisHastings and Gibbs
-MCMC_KERNEL = SymmetricMetropolisHastings
+MCMC_KERNEL = mcmc.SymmetricMetropolisHastings
 
 # The maximum number of iterations to perform.
 MCMC_MAX_EVALS = 2e6
@@ -74,7 +75,7 @@ POSTERIOR_TYPE = 'hb'
 RUN_N_CPUS = None
 
 # The default algorithm to run. 
-RUN_ALGO = smc
+RUN_ALGO = smc.run
 
 # The default path to test run directory.
 RUN_PATH = 'data/testruns'
