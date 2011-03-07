@@ -7,18 +7,16 @@
     $Revision$
 '''
 
-from time import clock
-from utils.data import format, data
-from numpy import *
-from sys import stdout
+import time, sys
+import numpy, scipy.linalg
+
 from scipy.stats import rv_discrete, geom
 
 header = lambda: ['LENGTH', 'NO_EVALS', 'NO_MOVES', 'ACC_RATE' , 'TIME']
 
-def run(param, verbose=True):
+def run(v, verbose=True):
 
-    mc = MarkovChain(f=param['f'], kernel=param['mcmc_kernel'], q=param['mcmc_q'], max_evals=param['mcmc_max_evals'])
-
+    mc = MarkovChain(f=v['f'], kernel=v['MCMC_KERNEL'], q=v['MCMC_Q'], max_evals=v['MCMC_MAX_EVALS'])
     mc.burn_in()
 
     # run for maximum time or maximum iterations
@@ -33,13 +31,13 @@ class MarkovChain():
 
     def __init__(self, f, kernel, q, max_evals=2e6, step_size=2e5, verbose=True):
 
-        self.start = clock()
+        self.start = time.clock()
         self.verbose = verbose
         self.kernel = kernel.setup(f, q)
         self.d = f.d
         self.step_size = int(min(step_size, max_evals))
         self.max_evals = float(max_evals)
-        self.x = random.random(self.d) > 0.5
+        self.x = numpy.random.random(self.d) > 0.5
         self.log_f_x = self.kernel.f.lpmf(self.x)
 
         ## number of moves
@@ -49,8 +47,8 @@ class MarkovChain():
         ## number of steps
         self.n_steps = 0
 
-        self.mean = zeros(self.d)
-        self.cov = zeros((self.d, self.d))
+        self.mean = numpy.zeros(self.d)
+        self.cov = numpy.zeros((self.d, self.d))
 
     def __str__(self):
         return '\nmean: %s\nprogress: %.3f %%\nlength: %.3f\nacc_rate: %.3f\nmoves: %.3f\nevals: %.3f' % \
@@ -67,7 +65,7 @@ class MarkovChain():
 
         if self.verbose:
             print "\n%s: %i steps burn in..." % (self.kernel.name, n_burn_in)
-            stdout.write("" + 101 * " " + "]" + "\r" + "[")
+            sys.stdout.write("" + 101 * " " + "]" + "\r" + "[")
             self.n_bars = 0
 
         for i in range(n_burn_in):
@@ -76,18 +74,18 @@ class MarkovChain():
             # print progress bar
             if self.verbose:
                 if self.n_bars < int(100.0 * i / float(n_burn_in)):
-                    stdout.write("-")
-                    stdout.flush()
+                    sys.stdout.write("-")
+                    sys.stdout.flush()
                     self.n_bars += 1
 
         if not self.verbose:
             print "\n%s: %i steps mcmc..." % (self.kernel.name, self.max_evals)
-            stdout.write("" + 101 * " " + "]" + "\r" + "[")
+            sys.stdout.write("" + 101 * " " + "]" + "\r" + "[")
             self.n_bars = 0
 
     def do_step(self):
-        mean = zeros(self.d)
-        cov = zeros((self.d, self.d))
+        mean = numpy.zeros(self.d)
+        cov = numpy.zeros((self.d, self.d))
         t = 1.0
 
         for i in xrange(self.step_size):
@@ -97,7 +95,7 @@ class MarkovChain():
 
             if move:
                 mean += t * self.x
-                cov += t * dot(x[:, newaxis], x[newaxis, :])
+                cov += t * numpy.dot(x[:, numpy.newaxis], x[ numpy.newaxis, :])
                 self.n_moves += 1
                 self.x = x
                 t = 1.0
@@ -107,8 +105,8 @@ class MarkovChain():
             # print progress bar
             if not self.verbose:
                 if self.n_bars < int(100.0 * self.n_evals / self.max_evals):
-                    stdout.write("-")
-                    stdout.flush()
+                    sys.stdout.write("-")
+                    sys.stdout.flush()
                     if self.n_evals >= self.max_evals: break
                     self.n_bars += 1
 
@@ -140,7 +138,7 @@ class MarkovChain():
              self.n_evals * 1e-3,
              self.n_moves * 1e-3,
              self.acc_rate,
-             clock() - self.start)
+             time.clock() - self.start)
 
     done = property(fget=getDone, doc="is done")
     acc_rate = property(fget=getAccRate, doc="acceptance rate")
@@ -192,7 +190,7 @@ class Kernel(rv_discrete):
         perm = range(self.d)
         for i in reversed(range(1, self.d)):
             # pick an element in p[:i+1] with which to exchange p[i]
-            j = random.randint(0, i + 1)
+            j = numpy.random.randint(0, i + 1)
             perm[i], perm[j] = perm[j], perm[i]
         return perm
 
@@ -214,9 +212,9 @@ class Gibbs(Kernel):
             '''
                 Draw from Gibbs kernel k(x,\cdot)
             '''
-            Y, log_f_Y = self.proposal(x, Index=[random.randint(1, self.d)])
+            Y, log_f_Y = self.proposal(x, Index=[numpy.random.randint(1, self.d)])
 
-            if random.random() < 1.0 / (1.0 + exp(log_f_x - log_f_Y)):
+            if numpy.random.random() < 1.0 / (1.0 + numpy.exp(log_f_x - log_f_Y)):
                 return Y, log_f_Y, True, True
             else:
                 return x, log_f_x, False, True
@@ -239,7 +237,7 @@ class SymmetricMetropolisHastings(Gibbs):
                 Draw from Symmetric Metropolis-Hastings kernel k(x,\cdot)
             '''
             Y, log_f_Y = self.proposal(x, Index=self.getRandomSubset())
-            if random.random() < exp(log_f_Y - log_f_x):
+            if numpy.random.random() < numpy.exp(log_f_Y - log_f_x):
                 return Y, log_f_Y, True, True
             else:
                 return x, log_f_x, False, True
@@ -249,7 +247,7 @@ class SymmetricMetropolisHastings(Gibbs):
             if k < 5:
                 Index = []
                 while len(Index) < k:
-                    n = random.randint(1, self.d)
+                    n = numpy.random.randint(1, self.d)
                     if not n in Index: Index.append(n)
             else:
                 Index = self.getPermutation()[:k]
@@ -268,8 +266,8 @@ class AdaptiveMetropolisHastings(Kernel):
             '''
             Kernel.__init__(self, f=f, name=name, longname=longname)
             self.adapted = False
-            self.mean = 0.5 * ones(self.d)
-            self.W = eye(self.d)
+            self.mean = 0.5 * numpy.ones(self.d)
+            self.W = numpy.eye(self.d)
             self.k = 0
             self.perm = range(self.d)
             self.delta = 0.01
@@ -277,7 +275,7 @@ class AdaptiveMetropolisHastings(Kernel):
 
         def adapt(self, mean, cov):
             self.mean = mean
-            self.W = linalg.inv(cov + self.xlambda * eye(self.d))
+            self.W = scipy.linalg.inv(cov + self.xlambda * numpy.eye(self.d))
             self.adapted = True
 
         def _rvs(self, x, log_f_x):
@@ -292,13 +290,13 @@ class AdaptiveMetropolisHastings(Kernel):
 
             if self.adapted:
                 not_j = [i for i in self.perm if not i == j]
-                v = dot(self.W[j, not_j], x[not_j] - self.mean[not_j])
+                v = numpy.dot(self.W[j, not_j], x[not_j] - self.mean[not_j])
                 psi = self.mean[j] - v / self.W[j, j]
 
                 q = max(min(psi, 1 - self.delta), self.delta)
 
                 # return if there is no mutation
-                if (random.random() < q) == x[j]: return x, log_f_x, False, False
+                if (numpy.random.random() < q) == x[j]: return x, log_f_x, False, False
             else:
                 q = 0.5
 
@@ -309,7 +307,7 @@ class AdaptiveMetropolisHastings(Kernel):
             else:
                 r = q / (1 - q)
 
-            if random.random() < exp(log_f_Y - log_f_x) * r:
+            if numpy.random.random() < numpy.exp(log_f_Y - log_f_x) * r:
                 return Y, log_f_Y, True, True
             else:
                 return x, log_f_x, False, True

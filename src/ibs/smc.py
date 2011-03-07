@@ -39,13 +39,13 @@ def run(param):
 
 class ParticleSystem(object):
 
-    def __init__(self, param):
+    def __init__(self, v):
         '''
             Constructor.
             @param param parameters
             @param verbose verbose
         '''
-        self.verbose = param['test_verbose']
+        self.verbose = v['RUN_VERBOSE']
         if self.verbose: sys.stdout.write('...\n\n')
 
         self.start = time.time()
@@ -54,16 +54,16 @@ class ParticleSystem(object):
         else: self._resample = utils.python.resample
 
         ## target function
-        self.f = param['f']
-        self.job_server=param['job_server']
+        self.f = v['f']
+        self.job_server=v['JOB_SERVER']
 
         ## proposal model
-        self.prop = param['smc_binary_model'].uniform(self.f.d)
+        self.prop = v['SMC_BINARY_MODEL'].uniform(self.f.d)
 
         ## dimension of target function
         self.d = self.f.d
         ## number of particles
-        self.n = param['smc_n']
+        self.n = v['SMC_N_PARTICLES']
 
         ## array of log weights
         self.log_W = zeros(self.n, dtype=float)
@@ -85,9 +85,9 @@ class ParticleSystem(object):
         self.r_pd = []
 
         ## min mean distance from the boundaries of [0,1] to be considered part of a logistic model
-        self.eps = param['smc_eps']
+        self.eps = v['SMC_EPS']
         ## min correlation to be considered part of a logistic model
-        self.delta = param['smc_delta']
+        self.delta = v['SMC_DELTA']
 
         self.__k = array([2 ** i for i in xrange(self.d)])
 
@@ -106,8 +106,8 @@ class ParticleSystem(object):
         return '[' + ', '.join(['%.3f' % x for x in self.getMean()]) + ']'
 
     def getCsv(self):
-        return ('\t'.join(['%.8f' % x for x in self.getMean()]),
-                '\t'.join(['%.3f' % (self.n_f_evals / 1000.0), '%.3f' % (time.time() - self.start)]),
+        return (','.join(['%.8f' % x for x in self.getMean()]),
+                ','.join(['%.3f' % (self.n_f_evals / 1000.0), '%.3f' % (time.time() - self.start)]),
                 ','.join(['%.5f' % x for x in self.r_pd]),
                 ','.join(['%.5f' % x for x in self.r_ac]),
                 ','.join(['%.5f' % x for x in self.log_f]))
@@ -270,7 +270,7 @@ class ParticleSystem(object):
         pD = self.pD
 
         # update log proposal values
-        if self.job_server.get_ncpus() > 1:
+        if not self.job_server is None and self.job_server.get_ncpus() > 1:
             self.log_prop = self.prop.lpmf(self.X, self.job_server)
         else:
             self.log_prop[0] = self.prop.lpmf(self.X[0])

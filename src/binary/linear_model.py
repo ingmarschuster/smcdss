@@ -49,8 +49,8 @@ class LinearBinary(Binary):
             @param cls class
             @param d dimension
         '''
-        Beta = random.normal(scale=5.0, size=(d, d))
-        Beta = dot(Beta.T, Beta)
+        Beta = numpy.random.normal(scale=5.0, size=(d, d))
+        Beta = numpy.dot(Beta.T, Beta)
         return cls(0.0, Beta)
 
     @classmethod
@@ -85,8 +85,8 @@ class LinearBinary(Binary):
             Samples from the model.
             @return random variable
         '''
-        gamma = zeros(self.d, dtype=bool)
-        gamma[0] = self.p[0] > random.random()
+        gamma = numpy.zeros(self.d, dtype=bool)
+        gamma[0] = self.p[0] > numpy.random.random()
 
         # initialize
         if gamma[0]: previous_p = self.p[0]
@@ -106,7 +106,7 @@ class LinearBinary(Binary):
             p_cond = p / previous_p;
 
             # draw k th entry
-            gamma[k] = p_cond > random.random()
+            gamma[k] = p_cond > numpy.random.random()
 
             # recompute k - marginal after draw
             if gamma[k]: previous_p = p
@@ -136,12 +136,12 @@ class LinearBinary(Binary):
             @return dimension 
         '''
         if not hasattr(self, '__R'):
-            A = dot(ones(self.d)[:, newaxis], self.Beta.sum(axis=0)[newaxis, :])
+            A = numpy.dot(numpy.ones(self.d)[:, numpy.newaxis], self.Beta.sum(axis=0)[numpy.newaxis, :])
             S = 0.25 + (A + A.T + self.Beta) * 2 ** (self.d - 3) / self.c
-            for i in range(self.d): S[i, i] = p[i]
-            cov = S - dot(self.p[:, newaxis], self.p[newaxis, :])
-            var = diag(cov)
-            self.__R = cov / sqrt(dot(var[:, newaxis], var[newaxis, :]))
+            for i in range(self.d): S[i, i] = self.p[i]
+            cov = S - numpy.dot(self.p[:, numpy.newaxis], self.p[numpy.newaxis, :])
+            var = numpy.diag(cov)
+            self.__R = cov / numpy.sqrt(numpy.dot(var[:, numpy.newaxis], var[numpy.newaxis, :]))
         return self.__R
 
     d = property(fget=getD, doc="dimension")
@@ -263,15 +263,17 @@ def random_problem(d, eps=0.05):
         @param eps minmum distance to constraint limit
         @return p,R mean vector, correlation matrix
     '''
-    p = eps + numpy.random.random(d) * (1 - 2 * eps)
-    R = numpy.empty((d, d))
+    p = eps + (1.0 - 2 * eps) * numpy.random.random(d)
+    R = numpy.random.random((d, d))
+    R = numpy.dot(R, R.T)
+
     for i in range(d):
-        R[i, i] = p[i]
         for j in range(i):
             low = max(0, p[i] + p[j] - 1)
             high = min(p[i], p[j]) - eps
-            R[i, j] = low + numpy.random.random()*max(high - low, 0)
-            R[j, i] = R[i, j]
+            if not (low < R[i, j] < high):
+                R[i, j] = min(high, max(low, R[i, j]))
+                R[j, i] = R[i, j]
     V = R.diagonal()[numpy.newaxis, :]
     R = R / numpy.sqrt(numpy.dot(V.T, V))
     return p, R
@@ -311,7 +313,7 @@ def fit_logistic_model(d=6, n=5000):
             y, logprob = logistic.rvslpmf()
             sample.append(y, b.pmf(y) / numpy.exp(logprob))
 
-    logistic = binary.logistic_model.LogisticBinary.from_data(sample, verbose=True)
+    logistic = binary.logistic_model.LogisticBinary.from_data(sample, eps=0.01, delta=0.01, verbose=True)
     print logistic.marginals()
 
 

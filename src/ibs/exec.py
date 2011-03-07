@@ -7,184 +7,213 @@
     $Revision$
 '''
 
-import sys, getopt, time, shutil, csv, os, datetime
-
-import pp
-from numpy import array, zeros
-
-import binary
-import utils
-
-try:    from rpy import *
-except: pass
+import getopt, shutil, csv, datetime, subprocess, os, sys, time
+import pp, numpy
+import utils, ibs, binary
 
 def main():
 
-    param = {}
-    param.update(default.param)
-    param.update({'sys_path':sys.path[0][:-4]})
-
-    # parse command line options
+    # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hreocv')
+        opts, args = getopt.getopt(sys.argv[1:], 'hrecv')
     except getopt.error, msg:
         print msg
         sys.exit(2)
 
     if len(args) == 0: sys.exit(0)
 
-    param.update({'test_name':os.path.splitext(os.path.basename(args[0]))[0]})
-    param.update({'test_folder':os.path.join(param['sys_path'] , param['test_path'] , param['test_name'])})
-
-    if not os.path.isfile(param['test_folder'] + '.py'):
-        print 'The test file "' + param['test_name'] + '" does not exist in the test path.'
+    # Load run file.
+    RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
+    RUN_FOLDER = os.path.join(ibs.v['SYS_ROOT'], ibs.v['RUN_PATH'], RUN_NAME)
+    RUN_FILE = os.path.join(ibs.v['SYS_ROOT'], ibs.v['RUN_PATH'], RUN_NAME + '.py')
+    if not os.path.isfile(RUN_FILE):
+        print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
         sys.exit(0)
+    ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE, 'RUN_FOLDER':RUN_FOLDER})
 
-    sys.path.insert(0, os.path.join(param['sys_path'] , param['test_path']))
-    user = __import__(param['test_name'])
-    param.update(user.param)
+    # Import run file variables.
+    sys.path.insert(0, os.path.join(ibs.v['SYS_ROOT'] , ibs.v['RUN_PATH']))
+    USER_VARS = __import__(RUN_NAME)
+    ibs.v.update(USER_VARS.v)
 
-    # process options
+    # Process options.
     opts = [o[0] for o in opts]
     if '-h' in opts: print __doc__
     if '-c' in opts:
-        try:
-            shutil.rmtree(param['test_folder'])
-        except:
-            pass
-    if '-r' in opts: _testrun(param, True)
-    if '-e' in opts: _eval_mean(param)
-    if '-o' in opts: os.system('okular ' + param['test_folder'] + '/eval.pdf  &')
+        try: shutil.rmtree(RUN_FOLDER)
+        except: pass
+    if '-r' in opts: _run(v=ibs.v, verbose=True)
+    if '-e' in opts: _eval_mean(v=ibs.v)
+    if '-v' in opts:
+        if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')):
+            print 'No file %s found.' % os.path.join(RUN_FOLDER, 'plot.pdf')
+            sys.exit(2)
+        subprocess.Popen(['okular', os.path.join(RUN_FOLDER, 'plot.pdf')])
 
+def _run(v, verbose=False):
+    ''' Run algorithm from run file and save results.
+        @param v parameters
+    '''
 
-def _testrun(param, verbose=False):
+    # Read data.
+    DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_SET'], v['DATA_SET'] + '.csv')
+    reader = csv.reader(open(DATA_FILE, 'r'), delimiter=',')
+    DATA_HEADER = reader.next()
+    d = len(DATA_HEADER)
+    if not isinstance(v['DATA_EXPLAINED'], str):Y_pos = v['DATA_EXPLAINED'] - 1
+    else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED'])
+    if not isinstance(v['DATA_FIRST_COVARIATE'], str):X_first = v['DATA_FIRST_COVARIATE'] - 1
+    else: X_first = DATA_HEADER.index(v['DATA_FIRST_COVARIATE'])
+    if not isinstance(v['DATA_LAST_COVARIATE'], str): X_last = min(v['DATA_LAST_COVARIATE'] - 1, d)
+    else: X_last = DATA_HEADER.index(v['DATA_LAST_COVARIATE'])
+    sample = numpy.array([numpy.array([eval(x) for x in [row[Y_pos]] + row[X_first:X_last]])
+                          for row in reader if len(row) > 0 and not row[Y_pos]=='NA'])
 
-    # read data
-    data_file = os.path.join(param['sys_path'], param['data_path'], param['data_set'], param['data_set'] + '.out')
-    reader = csv.reader(open(data_file, 'r'), delimiter=',')
-    data_header = reader.next()
-    d = min(param['data_n_covariates'] + 1, len(data_header))
-    sample = array([
-                    array([eval(x) for x in row[:d]]) for row in reader
-                    ])
+    v.update({'f':binary.PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], posterior_type=v['POSTERIOR_TYPE'])})
 
-    # build posterior distribution
-    param.update({'f':binary.PosteriorBinary(sample, param['posterior_type'])})
+    # Setup test folder.
+    if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
+    shutil.copyfile(v['RUN_FILE'], os.path.join(v['RUN_FOLDER'] , v['RUN_NAME']) + '.py')
 
-    # setup test folder
-    if not os.path.isdir(param['test_folder']): os.mkdir(param['test_folder'])
-    if param['test_name'] is 'default': test_file = param['sys_path'] + '/src/default.py'
-    else: test_file = param['test_folder'] + '.py'
-    shutil.copyfile(test_file, os.path.join(param['test_folder'] , param['test_name']) + '.py')
-
-    # setup result file
-    result_file = param['test_folder'] + '/' + 'result.csv'
+    # Setup result file.
+    result_file = v['RUN_FOLDER'] + '/' + 'result.csv'
     if not os.path.isfile(result_file):
         file = open(result_file, 'w')
-        file.write('\t'.join(data_header[1:d] + ['LOG_FILE', 'LOG_NO'] + param['test_algo'].header()) + '\n')
+        file.write(','.join(DATA_HEADER[X_first:X_last] + ['LOG_FILE', 'LOG_NO'] + v['RUN_ALGO'].header()) + '\n')
         file.close()
 
-    # setup logger
-    if param['test_verbose']:
-        log_stream = utils.logger.Logger(sys.stdout, param['test_folder'] + '/log')
+    # Setup logger.
+    if v['RUN_VERBOSE']:
+        log_stream = utils.logger.Logger(sys.stdout, v['RUN_FOLDER'] + '/log')
         log_id = os.path.splitext(os.path.basename(log_stream.logfile.name))[0]
         sys.stdout = log_stream
     else:
         log_id = str(0)
 
-    if not param['smc_ncpus'] is None:
+    # Setup job server.
+    if v['RUN_CPUS'] is None:
+        v.update({'JOB_SERVER':None})
+    else:
         sys.stdout.write('starting jobserver...')
         t = time.time()
-        param.update({'job_server':pp.Server(ncpus=param['smc_ncpus'], ppservers=())})
-        print '\rjob server (%i) started in %.2f sec' % (param['job_server'].get_ncpus(), time.time() - t)
+        v.update({'JOB_SERVER':pp.Server(ncpus=v['RUN_CPUS'], ppservers=())})
+        print '\rjob server (%i) started in %.2f sec' % (v['JOB_SERVER'].get_ncpus(), time.time() - t)
 
-    print 'start test suite of %i runs...' % param['test_runs']
-    for i in xrange(param['test_runs']):
+    if v['RUN_N'] > 1: print 'start test suite of %i runs...' % v['RUN_N']
+    for i in xrange(v['RUN_N']):
 
-        print '\nstarting %i/%i' % (i + 1, param['test_runs'])
-        result = param['test_algo'].run(param)
+        if v['RUN_N'] > 1: print '\nstarting %i/%i' % (i + 1, v['RUN_N'])
+        result = v['RUN_ALGO'].run(v)
 
-        for j in range(5):
+        for j in xrange(4):
             try:
                 file = open(result_file, 'a')
-                file.write('\t'.join([result[0], log_id, str(i + 1) , result[1]]) + '\n')
+                file.write(','.join([result[0], log_id, str(i + 1) , result[1]]) + '\n')
                 file.close()
 
                 if len(result) > 2:
-                    for file_name, i in [('pd', 2), ('ar', 3), ('logf', 4)]:
-                        file = open(param['test_folder'] + '/' + '%s.csv' % file_name, 'a')
+                    for file_name, i in [('pd', 2), ('ar', 3)]:
+                        file = open(v['RUN_FOLDER'] + '/' + '%s.csv' % file_name, 'a')
                         file.write(result[i] + '\n')
                         file.close()
                 break
             except:
-                print 'Could not write to %s. Trying again in 3 seconds...' % result_file
-                time.sleep(3)
+                if j < 3:
+                    print 'Could not write to %s. Trying again in 3 seconds...' % result_file
+                    time.sleep(3)
+                else:
+                    print 'Failed to write to %s.' % result_file
 
 
-def _eval_mean(param):
+def _eval_mean(v, verbose=True):
+    ''' Create pdf-boxplots from run files.
+        @param v parameters
     '''
-        Make pdf-boxplots from test files.
-        
-        @param param parameters
-    '''
-    file = open(param['test_folder'] + '/' + 'result.csv', 'r')
-    reader = csv.reader(file, delimiter='\t')
+    
+    if not os.path.isfile(os.path.join(v['RUN_FOLDER'], 'result.csv')):
+        print 'No file %s found.' % os.path.join(v['RUN_FOLDER'], 'result.csv')
+        sys.exit(2)
+    file = open(os.path.join(v['RUN_FOLDER'], 'result.csv'), 'r')
+    reader = csv.reader(file, delimiter=',')
+
+    # Read header names.
     data_header = reader.next()
     d = data_header.index('LOG_FILE')
-    if param['eval_names']: names = data_header[:d]
-    else:                   names = range(1, d + 1)
+    if v['EVAL_NAMES']: v['EVAL_NAMES'] = data_header[:d]
+    else:               v['EVAL_NAMES'] = range(1, d + 1)
 
-    # prepare header
+    # Prepare header.
     eval = dict(TIME=[], NO_EVALS=[], LENGTH=[], NO_MOVES=[], ACC_RATE=[])
     for key in eval.keys():
         try:    eval[key].append(data_header.index(key))
         except: eval[key].append(-1)
         eval[key].append(0.0)
 
-    # read data
-    X = []
+    # Read data.
+    X = list()
     for i, row in enumerate(reader):
-        if i == 200: break
-        X += [array([float(x) for x in row[:d]])]
+        if i == v['EVAL_MAX_DATA']: break
+        X += [numpy.array([float(x) for x in row[:d]])]
         for key in eval.keys():
             if eval[key][0] > -1: eval[key][1] += float(row[eval[key][0]])
-
     file.close()
+    X = numpy.array(X)
 
-    X = array(X)
-
+    # Compute averages.
     n = X.shape[0]
     d = X.shape[1]
     for key in eval.keys(): eval[key] = eval[key][1] / float(n)
-    eval['TIME'] = str(datetime.timedelta(seconds=eval['TIME']));
+    eval['TIME'] = str(datetime.timedelta(seconds=int(eval['TIME'])))
+    v.update(eval)
 
-    A = zeros((5, d))
-    box = param['eval_boxplot']
+    # Compute quantiles for the box plot.
+    A = numpy.zeros((5, d))
+    box = v['EVAL_BOXPLOT']
     X.sort(axis=0)
-
     for i in xrange(d):
         A[0][i] = X[:, i][0]
         for j, q in [(1, 1.0 - box), (2, 0.5), (3, box), (4, 1.0)]:
             A[j][i] = X[:, i][int(q * n) - 1] - A[:j + 1, i].sum()
 
+    # Format title.
     title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %s, NO_EVALS %.1f' % \
-            (param['test_algo'].__name__, param['data_set'], param['posterior_type'], d, n, eval['TIME'], eval['NO_EVALS'])
+            (v['RUN_ALGO'].__name__, v['DATA_SET'], v['POSTERIOR_TYPE'], d, n, v['TIME'], v['NO_EVALS'])
     if eval['LENGTH'] > 0:
         title += '\nKERNEL %s, LENGTH %.1f, NO_MOVES %.1f, ACC_RATE %.3f' % \
-            (param['mcmc_kernel'].__name__, eval['LENGTH'], eval['NO_MOVES'], eval['ACC_RATE'])
-    print title + '\n'
+            (v['MCMC_KERNEL'].__name__, v['LENGTH'], v['NO_MOVES'], v['ACC_RATE'])
+    if verbose: print title + '\n'
 
-    # plot with rpy
-    pdf_name = param['sys_path'] + '/' + param['test_path'] + '/' + param['test_name'] + "/eval.pdf"
-    r.pdf(file=pdf_name, width=param['eval_width'], height=param['eval_height'])
-    r.par(oma=param['eval_outer_margin'], mar=param['eval_inner_margin'])
-    r.barplot(A, ylim=[0, 1], names=names, las=2, cex_names=0.5, cex_axis=0.75, axes=True, col=param['eval_color'], xaxs="i", xlim=(-3, A.shape[1]*1.2 + 3))
-    if param['eval_title']:
-        r.title(main=title,
-                line=param['eval_title_line'],
-                family=param['eval_font_family'],
-                cex_main=param['eval_font_cex'], font_main=1)
-    r.dev_off()
+    # Format dictionary.
+    v.update({'EVAL_BOXPLOT':', '.join(['%.6f' % x for x in numpy.reshape(A, (5 * d,))]),
+              'EVAL_DIM':str(d), 'EVAL_XAXS':A.shape[1] * 1.2 + 1,
+              'EVAL_PDF':os.path.join(v['RUN_FOLDER'], 'plot.pdf'),
+              'EVAL_TITLE':title})
+    for key in ['EVAL_OUTER_MARGIN', 'EVAL_INNER_MARGIN']: v[key] = ', '.join([str(x) for x in v[key]])
+    for key in ['EVAL_NAMES', 'EVAL_COLOR']: v[key] = ', '.join(["'" + str(x) + "'" for x in v[key]])
+
+    # Create R-script.
+
+    R = '''#\n# This file was automatically generated.\n#\n
+    # Boxplot data from repeated runs
+    boxplot = t(array(c(%(EVAL_BOXPLOT)s),c(%(EVAL_DIM)s,5)))\n
+    # Covariate names
+    names = c(%(EVAL_NAMES)s)\n
+    # Create PDF-file
+    pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
+    par(oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
+    barplot(boxplot, ylim=c(0, 1), names=names, las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c(%(EVAL_COLOR)s), xaxs='i', xlim=c(-1, %(EVAL_XAXS)s))
+    ''' % v
+    if v['EVAL_TITLE']: R += '''
+    title(main='%(EVAL_TITLE)s', line=%(EVAL_TITLE_LINE)s, family='%(EVAL_FONT_FAMILY)s', cex.main=%(EVAL_FONT_CEX)s, font.main=1)
+    ''' % v
+    R += 'dev.off()'
+    R = R.replace('    ', '')
+    R_file = open(os.path.join(v['SYS_ROOT'], v['RUN_PATH'], v['RUN_NAME'], 'plot.R'), 'w')
+    R_file.write(R)
+    R_file.close()
+
+    # Execute R-script.
+    subprocess.Popen([v['SYS_R'], 'CMD', 'BATCH', '--vanilla', os.path.join(v['RUN_FOLDER'], 'plot.R'), os.path.join(v['RUN_FOLDER'], 'plot.Rout')])
 
 if __name__ == "__main__":
     main()

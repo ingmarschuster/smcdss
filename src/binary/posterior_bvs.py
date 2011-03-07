@@ -12,6 +12,7 @@ __version__ = "$Revision$"
 import scipy.linalg
 import numpy
 import pp
+import utils
 
 from binary import ProductBinary
 
@@ -20,7 +21,7 @@ class PosteriorBinary(ProductBinary):
         Reads a dataset and construct the posterior probabilities of all linear models
         with variables regressed on the first column.
     '''
-    def __init__(self, sample, posterior_type='hb'):
+    def __init__(self, Y, X, posterior_type='hb'):
         '''
             Constructor.
             @param sample data to perform variable selection on
@@ -31,9 +32,6 @@ class PosteriorBinary(ProductBinary):
 
         ## Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
         self.posterior_type = posterior_type
-        # sample
-        Y = sample[:, 0]
-        X = sample[:, 1:]
         n = X.shape[0]
         d = X.shape[1]
         XtY = numpy.dot(X.T, Y)
@@ -60,7 +58,7 @@ class PosteriorBinary(ProductBinary):
             ## constant 3
             c3 = nu_ * lambda_ + YtY
 
-            self.param = dict(XtX=XtX, XtY=XtY, v=v, c1=c1, c2=c2, c3=c3)
+            self.param = dict(XtX=XtX, XtY=XtY, v=v, c1=c1, c2=c2, c3=c3, logit_p=utils.logit(0.1))
 
         if self.posterior_type == 'bic':
             ## constant 1
@@ -81,9 +79,9 @@ class PosteriorBinary(ProductBinary):
             @deprecated method is never used.
         '''
         ## level of logarithm
-        self.loglevel = -inf
+        self.loglevel = -numpy.inf
         for dec in range(2 ** self.d):
-            bin = dec2bin(dec, self.d)
+            bin = utils.format.dec2bin(dec, self.d)
             eval = self.lpmf(bin)
             if eval > self.loglevel: self.loglevel = eval
 
@@ -93,7 +91,7 @@ class PosteriorBinary(ProductBinary):
             @param gamma binary vector
         '''
         if not hasattr(self, 'loglevel'): self._explore()
-        return exp(self.lpmf(gamma) - self.loglevel)
+        return numpy.exp(self.lpmf(gamma) - self.loglevel)
 
     d = property(fget=getD, doc="dimension")
 
@@ -124,7 +122,7 @@ def _lpmf_hb(gamma, param):
             if C.shape == (1, 1): b = XtY[gamma[k], :] / float(C)
             else:                 b = scipy.linalg.solve(C.T, XtY[gamma[k], :])
             log_diag_C = numpy.log(C.diagonal()).sum()
-            L[k] = -log_diag_C - param['c1'] * d - param['c2'] * numpy.log(param['c3'] - numpy.dot(b, b.T))
+            L[k] = -log_diag_C - param['c1'] * d - param['c2'] * numpy.log(param['c3'] - numpy.dot(b, b.T)) + d * param['logit_p']
 
     return L
 
