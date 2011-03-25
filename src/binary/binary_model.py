@@ -10,7 +10,7 @@
 __version__ = "$Revision$"
 
 import scipy.stats
-from numpy import *
+import numpy
 import utils
 
 class Binary(scipy.stats.rv_discrete):
@@ -28,22 +28,26 @@ class Binary(scipy.stats.rv_discrete):
         self.f_rvs = None
         self.f_rvslpmf = None
         self.param = None
+        self._v2m_perm = None
+        self._m2v_perm = None
 
     def pmf(self, gamma, job_server=None):
         ''' Probability mass function.
             @param gamma binary vector
         '''
-        return exp(self.lpmf(gamma, job_server=job_server))
+        return numpy.exp(self.lpmf(gamma, job_server=job_server))
 
     def lpmf(self, gamma, job_server=None):
         ''' Log-probability mass function.
             @param gamma binary vector
             @param job_server parallel python job server
         '''
-        if len(gamma.shape) == 1: gamma = gamma[newaxis, :]
+        if len(gamma.shape) == 1: gamma = gamma[numpy.newaxis, :]
         size = gamma.shape[0]
+        if self.v2m_perm is not None:
+            gamma = gamma[:, self.v2m_perm]
         ncpus, job_server = _check_job_server(size, job_server)
-        L = empty(size, dtype=float)
+        L = numpy.empty(size, dtype=float)
 
         if not job_server is None:
             # start jobs
@@ -72,8 +76,8 @@ class Binary(scipy.stats.rv_discrete):
             @return random variable
         '''
         ncpus, job_server = _check_job_server(size, job_server)
-        Y = empty((size, self.d), dtype=bool)
-        U = random.random((size, self.d))
+        Y = numpy.empty((size, self.d), dtype=bool)
+        U = numpy.random.random((size, self.d))
 
         if not job_server is None:
             # start jobs
@@ -94,6 +98,9 @@ class Binary(scipy.stats.rv_discrete):
             # no job server
             Y = self.f_rvs(U=U, param=self.param)
 
+        if self.m2v_perm is not None:
+            Y = Y[:, self.m2v_perm]
+
         if size == 1: return Y[0]
         else: return Y
 
@@ -103,9 +110,9 @@ class Binary(scipy.stats.rv_discrete):
             @return random variable
         '''
         ncpus, job_server = _check_job_server(size, job_server)
-        Y = empty((size, self.d), dtype=bool)
-        U = random.random((size, self.d))
-        L = empty(size, dtype=float)
+        Y = numpy.empty((size, self.d), dtype=bool)
+        U = numpy.random.random((size, self.d))
+        L = numpy.empty(size, dtype=float)
 
         if not job_server is None:
             # start jobs
@@ -126,6 +133,9 @@ class Binary(scipy.stats.rv_discrete):
             # no job server
             Y, L = self.f_rvslpmf(U=U, param=self.param)
 
+        if self.m2v_perm is not None:
+            Y = Y[:, self.m2v_perm]
+
         if size == 1: return Y[0], L[0]
         else: return Y, L
 
@@ -134,7 +144,7 @@ class Binary(scipy.stats.rv_discrete):
             Prints the empirical mean and correlation to stdout.
             @param n sample size
         '''
-        sample = data()
+        sample = utils.data.data()
         sample.sample(self, n)
         return format(sample.mean, 'sample (n = %i) mean' % n) + '\n' + \
                format(sample.cor, 'sample (n = %i) correlation' % n)
@@ -150,6 +160,27 @@ class Binary(scipy.stats.rv_discrete):
             bin = utils.format.dec2bin(dec, self.d)
             sample.append(bin, self.lpmf(bin))
         return sample
+
+    def getD(self):
+        pass
+
+    def getv2m(self):
+        return self._v2m_perm
+
+    def setv2m(self, perm):
+        self._v2m_perm = numpy.array(perm)
+        self._m2v_perm = numpy.argsort(numpy.array(perm))
+
+    def getm2v(self):
+        return self._m2v_perm
+
+    def setm2v(self, perm):
+        self._m2v_perm = numpy.array(perm)
+        self._v2m_perm = numpy.argsort(numpy.array(perm))
+
+    v2m_perm = property(fget=getv2m, fset=setv2m, doc="vector to model permutation")
+    m2v_perm = property(fget=getm2v, fset=setm2v, doc="model to vector permutation")
+    d = property(fget=getD, doc="dimension")
 
 def _parts_job_server(size, ncpus):
     return [[i * size // ncpus, min((i + 1) * size // ncpus + 1, size)] for i in range(ncpus)]

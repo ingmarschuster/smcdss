@@ -118,7 +118,7 @@ class LogisticBinary(binary.ProductBinary):
         for i in xrange(d - 1, 0, -1):
             Beta[i, 0:i] = A[i, :i] * 2.0
             Beta[i, i] = A[i, i]
-            A, logc = binary.loglinear_model.calc_marginal(A)
+            A = binary.qu_exp_model.calc_marginal(A)
 
         return cls(Beta)
 

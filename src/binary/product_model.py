@@ -29,7 +29,7 @@ class ProductBinary(binary.Binary):
             if isinstance(p, (numpy.ndarray, list)):
                 self.p = numpy.array(p, dtype=float)
             else:
-                self.p = array([p])
+                self.p = numpy.array([p])
 
         self.f_lpmf = _lpmf
         self.f_rvs = _rvs
@@ -118,3 +118,9 @@ def _rvslpmf(U, param):
     '''
     Y = _rvs(U, param)
     return Y, _lpmf(Y, param)
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()

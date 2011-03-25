@@ -90,7 +90,7 @@ def test(d=10, scip=True, bf=True):
     if scip and bf: assert(scip_r == bf_r).all()
 
 def main():
-    test(22, bf=False)
+    test(30, bf=False)
 
 if __name__ == "__main__":
     main()

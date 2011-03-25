@@ -13,7 +13,7 @@ from binary_model import Binary
 from product_model import ProductBinary
 from normal_model import HiddenNormalBinary
 from logistic_model import LogisticBinary
-from loglinear_model import LogLinearBinary
+from qu_exp_model import QuExpBinary
 from linear_model import LinearBinary
 from hybrid_model import HybridBinary
 from posterior_bvs import PosteriorBinary

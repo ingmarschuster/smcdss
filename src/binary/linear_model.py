@@ -167,44 +167,6 @@ def _pmf(gamma, param):
     if gamma.shape[0] == 1: return L[0]
     else: return L
 
-def tau(i, j):
-    '''
-        Maps the indices of a symmetric matrix onto the indices of a vector.
-        @param i matrix index
-        @param j matrix index
-        @return vector index
-    '''
-    return j * (j + 1) / 2 + i
-
-
-def m2v(A):
-    '''
-        Turns a symmetric matrix into a vector.
-        @param matrix
-        @return vector
-    '''
-    d = A.shape[0]
-    a = numpy.zeros(d * (d + 1) / 2)
-    for i in range(d):
-        for j in range(i, d):
-            a[tau(i, j)] = A[i, j]
-    return a
-
-def v2m(a):
-    '''
-        Turns a vector into a symmetric matrix.
-        @param vector
-        @return matrix
-    '''
-    d = a.shape[0]
-    d = int((numpy.sqrt(1 + 8 * d) - 1) / 2)
-    A = numpy.zeros((d, d))
-    for i in range(d):
-        for j in range(i, d):
-            A[i, j] = a[tau(i, j)]
-            A[j, i] = A[i, j]
-    return A
-
 def generate_Z(d):
     '''
         Generates a design matrix for the method of moments.
