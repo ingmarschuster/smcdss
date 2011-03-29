@@ -9,17 +9,13 @@
 
 __version__ = "$Revision$"
 
-import scipy.linalg
-import numpy
-import pp
-import utils
+from binary import *
 
-from binary import ProductBinary
-
-class PosteriorBinary(ProductBinary):
+class PosteriorBinary(binary_model.Binary):
     '''
         Reads a dataset and construct the posterior probabilities of all linear models
         with variables regressed on the first column.
+        @todo Extend options for prior distributions.
     '''
     def __init__(self, Y, X, posterior_type='hb'):
         '''
@@ -28,7 +24,7 @@ class PosteriorBinary(ProductBinary):
             @param posterior_type Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
         '''
 
-        ProductBinary.__init__(self, name='posterior-binary', longname='A posterior distribution of a Bayesian variable selection problem.')
+        binary_model.Binary.__init__(self, name='posterior-binary', longname='A posterior distribution of a Bayesian variable selection problem.')
 
         ## Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
         self.posterior_type = posterior_type

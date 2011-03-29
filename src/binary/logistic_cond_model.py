@@ -9,24 +9,19 @@
 
 __version__ = "$Revision$"
 
-import time
-import scipy, numpy
-
-import binary
-import product_model
-import qu_exp_model
-import utils
+from binary import *
 
 class LogisticBinary(product_model.ProductBinary):
     ''' A binary model with conditionals based on logistic regressions. '''
 
     def __init__(self, Beta, name='logistic binary',
-                 longname='A binary model with conditionals based on logistic regressions.'):
+                             longname='A binary model with logistic conditionals.'):
         ''' Constructor.
             @param Beta matrix of regression coefficients
         '''
 
-        product_model.ProductBinary.__init__(self, name=name, longname=longname)
+        product_model.ProductBinary.__init__(self, p=utils.inv_logit(numpy.diagonal(Beta)),\
+                                             name=name, longname=longname)
 
         if 'cython' in utils.opts:
             self.f_rvslpmf = utils.cython.logistic_rvslpmf
@@ -120,7 +115,7 @@ class LogisticBinary(product_model.ProductBinary):
         for i in xrange(d - 1, 0, -1):
             Beta[i, 0:i] = A[i, :i] * 2.0
             Beta[i, i] = A[i, i]
-            A = qu_exp_model.calc_marginal(A)
+            A = qu_exponential_model.calc_marginal(A)
 
         return cls(Beta)
 
@@ -259,7 +254,7 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
     llh = -numpy.inf
     _lambda = 1e-8
 
-    for i in range(binary.CONST_ITERATIONS):
+    for i in range(CONST_ITERATIONS):
 
         # Save last iterations values.
         last_llh = llh
@@ -286,19 +281,21 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
             if verbose: print 'convergence failure\n'
             return None, i
 
-        if (abs(last_beta - beta) < binary.CONST_PRECISION).all():
+        if (abs(last_beta - beta) < CONST_PRECISION).all():
             if verbose: print 'no change in beta\n'
             break
 
         if verbose: print '%i) log-likelihood %.2f' % (i + 1, llh)
-        if abs(last_llh - llh) < binary.CONST_PRECISION:
+        if abs(last_llh - llh) < CONST_PRECISION:
             if verbose: print 'no change in likelihood\n'
             break
 
     return beta, i + 1
 
 def main():
-    pass
+    x=LogisticBinary.random(5)
+    print x.Beta
+    print x.r
 
 if __name__ == "__main__":
     main()

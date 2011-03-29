@@ -135,7 +135,7 @@ def calc_marginal(A):
         I.pop(k)
         d = len(I)
 
-    model = logistic_model.LogisticBinary(Beta)
+    model = logistic_cond_model.LogisticBinary(Beta)
     perm.reverse()
     model.v2m_perm = perm
     return model
@@ -156,7 +156,7 @@ def calc_logistic_model(A):
         Beta[i, :i + 1] = b
         perm.append(k)
 
-    model = logistic_model.LogisticBinary(Beta)
+    model = logistic_cond_model.LogisticBinary(Beta)
     model.m2v_perm = perm
     return model
 

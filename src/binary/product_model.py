@@ -76,7 +76,14 @@ class ProductBinary(Binary):
         '''
         return self.p.shape[0]
 
+    def getRandom(self):
+        ''' Get index list of random components.
+            @return index list 
+        '''
+        return [i for i, p in enumerate(self.param['p']) if min(p, 1.0 - p) > CONST_MIN_MARGINAL_PROB]
+
     d = property(fget=getD, doc="dimension")
+    r = property(fget=getRandom, doc="random components")
 
 
 def _lpmf(gamma, param):
