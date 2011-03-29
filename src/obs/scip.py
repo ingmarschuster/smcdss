@@ -12,22 +12,25 @@ import time
 import os
 import subprocess
 
+import obs.ubqo
 import utils.format
 
 def solve_scip(A):
     '''
         Solve UBQO using SCIP and ZIMPL from the ZIB Optimization Suite http://zibopt.zib.de.
         @param A lower triangle matrix
-        @return objective maximum
+        @return best_soln maximum
         @return gamma maximizer
     '''
-    
+
     # write matrix
     f = open('matrix.dat', 'w')
     f.write('%i\n' % A.shape[0])
     for j in xrange(A.shape[0]):
         for i in xrange(j, A.shape[0]):
-            f.write('%.16f\n' % A[i, j])
+            if i == j: a = A[i, j]
+            else: a = 2 * A[i, j]
+            f.write('%.16f\n' % a)
     f.close()
 
     # invoke scip
@@ -42,8 +45,8 @@ def solve_scip(A):
     s = s.split('\n\nStatistics\n==========\n', 2)[0]
     s = s.split('\n')
 
-    # retrieve objective
-    objective = float(s[0][16:].strip())
+    # retrieve best solution
+    best_soln = float(s[0][16:].strip())
 
     # retrieve gamma
     gamma = numpy.zeros(A.shape[0], dtype=bool)
@@ -51,24 +54,24 @@ def solve_scip(A):
         x = x.split()[0].split('#')[1:]
         if x[0] == x[1]: gamma[int(x[0]) - 1] = True
 
-    return objective, gamma
+    return best_soln, gamma
 
 def solve_bf(A):
     '''
         Solve UBQO using brute force.
         @param A lower triangle matrix
-        @return objective maximum
+        @return best_soln maximum
         @return gamma maximizer
     '''
-    objective = -numpy.inf
+    best_soln = -numpy.inf
     gamma = numpy.zeros(A.shape[0], dtype=bool)
     for dec in range(2 ** A.shape[0]):
         b = utils.format.dec2bin(dec, A.shape[0])
         v = utils.format.bilinear(b, A)
-        if v >= objective:
-            objective = v
+        if v >= best_soln:
+            best_soln = v
             gamma = b
-    return objective, gamma
+    return best_soln, gamma
 
 def test(d=10, scip=True, bf=True):
     '''
@@ -78,6 +81,7 @@ def test(d=10, scip=True, bf=True):
         @param bf do brute force
     '''
     A = utils.format.v2lt(numpy.random.normal(size=d * (d + 1) / 2))
+    A += A.T
     print 'test on random instance d=%d' % d
     if scip:
         t = time.time()
@@ -90,10 +94,18 @@ def test(d=10, scip=True, bf=True):
     if scip and bf: assert(scip_r == bf_r).all()
 
 def main():
-    test(30, bf=False)
+    L = obs.ubqo.generate_ubqo_problem(d=50, p=1, c=50, n=1)
+    S = solve_scip(L[0][1])
+    print S[0], L[0][0]
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
 
 '''
 # read dimension

@@ -1,3 +1,4 @@
+import ubqo
 from ceopt import *
 from numpy import inf
 from binary import ProductBinary, LogisticBinary
@@ -7,7 +8,7 @@ from binary import ProductBinary, LogisticBinary
 #---------------------------------------------------------------------------
 
 # The number of particles to use for the Cross entropy method.
-CE_N = 5000
+CE_N_PARTICLES = 5000
 
 # The binary model to used in th SMC algorithm. This should either be
 # LogisticBinary or ProductBinary.

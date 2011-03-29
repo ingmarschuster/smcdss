@@ -9,11 +9,13 @@
 
 __version__ = "$Revision$"
 
-from utils.data import data
-from datetime import time
-from numpy import zeros
+import time
+import sys
+import numpy
 
-from binary import *
+import binary
+import obs
+import utils
 
 def ceopt(target, verbose=False):
     '''
@@ -23,38 +25,36 @@ def ceopt(target, verbose=False):
         @param verbose verbose
     '''
 
-    start = clock()
-    model = HybridBinary.uniform(target.d, model=dicCE['model'])
+    t = time.time()
+    model = binary.HybridBinary.uniform(target.d, model=obs.CE_BINARY_MODEL)
     print "running ceopt using " + model.name
 
-    d = data()
-    max = dict(state=None, score= -inf)
+    d = utils.data.data()
+    max = dict(state=None, score= -numpy.inf)
 
     # run optimization scheme
     for step in range(1, 100):
         if verbose: print "\nstep %i" % step,
 
-        d.sample(model, dicCE['n_particles'], verbose=verbose)
+        d.sample(model, obs.CE_N_PARTICLES, verbose=verbose)
         d.assign_weights(f=target, verbose=verbose)
 
-        model.renew_from_data(sample=d.fraction(dicCE['elite']), verbose=verbose, **dicCE)
+        model.renew_from_data(sample=d.fraction(obs.CE_ELITE), verbose=verbose)
         if verbose: print "state: ", model.iZeros, model.iOnes, model.iModel
 
         # check if dimension is sufficiently reduced
         if model.nModel < 15:
             max = brute_search(target=target, max=dict(state=d._X[0], score=d._W[0]), model=model)
-            stdout.write('\rscore: %.5f' % max['score'])
-            return max, clock() - start
+            sys.stdout.write('\rscore: %.5f' % max['score'])
+            return max, time.time() - t
 
         max = dict(state=d._X[0], score=d._W[0])
-        d.clear(fraction=dicCE['elite'])
+        d.clear(fraction=obs.CE_ELITE)
 
-        dicCE['elite'] *= 0.95
+        sys.stdout.write('\r%02i. %.5f [0: %03i, 1: %03i, r: %03i]' % (step, max['score'], model.nZeros, model.nOnes, model.nModel))
+        sys.stdout.flush()
 
-        stdout.write('\r%02i. %.5f [0: %03i, 1: %03i, r: %03i]' % (step, max['score'], model.nZeros, model.nOnes, model.nModel))
-        stdout.flush()
-
-    return max, clock() - start
+    return max, time.time() - t
 
 def brute_search(target, max, model):
     '''
@@ -63,12 +63,13 @@ def brute_search(target, max, model):
         @param target target function
         @param max current max state and score 
         @param model underlying model
-        @return max max state and score obtained from solving the sub-problem 
+        @return max max state and score obtained from solving the sub-problem
+        @todo Write cython version of brute force search.
     '''
     if model.nModel > 0:
         gamma = model._Const
         for dec in range(2 ** model.nModel):
-            bin = dec2bin(dec, model.nModel)
+            bin = utils.format.dec2bin(dec, model.nModel)
             gamma[model.iModel] = bin
             score = target.lpmf(gamma)
             if score > max['score']:
