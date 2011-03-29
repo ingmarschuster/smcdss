@@ -9,12 +9,9 @@
 
 __version__ = "$Revision$"
 
-import numpy
+from binary_model import *
 
-import utils
-import binary
-
-class ProductBinary(binary.Binary):
+class ProductBinary(Binary):
     '''
         A binary model with independent components.
     '''
@@ -24,7 +21,7 @@ class ProductBinary(binary.Binary):
             @param name name
             @param longname longname
         '''
-        binary.Binary.__init__(self, name=name, longname=longname)
+        Binary.__init__(self, name=name, longname=longname)
         if not p is None:
             if isinstance(p, (numpy.ndarray, list)):
                 self.p = numpy.array(p, dtype=float)

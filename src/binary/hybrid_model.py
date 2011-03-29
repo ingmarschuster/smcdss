@@ -11,10 +11,9 @@
 
 __version__ = "$Revision$"
 
-from utils.data import *
 from binary import *
 
-class HybridBinary(Binary):
+class HybridBinary(binary_model.Binary):
     '''
         A hybrid model having constant and random components.
     '''
@@ -40,20 +39,20 @@ class HybridBinary(Binary):
         ## mean
         self.p = p
 
-        Binary.__init__(self, 'hybrid-' + self._Model.name, longname)
+        binary_model.Binary.__init__(self, 'hybrid-' + self._Model.name, longname)
 
     def __str__(self):
         return 'constant: ' + str(self.iConst) + '\n' + format(self._Const[self.iConst], 'base vector') + '\n' + \
                'random: ' + str(self.iModel) + '\n' + str(self._Model) + '\n'
 
     @classmethod
-    def uniform(cls, d, model=LogisticBinary):
-        return cls(Const=zeros(d, dtype=bool),
+    def uniform(cls, d, model=logistic_model.LogisticBinary):
+        return cls(Const=numpy.zeros(d, dtype=bool),
                    Model=model.uniform(d), iModel=range(d),
-                   p=0.5 * ones(d, dtype=float))
+                   p=0.5 * numpy.ones(d, dtype=float))
 
     @classmethod
-    def from_data(cls, sample, xi=1e-12, model=LogisticBinary, verbose=False):
+    def from_data(cls, sample, xi=1e-12, model=logistic_model.LogisticBinary, verbose=False):
         '''
             Construct a hybrid-binary model from data.
             @param cls class
@@ -112,7 +111,7 @@ class HybridBinary(Binary):
             Log-probability mass function.
             @param gamma binary vector
         '''
-        if not ((self._Const == gamma)[self.iConst]).all(): return - inf
+        if not ((self._Const == gamma)[self.iConst]).all(): return - numpy.inf
         return self._Model.lpmf(gamma[self.iModel])
 
     def _rvs(self):
@@ -152,14 +151,14 @@ class HybridBinary(Binary):
             Get index of constant zero (False) components.
             @return index
         '''
-        return [i for i in self._iConst if i in where(self._Const ^ True)[0]]
+        return [i for i in self._iConst if i in numpy.where(self._Const ^ True)[0]]
 
     def getIOnes(self):
         '''
             Get index of constant one (True) components.
             @return index
         '''
-        return [i for i in self._iConst if i in where(self._Const ^ False)[0]]
+        return [i for i in self._iConst if i in numpy.where(self._Const ^ False)[0]]
 
     def getNModel(self):
         '''
@@ -207,3 +206,9 @@ class HybridBinary(Binary):
     nOnes = property(fget=getNOnes, doc="number of constant one (True) components")
 
     d = property(fget=getD, doc="dimension")
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()

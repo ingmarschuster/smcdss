@@ -13,9 +13,11 @@ import time
 import scipy, numpy
 
 import binary
+import product_model
+import qu_exp_model
 import utils
 
-class LogisticBinary(binary.ProductBinary):
+class LogisticBinary(product_model.ProductBinary):
     ''' A binary model with conditionals based on logistic regressions. '''
 
     def __init__(self, Beta, name='logistic binary',
@@ -24,7 +26,7 @@ class LogisticBinary(binary.ProductBinary):
             @param Beta matrix of regression coefficients
         '''
 
-        binary.ProductBinary.__init__(self, name=name, longname=longname)
+        product_model.ProductBinary.__init__(self, name=name, longname=longname)
 
         if 'cython' in utils.opts:
             self.f_rvslpmf = utils.cython.logistic_rvslpmf
@@ -118,7 +120,7 @@ class LogisticBinary(binary.ProductBinary):
         for i in xrange(d - 1, 0, -1):
             Beta[i, 0:i] = A[i, :i] * 2.0
             Beta[i, i] = A[i, i]
-            A = binary.qu_exp_model.calc_marginal(A)
+            A = qu_exp_model.calc_marginal(A)
 
         return cls(Beta)
 

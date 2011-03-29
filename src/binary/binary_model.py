@@ -9,11 +9,9 @@
 
 __version__ = "$Revision$"
 
-import scipy.stats
-import numpy
-import utils
+from binary import *
 
-class Binary(scipy.stats.rv_discrete):
+class Binary(stats.rv_discrete):
     '''
         A multivariate Bernoulli.
     '''
@@ -23,7 +21,7 @@ class Binary(scipy.stats.rv_discrete):
             @param name name
             @param longname longname
         '''
-        scipy.stats.rv_discrete.__init__(self, name=name, longname=longname)
+        stats.rv_discrete.__init__(self, name=name, longname=longname)
         self.f_lpmf = None
         self.f_rvs = None
         self.f_rvslpmf = None

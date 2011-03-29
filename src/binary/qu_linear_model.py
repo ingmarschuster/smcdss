@@ -7,12 +7,9 @@
     $Revision$
 '''
 
-import numpy
-import utils
-import binary
+__version__ = "$Revision$"
 
-from binary import Binary
-import scipy.linalg
+from binary_model import *
 
 class LinearBinary(Binary):
     '''
@@ -270,14 +267,50 @@ def fit_logistic_model(d=6, n=5000):
             sample.append(y, b.pmf(y))
     else:
         # Sample states uniformly.
-        logistic = binary.logistic_model.LogisticBinary.uniform(d)
+        logistic = logistic_model.LogisticBinary.uniform(d)
         for i in range(n):
             y, logprob = logistic.rvslpmf()
             sample.append(y, b.pmf(y) / numpy.exp(logprob))
 
-    logistic = binary.logistic_model.LogisticBinary.from_data(sample, eps=0.01, delta=0.01, verbose=True)
+    logistic = logistic_model.LogisticBinary.from_data(sample, eps=0.01, delta=0.01, verbose=True)
     print logistic.marginals()
 
+def tau(i, j):
+    '''
+        Maps the indices of a symmetric matrix onto the indices of a vector.
+        @param i matrix index
+        @param j matrix index
+        @return vector index
+    '''
+    return j * (j + 1) / 2 + i
+
+def m2v(A):
+    '''
+        Turns a symmetric matrix into a vector.
+        @param matrix
+        @return vector
+    '''
+    d = A.shape[0]
+    a = numpy.zeros(d * (d + 1) / 2)
+    for i in range(d):
+        for j in range(i + 1):
+            a[tau(i, j)] = A[i, j]
+    return a
+
+def v2m(a):
+    '''
+        Turns a vector into a symmetric matrix.
+        @param vector
+        @return matrix
+    '''
+    d = a.shape[0]
+    d = int((numpy.sqrt(1 + 8 * d) - 1) / 2)
+    A = numpy.zeros((d, d))
+    for i in range(d):
+        for j in range(i, d):
+            A[i, j] = a[tau(i, j)]
+            A[j, i] = A[i, j]
+    return A
 
 def main():
     fit_logistic_model(d=6, n=5000)
