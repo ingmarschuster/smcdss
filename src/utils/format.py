@@ -25,7 +25,7 @@ def format_vector(v, name=''):
         @param name name 
     '''
     if not name == '': name = name + ' =\n'
-    return name + '[' + ' '.join([('%.4f' % x).rjust(7) for x in v]) + ' ]\n'
+    return name + '[' + ' '.join([('%.3f' % x).rjust(8) for x in v]) + ' ]\n'
 
 def format_matrix(M, name=''):
     '''
