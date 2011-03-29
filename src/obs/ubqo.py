@@ -11,21 +11,18 @@ import os
 import numpy
 import cPickle as pickle
 
-
-
-
 __PATH = '../../data/ubqp'
 
-def import_beasly_lib(file):
+def import_beasly_lib(filename):
     '''
         Import problems from http://people.brunel.ac.uk/~mastjjb/jeb/orlib/bqpinfo.html used in
         Heuristic algorithms for the unconstrained binary quadratic programming,
         J.E. Beasley 1998
     '''
-    f = open(os.path.join(__PATH, 'beasly', file + '.txt'), 'r')
+    file = open(os.path.join(__PATH, 'beasly', file + '.txt'), 'r')
     L = list()
-    n = int(f.readline())
-    line = f.readline().strip().split(' ')
+    n = int(file.readline())
+    line = file.readline().strip().split(' ')
 
     best_soln = dict(bqp50=[2098, 3702, 4626, 3544, 4012, 3693, 4520, 4216, 3780, 3507],
                     bqp100=[7970, 11036, 12723, 10368, 9083, 10210, 10125, 11435, 11435, 12565],
@@ -38,16 +35,16 @@ def import_beasly_lib(file):
         print '%d\t d=%s, nonzeros=%s' % (k + 1, line[0], line[1])
         d = int(line[0])
         A = numpy.zeros((d, d))
-        line = f.readline().strip().split(' ')
+        line = file.readline().strip().split(' ')
         while len(line) == 3:
             A[int(line[1]) - 1, int(line[0]) - 1] = float(line[2])
-            line = f.readline().strip().split(' ')
+            line = file.readline().strip().split(' ')
         L.append((float(best_soln[file][k]), A))
 
-    f.close()
+    file.close()
     return L
 
-def import_glover_lib(file):
+def import_glover_lib(filename):
     '''
         Import problems from http://hces.bus.olemiss.edu/tools.html used in
         One-Pass Heuristics for Unconstrained Binary Quadratic Problems,
@@ -55,20 +52,20 @@ def import_glover_lib(file):
     '''
     L = list()
     for k in xrange(5):
-        f = open(os.path.join(__PATH, 'glover', file + chr(97 + k) + '.dat'), 'r')
-        best_soln = float(f.readline().split(' = ')[1][:-3])
-        d = int(f.readline().strip().split(' ')[0])
+        file = open(os.path.join(__PATH, 'glover', filename + chr(97 + k) + '.dat'), 'r')
+        best_soln = float(file.readline().split(' = ')[1][:-3])
+        d = int(file.readline().strip().split(' ')[0])
         print '%s\t d=%d' % (chr(97 + k), d)
-        a = f.read()
+        a = file.read()
         a = a.split('\n')[:-3]
         a = ''.join(a)
         a = a.replace('\n', '').replace('\r', '')
         A = numpy.array([int(x) for x in a.split(' ') if not x == '']).reshape((d, d))
         L.append((best_soln, A))
-        f.close()
+        file.close()
     return L
 
-def generate_ubqo_problem(d, p, c, n=1, file=None):
+def generate_ubqo_problem(d, p, c, n=1, filename=None):
     L = list()
     for k in xrange(n):
         print '%s\t d=%d' % (k + 1, d)
@@ -80,29 +77,29 @@ def generate_ubqo_problem(d, p, c, n=1, file=None):
                     A[i, j] = numpy.random.randint(-c, c)
                     A[j, i] = A[i, j]
         L.append((None, A))
-        if not file is None:
-            f = open(os.path.join(__PATH, file + '.pickle'), 'w')
-            pickle.dump(obj=L, file=f)
-            f.close()
+        if not filename is None:
+            file = open(os.path.join(__PATH, filename + '.pickle'), 'w')
+            pickle.dump(obj=L, file=file)
+            file.close()
     return L
 
-def pickle_ubqo_problem(file):
+def pickle_ubqo_problem(filename):
     '''
         Reads a UQBO problem from file and save it as pickled object.
     '''
-    f = open(os.path.join(__PATH, file + '.pickle'), 'w')
-    if file[:3] == 'bqp':
-        pickle.dump(obj=import_beasly_lib(file), file=f)
+    file = open(os.path.join(__PATH, filename + '.pickle'), 'w')
+    if filename[:3] == 'bqp':
+        pickle.dump(obj=import_beasly_lib(filename), file=file)
     else:
-        pickle.dump(obj=import_glover_lib(file), file=f)
-    f.close()
+        pickle.dump(obj=import_glover_lib(filename), file=file)
+    file.close()
 
-def load_ubqo_problem(file, repickle=False):
+def load_ubqo_problem(filename, repickle=False):
     '''
         Loads a pickled UQBO problem.
     '''
     path = os.path.join(__PATH, file + '.pickle')
-    if repickle or not os.path.isfile(path): pickle_ubqo_problem(file)
-    f = open(path, 'r')
-    return pickle.load(f)
-    f.close()
+    if repickle or not os.path.isfile(path): pickle_ubqo_problem(filename)
+    file = open(path, 'r')
+    return pickle.load(file)
+    file.close()

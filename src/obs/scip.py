@@ -8,103 +8,55 @@
 '''
 
 import numpy
-import time
 import os
 import subprocess
 
-import obs.ubqo
-import utils.format
-
-def solve_scip(A):
+def solve_scip(f):
     '''
         Solve UBQO using SCIP and ZIMPL from the ZIB Optimization Suite http://zibopt.zib.de.
-        @param A lower triangle matrix
-        @return best_soln maximum
-        @return gamma maximizer
+        @param f quadratic exponential model.
+        @return best_obj maximum
+        @return best_soln maximizer
     '''
 
     # write matrix
-    f = open('matrix.dat', 'w')
-    f.write('%i\n' % A.shape[0])
-    for j in xrange(A.shape[0]):
-        for i in xrange(j, A.shape[0]):
-            if i == j: a = A[i, j]
-            else: a = 2 * A[i, j]
-            f.write('%.16f\n' % a)
-    f.close()
+    file = open('matrix.dat', 'w')
+    file.write('%i\n' % f.d)
+    for j in xrange(f.d):
+        for i in xrange(j, f.d):
+            if i == j: a = f.A[i, j]
+            else: a = 2 * f.A[i, j]
+            file.write('%.16f\n' % a)
+    file.close()
 
     # invoke scip
-    if os.path.exists('scip.log'): os.remove('scip.log')
-    subprocess.Popen(['/home/cschafer/ziboptsuite-2.0.1/scip-2.0.1/bin/scip', '-l', 'scip.log', '-f', 'uqbo.zpl', '-q']).wait()
+    if os.path.exists('scip/scip.log'): os.remove('scip/scip.log')
+    subprocess.Popen(['/home/cschafer/ziboptsuite-2.0.1/scip-2.0.1/bin/scip', '-l', 'scip.log', '-file', 'uqbo.zpl', '-q']).wait()
 
     # read log
-    f = open('scip.log', 'r')
-    s = f.read()
-    f.close
+    file = open('scip/scip.log', 'r')
+    s = file.read()
+    file.close
     s = s.split('primal solution:\n================\n\n', 2)[1]
     s = s.split('\n\nStatistics\n==========\n', 2)[0]
     s = s.split('\n')
 
-    # retrieve best solution
-    best_soln = float(s[0][16:].strip())
+    # retrieve best objective
+    best_obj = float(s[0][16:].strip())
 
-    # retrieve gamma
-    gamma = numpy.zeros(A.shape[0], dtype=bool)
+    # retrieve best solution
+    best_soln = numpy.zeros(f.d, dtype=bool)
     for x in s[1:]:
         x = x.split()[0].split('#')[1:]
-        if x[0] == x[1]: gamma[int(x[0]) - 1] = True
+        if x[0] == x[1]: best_soln[int(x[0]) - 1] = True
 
-    return best_soln, gamma
-
-def solve_bf(A):
-    '''
-        Solve UBQO using brute force.
-        @param A lower triangle matrix
-        @return best_soln maximum
-        @return gamma maximizer
-    '''
-    best_soln = -numpy.inf
-    gamma = numpy.zeros(A.shape[0], dtype=bool)
-    for dec in range(2 ** A.shape[0]):
-        b = utils.format.dec2bin(dec, A.shape[0])
-        v = utils.format.bilinear(b, A)
-        if v >= best_soln:
-            best_soln = v
-            gamma = b
-    return best_soln, gamma
-
-def test(d=10, scip=True, bf=True):
-    '''
-        Test run of SCIP/ZIMPL and brute force on a random instance.
-        @param d dimension
-        @param scip do SCIP
-        @param bf do brute force
-    '''
-    A = utils.format.v2lt(numpy.random.normal(size=d * (d + 1) / 2))
-    A += A.T
-    print 'test on random instance d=%d' % d
-    if scip:
-        t = time.time()
-        scip_r = solve_scip(A)[1]
-        print 'scip %.3fs' % (time.time() - t)
-    if bf:
-        t = time.time()
-        bf_r = solve_bf(A)[1]
-        print 'bf   %.3fs' % (time.time() - t)
-    if scip and bf: assert(scip_r == bf_r).all()
+    return best_obj, best_soln
 
 def main():
-    L = obs.ubqo.generate_ubqo_problem(d=50, p=1, c=50, n=1)
-    S = solve_scip(L[0][1])
-    print S[0], L[0][0]
+    pass
 
 if __name__ == "__main__":
     main()
-
-
-
-
-
 
 
 '''

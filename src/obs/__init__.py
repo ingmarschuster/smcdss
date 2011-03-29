@@ -1,7 +1,5 @@
 import ubqo
-from ceopt import *
-from numpy import inf
-from binary import ProductBinary, LogisticBinary
+from binary import *
 
 #---------------------------------------------------------------------------
 # Cross entropy method
