@@ -7,7 +7,10 @@
     $Revision: 71 $
 '''
 
+__version__ = "$Revision: 94 $"
+
 import numpy
+import time
 import os
 import subprocess
 
@@ -19,8 +22,9 @@ def solve_scip(f):
         @return best_soln maximizer
     '''
 
+    t = time.time()
     # write matrix
-    file = open('matrix.dat', 'w')
+    file = open('scip/matrix.dat', 'w')
     file.write('%i\n' % f.d)
     for j in xrange(f.d):
         for i in xrange(j, f.d):
@@ -31,7 +35,7 @@ def solve_scip(f):
 
     # invoke scip
     if os.path.exists('scip/scip.log'): os.remove('scip/scip.log')
-    subprocess.Popen(['/home/cschafer/ziboptsuite-2.0.1/scip-2.0.1/bin/scip', '-l', 'scip.log', '-file', 'uqbo.zpl', '-q']).wait()
+    subprocess.Popen(['/home/cschafer/ziboptsuite-2.0.1/scip-2.0.1/bin/scip', '-l', 'scip/scip.log', '-f', 'scip/uqbo.zpl', '-q']).wait()
 
     # read log
     file = open('scip/scip.log', 'r')
@@ -50,7 +54,7 @@ def solve_scip(f):
         x = x.split()[0].split('#')[1:]
         if x[0] == x[1]: best_soln[int(x[0]) - 1] = True
 
-    return best_obj, best_soln
+    return best_obj, best_soln, time.time() - t
 
 def main():
     pass

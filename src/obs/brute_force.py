@@ -28,6 +28,7 @@ def solve_bf(f, best_obj= -numpy.inf, gamma=None, index=None):
     else:
         d = f.d
         gamma = numpy.zeros(d)
+    best_soln = gamma.copy()
     if d > 0:
         for dec in range(2 ** d):
             bin = utils.format.dec2bin(dec, d)

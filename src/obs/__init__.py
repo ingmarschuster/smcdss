@@ -1,28 +1,25 @@
 import ubqo
-from binary import *
+import numpy
+import binary
+from brute_force import solve_bf
+from scip import solve_scip 
 
 #---------------------------------------------------------------------------
 # Cross entropy method
 #---------------------------------------------------------------------------
 
 # The number of particles to use for the Cross entropy method.
-CE_N_PARTICLES = 5000
+CE_N_PARTICLES = 4000
 
-# The binary model to used in th SMC algorithm. This should either be
-# LogisticBinary or ProductBinary.
-CE_BINARY_MODEL = LogisticBinary
+# The binary model to used in th CE algorithm.
+CE_BINARY_MODEL = binary.logistic_cond_model.LogisticBinary
+#CE_BINARY_MODEL = binary.product_model.ProductBinary
 
 # The elite fraction used to estimate the mean.
-CE_ELITE = 0.5
+CE_ELITE = 0.2
 
 # The lag in the mean update.
-CE_LAG = 0.2
-
-# Epsilon.
-CE_EPS = 0.075
-
-# Delta.
-CE_DELTA = 0.1
+CE_LAG = 0.3
 
 
 #---------------------------------------------------------------------------
@@ -37,4 +34,4 @@ SA_KERNEL = 'mh'
 SA_MAX_TIME = 30.0
 
 # The maximal number of iterations to perform.
-SA_MAX_ITER = inf
+SA_MAX_ITER = numpy.inf
