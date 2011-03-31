@@ -11,10 +11,6 @@ __version__ = "$Revision$"
 
 from binary import *
 
-CONST_PRECISION = 0.00001
-CONST_ITERATIONS = 30
-
-
 class GaussianCopulaBinary(product_model.ProductBinary):
     '''
         A multivariate Bernoulli as function of a hidden multivariate normal distribution.
@@ -28,17 +24,17 @@ class GaussianCopulaBinary(product_model.ProductBinary):
         '''
         product_model.ProductBinary.__init__(self, p, name='Gaussian-copula-binary', \
                                              longname='A  Gaussian copula binary distribution.')
-        if self.d == 0: return
+        self.f_rvs = _rvs
 
         ## correlation matrix of the binary distribution
-        self.R = R
+        self.param.update(dict(R=R))
 
         ## mean of Gaussian copula binary
-        self.mu = stats.stats.norm.ppf(self.p)
+        self.param.update(dict(mu=stats.norm.ppf(self.p)))
 
-        localQ = calc_local_Q(R, self.mu, self.p, verbose=verbose)
+        localQ = calc_local_Q(self.param, verbose=verbose)
         ## correlation matrix of the Gaussian copula binary
-        self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
+        self.param.update(decompose_Q(localQ, mode='scaled', verbose=verbose))
 
     @classmethod
     def random(cls, d):
@@ -50,9 +46,9 @@ class GaussianCopulaBinary(product_model.ProductBinary):
         p = 0.25 + 0.5 * numpy.random.rand(d)
 
         # For a numpy.random matrix X with entries U[-1,1], set Q = X*X^t and stats.normalize.
-        X = numpy.ones((d, d)) - numpy.random.numpy.random((d, d))
+        X = numpy.ones((d, d)) - numpy.random.random((d, d))
         Q = numpy.dot(X, X.T) + 1e-10 * numpy.eye(d)
-        q = Q.numpy.diagonal()[numpy.newaxis, :]
+        q = Q.diagonal()[numpy.newaxis, :]
         Q = Q / numpy.sqrt(numpy.dot(q.T, q))
         R = calc_R(Q, stats.norm.ppf(p), p)
         return cls(p, R)
@@ -87,71 +83,51 @@ class GaussianCopulaBinary(product_model.ProductBinary):
         '''
         return cls(sample.mean, sample.cor, verbose=verbose)
 
-    def renew_from_data(self, sample, prvIndex, adjIndex, lag=0.0, verbose=False, **param):
-
-        if len(adjIndex) == 0:
-            self.p = numpy.array([])
-            return
+    def renew_from_data(self, sample, lag=0.0, verbose=False, **param):
 
         weight = sample.ess > 0.1
-        sample = sample.get_sub_data(adjIndex)
-        self.R = sample.getCor(weight=weight)
-
-        prvP = numpy.array(param['prvP'] > 0.5, dtype=float)
-        prvP[prvIndex] = self.p
-        adjP = prvP[adjIndex]
+        self.param['R'] = sample.getCor(weight=weight)
         newP = sample.getMean(weight=weight)
-        self.p = (1 - lag) * newP + lag * adjP
+        self.param['p'] = (1 - lag) * newP + lag * self.param['p']
 
         ## mean of hidden stats.normal distribution
         self.mu = stats.norm.ppf(self.p)
 
-        localQ = calc_local_Q(self.R, self.mu, self.p, eps=param['eps'], delta=param['delta'], verbose=verbose)
+        localQ = calc_local_Q(self.param, verbose=verbose)
         ## correlation matrix of the hidden stats.normal distribution
         self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
 
-    def __pmf(self, gamma):
-        '''
-            Probability mass function. Not available.
-            @param gamma binary vector
-        '''
-        raise ValueError("No evaluation of the pmf for the stats.normal-binary model.")
+    def rvsbase(self, size):
+        return numpy.random.normal(size=(size, self.d))
 
-    def __lpmf(self, gamma):
-        '''
-            Log-probability mass function. Not available.
-            @param gamma binary vector    
-        '''
-        raise ValueError("No evaluation of the pmf for the stats.normal-binary model.")
+    def getR(self):
+        return self.param['R']
 
-    def __rvs(self):
-        '''
-            Samples from the model.
-            @return numpy.random variable
-        '''
-        if self.d == 0: return
-        v = numpy.random.normal(size=self.d)
-        return numpy.dot(self.C, v) < self.mu
+    def getQ(self):
+        return self.param['Q']
 
-    def __rvslpmf(self):
-        '''
-            Samples from the model and evaluates the likelihood of the sample. Not available.
-            @return numpy.random variable
-            @return likelihood
-        '''
-        rv = self.rvs()
-        return rv, 0
+    def getC(self):
+        return self.param['C']
 
-    def getD(self):
-        '''
-            Get dimension.
-            @return dimension 
-        '''
-        return self.p.shape[0]
+    def getMu(self):
+        return self.param['mu']
 
-    d = property(fget=getD, doc="dimension")
+    R = property(fget=getR, doc="R")
+    Q = property(fget=getQ, doc="Q")
+    C = property(fget=getC, doc="C")
+    mu = property(fget=getMu, doc="mu")
 
-
+def _rvs(V, param):
+    ''' Generates a random variable.
+        @param V normal variables
+        @param param parameters
+        @return binary variables
+    '''
+    mu, C = param['mu'], param['C']
+    Y = numpy.empty((V.shape[0], V.shape[1]), dtype=bool)
+    for k in xrange(V.shape[0]):
+        Y[k] = mu > numpy.dot(C, V[k])
+    return Y
 
 def calc_R(Q, mu, p):
     '''
@@ -171,7 +147,7 @@ def calc_R(Q, mu, p):
     return R
 
 
-def calc_local_Q(R, mu, p, eps=0.03, delta=0.08, verbose=False):
+def calc_local_Q(param, eps=0.03, delta=0.08, verbose=False):
     '''
         Computes the Gaussian correlation matrix Q necessary to generate
         bivariate Bernoulli samples with a certain local correlation matrix R.
@@ -182,6 +158,7 @@ def calc_local_Q(R, mu, p, eps=0.03, delta=0.08, verbose=False):
     '''
 
     t = time.time()
+    R, mu, p = param['R'], param['mu'], param['p']
     iter = 0
     d = len(p)
     localQ = numpy.ones((d, d))
@@ -339,7 +316,7 @@ def decompose_Q(Q, mode='scaled', verbose=False):
 
     if verbose: print 'decomposeQ'.ljust(20) + '> time %.3f' % (time.time() - t)
 
-    return C, Q
+    return dict(C=C, Q=Q)
 
 
 def scale_Q(Q, verbose=False):
@@ -495,7 +472,7 @@ class _bvnorm(stats.rv_continuous):
 
         h = dh; k = dk; hk = h * k; bvn = 0
         if abs(r) < 0.925:
-            hs = (h * h + k * k) / 2; asr = numpy.arcsin.sin(r);
+            hs = (h * h + k * k) / 2; asr = numpy.arcsin(r);
             for i in range(lg):
                 sn = numpy.sin(asr * (1 - x[i]) / 2);
                 bvn = bvn + w[i] * numpy.exp((sn * hk - hs) / (1 - sn * sn));
@@ -560,3 +537,10 @@ class _bvnorm(stats.rv_continuous):
         return p / float(n)
 
 bvnorm = _bvnorm(name='bvnorm', longname='A bivariate normal', shapes='r')
+
+
+def main():
+    pass
+
+if __name__ == "__main__":
+    main()

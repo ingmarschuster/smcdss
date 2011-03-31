@@ -1,15 +1,28 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+#
+#    $Author: Christian Schäfer
+#    $Date$
+#    $Revision$
 
 '''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
+USAGE:
+        exec <file>
+
+OPTIONS:
+        -h    display help
+        -r    run integration of posterior as specified in <file>
+        -e    evaluate results obtained from running <file>
+        -c    start clean run of <file>
+        -v    view evaluation of <file>
 '''
 
-import getopt, shutil, csv, datetime, subprocess, os, sys, time
-import pp, numpy
-import utils, ibs, binary
+__version__ = "$Revision$"
+
+import getopt, shutil, csv, datetime, subprocess, os, sys
+import pp
+import ibs
+from binary import *
 
 def main():
 
@@ -20,21 +33,21 @@ def main():
         print msg
         sys.exit(2)
 
-    if len(args) == 0: sys.exit(0)
+    if len(args) > 0:
 
-    # Load run file.
-    RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
-    RUN_FOLDER = os.path.join(ibs.v['SYS_ROOT'], ibs.v['RUN_PATH'], RUN_NAME)
-    RUN_FILE = os.path.join(ibs.v['SYS_ROOT'], ibs.v['RUN_PATH'], RUN_NAME + '.py')
-    if not os.path.isfile(RUN_FILE):
-        print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
-        sys.exit(0)
-    ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE, 'RUN_FOLDER':RUN_FOLDER})
-
-    # Import run file variables.
-    sys.path.insert(0, os.path.join(ibs.v['SYS_ROOT'] , ibs.v['RUN_PATH']))
-    USER_VARS = __import__(RUN_NAME)
-    ibs.v.update(USER_VARS.v)
+        # Load run file.
+        RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
+        RUN_FOLDER = os.path.join(ibs.v['SYS_ROOT'], ibs.v['RUN_PATH'], RUN_NAME)
+        RUN_FILE = os.path.join(ibs.v['SYS_ROOT'], ibs.v['RUN_PATH'], RUN_NAME + '.py')
+        if not os.path.isfile(RUN_FILE):
+            print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
+            sys.exit(0)
+        ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE, 'RUN_FOLDER':RUN_FOLDER})
+    
+        # Import run file variables.
+        sys.path.insert(0, os.path.join(ibs.v['SYS_ROOT'] , ibs.v['RUN_PATH']))
+        USER_VARS = __import__(RUN_NAME)
+        ibs.v.update(USER_VARS.v)
 
     # Process options.
     opts = [o[0] for o in opts]
@@ -42,16 +55,16 @@ def main():
     if '-c' in opts:
         try: shutil.rmtree(RUN_FOLDER)
         except: pass
-    if '-r' in opts: _run(v=ibs.v, verbose=True)
-    if '-e' in opts: _eval_mean(v=ibs.v)
+    if '-r' in opts: run(v=ibs.v, verbose=True)
+    if '-e' in opts: eval(v=ibs.v)
     if '-v' in opts:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')):
             print 'No file %s found.' % os.path.join(RUN_FOLDER, 'plot.pdf')
             sys.exit(2)
         subprocess.Popen(['okular', os.path.join(RUN_FOLDER, 'plot.pdf')])
 
-def _run(v, verbose=False):
-    ''' Run algorithm from run file and save results.
+def run(v, verbose=False):
+    ''' Run algorithm from specified file and store results.
         @param v parameters
     '''
 
@@ -69,7 +82,7 @@ def _run(v, verbose=False):
     sample = numpy.array([numpy.array([eval(x) for x in [row[Y_pos]] + row[X_first:X_last]])
                           for row in reader if len(row) > 0 and not row[Y_pos]=='NA'])
 
-    v.update({'f':binary.PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], posterior_type=v['POSTERIOR_TYPE'])})
+    v.update({'f': posterior_bvs.PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], posterior_type=v['POSTERIOR_TYPE'])})
 
     # Setup test folder.
     if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
@@ -125,7 +138,7 @@ def _run(v, verbose=False):
                     print 'Failed to write to %s.' % result_file
 
 
-def _eval_mean(v, verbose=True):
+def eval(v, verbose=True):
     ''' Create pdf-boxplots from run files.
         @param v parameters
     '''

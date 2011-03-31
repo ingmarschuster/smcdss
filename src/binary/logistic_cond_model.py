@@ -11,7 +11,7 @@ __version__ = "$Revision$"
 
 from binary import *
 
-class LogisticBinary(product_model.ProductBinary):
+class LogisticBinary(ProductBinary):
     ''' A binary model with conditionals based on logistic regressions. '''
 
     def __init__(self, Beta, name='logistic binary',
@@ -20,7 +20,7 @@ class LogisticBinary(product_model.ProductBinary):
             @param Beta matrix of regression coefficients
         '''
 
-        product_model.ProductBinary.__init__(self, p=utils.inv_logit(numpy.diagonal(Beta)),\
+        ProductBinary.__init__(self, p=utils.inv_logit(numpy.diagonal(Beta)), \
                                              name=name, longname=longname)
 
         if 'cython' in utils.opts:
@@ -32,7 +32,7 @@ class LogisticBinary(product_model.ProductBinary):
             self.f_lpmf = utils.python.logistic_lpmf
             self.f_rvs = utils.python.logistic_rvs
 
-        self.param = dict(Beta=Beta)
+        self.param.update(dict(Beta=Beta))
 
     @classmethod
     def independent(cls, p):
@@ -41,7 +41,6 @@ class LogisticBinary(product_model.ProductBinary):
             @param p mean
             @return logistic model
         '''
-        d = p.shape[0]
         Beta = numpy.diag(numpy.log(p / (1 - p)))
         return cls(Beta)
 
@@ -93,11 +92,14 @@ class LogisticBinary(product_model.ProductBinary):
             @param verbose detailed output
             @return logistic model
         '''
+
         # Compute new parameter from data.
-        newBeta = calc_Beta(sample=sample, Init=self.param['Beta'], job_server=job_server, eps=eps, delta=delta, verbose=verbose)
+        newBeta = calc_Beta(sample=sample, Init=self.param['Beta'], \
+                            job_server=job_server, eps=eps, delta=delta, verbose=verbose)
 
         # Set convex combination of old and new parameter.
         self.param['Beta'] = (1 - lag) * newBeta + lag * self.param['Beta']
+        self.param['p'] = utils.inv_logit(numpy.diagonal(self.Beta))
 
     @classmethod
     def from_loglinear_model(cls, llmodel):
@@ -119,22 +121,19 @@ class LogisticBinary(product_model.ProductBinary):
 
         return cls(Beta)
 
+    def getBeta(self):
+        return self.param['Beta']
+
     def getD(self):
         ''' Get dimension.
             @return dimension 
         '''
-        return self.param['Beta'].shape[0]
-
-    def getModelSize(self):
-        ''' Get ratio of used parameters over d*(d+1)/2.
-            @return dimension 
-        '''
-        return '%i/%i' % ((self.Beta <> 0.0).sum(), self.d * (self.d + 1) / 2.0)
+        return self.Beta.shape[0]
 
     def __str__(self):
         return utils.format.format_matrix(self.param['Beta'], 'Beta')
 
-    d = property(fget=getD, doc="dimension")
+    Beta = property(fget=getBeta, doc="Beta")
 
 def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative_weights=False, verbose=True):
     ''' Computes the logistic regression coefficients of all conditionals. 
@@ -164,7 +163,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
         XW = w[:, numpy.newaxis] * X
 
     # Compute slightly adjusted mean and real log odds.
-    p = 1e-10 * 0.5 + (1.0 - 1e-10) * XW[:, 0:d].sum(axis=0)
+    p = CONST_MIN_MARGINAL_PROB * 0.5 + (1.0 - CONST_MIN_MARGINAL_PROB) * XW[:, 0:d].sum(axis=0)
 
     # Assure that p is in the unit interval.
     if negative_weights: p = numpy.array([max(min(x, 1.0 - 1e-10), 1e-10) for x in p])
@@ -183,7 +182,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
     # Initialize Beta with logits on diagonal.
     Beta = numpy.zeros((d, d))
     if Init is None: Init = numpy.diag(logit)
-    
+
     if verbose: stats = dict(regressions=0.0, failures=0, iterations=0, product=d, logistic=0)
 
     # Loop over all dimensions compute logistic regressions.
@@ -293,25 +292,7 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
     return beta, i + 1
 
 def main():
-    x=LogisticBinary.random(5)
-    print x.Beta
-    print x.r
+    pass
 
 if __name__ == "__main__":
     main()
-
-
-#        if len(adjIndex) == 0:
-#            self.Beta = array([])
-#            self.Beta.shape = (0, 0)
-#            return
-#
-#        prvBeta = self.Beta
-#        adjBeta = zeros((len(adjIndex), len(adjIndex)), dtype = float)
-#
-#        mapping = [(adjIndex.index(i), prvIndex.index(i)) for i in list(set(prvIndex) & set(adjIndex))]
-#        for adj_x, prv_x in mapping:
-#            adjBeta[adj_x, 0] = prvBeta[prv_x, 0]
-#            for adj_y, prv_y in mapping:
-#                if adj_y >= len(adjIndex) - 1 or prv_y >= len(prvIndex) - 1: continue
-#                adjBeta[adj_x, adj_y + 1] = prvBeta[prv_x, prv_y + 1]

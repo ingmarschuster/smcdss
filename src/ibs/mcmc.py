@@ -1,20 +1,21 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+#
+#    $Author: Christian Schäfer
+#    $Date$
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+__version__ = "$Revision$"
 
 import time, sys
-import numpy, scipy.linalg
+import numpy
+import scipy
+import scipy.stats as stats
 
-from scipy.stats import rv_discrete, geom
+class mcmc():
+    header = ['LENGTH', 'NO_EVALS', 'NO_MOVES', 'ACC_RATE' , 'TIME']
+    run = integrate_mcmc
 
-header = lambda: ['LENGTH', 'NO_EVALS', 'NO_MOVES', 'ACC_RATE' , 'TIME']
-
-def run(v, verbose=True):
+def integrate_mcmc(v, verbose=True):
 
     mc = MarkovChain(f=v['f'], kernel=v['MCMC_KERNEL'], q=v['MCMC_Q'], max_evals=v['MCMC_MAX_EVALS'])
     mc.burn_in()
@@ -147,7 +148,7 @@ class MarkovChain():
 
 
 
-class Kernel(rv_discrete):
+class Kernel(stats.rv_discrete):
     '''
        Wrapper class for Markov kernel.
     '''
@@ -158,7 +159,7 @@ class Kernel(rv_discrete):
             @param name name
             @param longname longname
         '''
-        rv_discrete.__init__(self, name=name, longname=longname)
+        stats.rv_discrete.__init__(self, name=name, longname=longname)
 
         ## log probability mass function of the invariant distribution 
         self.f = f
@@ -243,7 +244,7 @@ class SymmetricMetropolisHastings(Gibbs):
                 return x, log_f_x, False, True
 
         def getRandomSubset(self):
-            k = min(geom.rvs(1.0 / self.q), self.d)
+            k = min(stats.geom.rvs(1.0 / self.q), self.d)
             if k < 5:
                 Index = []
                 while len(Index) < k:

@@ -1,11 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+#
+#    $Author: Christian Schäfer
+#    $Date: 2011-03-07 17:03:12 +0100 (lun., 07 mars 2011) $
 
-'''
-    @author Christian Schäfer
-    $Date: 2011-02-17 18:34:45 +0100 (jeu., 17 févr. 2011) $
-    $Revision: 73 $
-'''
+__version__ = "$Revision: 94 $"
 
 import os
 import numpy
@@ -57,10 +56,14 @@ def import_glover_lib(filename):
         d = int(file.readline().strip().split(' ')[0])
         print '%s\t d=%d' % (chr(97 + k), d)
         a = file.read()
-        a = a.split('\n')[:-3]
+        a = a.split('\n')
+        while not a[-1].strip().split(' ')[0].isdigit():
+            a = a[:-1]
         a = ''.join(a)
         a = a.replace('\n', '').replace('\r', '')
-        A = numpy.array([int(x) for x in a.split(' ') if not x == '']).reshape((d, d))
+        a = numpy.array([int(x) for x in a.split(' ') if not x == ''])
+        print a.shape
+        A = -a.reshape((d, d))
         L.append((best_soln, A))
         file.close()
     return L
@@ -98,7 +101,7 @@ def load_ubqo_problem(filename, repickle=False):
     '''
         Loads a pickled UQBO problem.
     '''
-    path = os.path.join(__PATH, file + '.pickle')
+    path = os.path.join(__PATH, filename + '.pickle')
     if repickle or not os.path.isfile(path): pickle_ubqo_problem(filename)
     file = open(path, 'r')
     return pickle.load(file)

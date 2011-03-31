@@ -24,9 +24,9 @@ class ProductBinary(Binary):
         Binary.__init__(self, name=name, longname=longname)
         if not p is None:
             if isinstance(p, (numpy.ndarray, list)):
-                self.p = numpy.array(p, dtype=float)
+                p = numpy.array(p, dtype=float)
             else:
-                self.p = numpy.array([p])
+                p = numpy.array([p])
 
         self.f_lpmf = _lpmf
         self.f_rvs = _rvs
@@ -67,8 +67,11 @@ class ProductBinary(Binary):
             @param lag lag
             @param verbose detailed information
         '''
-        p = sample.getMean(weight=(sample.ess > 0.1))
-        self.p = (1 - lag) * p + lag * self.p
+        p = sample.getMean(weight=(sample.ess > 0.5))
+        self.param['p'] = (1 - lag) * p + lag * self.p
+
+    def getP(self):
+        return self.param['p']
 
     def getD(self):
         ''' Get dimension.
@@ -82,8 +85,7 @@ class ProductBinary(Binary):
         '''
         return [i for i, p in enumerate(self.param['p']) if min(p, 1.0 - p) > CONST_MIN_MARGINAL_PROB]
 
-    d = property(fget=getD, doc="dimension")
-    r = property(fget=getRandom, doc="random components")
+    p = property(fget=getP, doc="p")
 
 
 def _lpmf(gamma, param):
@@ -124,7 +126,9 @@ def _rvslpmf(U, param):
     return Y, _lpmf(Y, param)
 
 def main():
-    pass
+    x=ProductBinary.random(5)
+    print x.d
+    print x.r
 
 if __name__ == "__main__":
     main()

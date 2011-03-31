@@ -8,6 +8,7 @@
 '''
 
 import numpy
+import sys
 
 def format(X, name=''):
     '''
@@ -65,59 +66,19 @@ def dec2bin(n, d=0):
     bin.reverse()
     return numpy.array(bin)
 
-def tau(i, j):
-    '''
-        Maps the indices of a symmetric matrix onto the indices of a vector.
-        @param i matrix index
-        @param j matrix index
-        @return vector index
-    '''
-    return j * (j + 1) / 2 + i
-
-def m2v(A):
-    '''
-        Turns a symmetric matrix into a vector.
-        @param matrix
-        @return vector
-    '''
-    d = A.shape[0]
-    a = numpy.zeros(d * (d + 1) / 2)
-    for i in range(d):
-        for j in range(i + 1):
-            a[tau(i, j)] = A[i, j]
-    return a
-
-def v2m(a):
-    '''
-        Turns a vector into a symmetric matrix.
-        @param vector
-        @return matrix
-    '''
-    d = a.shape[0]
-    d = int((numpy.sqrt(1 + 8 * d) - 1) / 2)
-    A = numpy.zeros((d, d))
-    for i in range(d):
-        for j in range(i, d):
-            A[i, j] = a[tau(i, j)]
-            A[j, i] = A[i, j]
-    return A
-
-def v2lt(a):
-    '''
-        Turns a vector into a lower triangular matrix.
-        @param vector
-        @return matrix
-    '''
-    d = a.shape[0]
-    d = int((numpy.sqrt(1 + 8 * d) - 1) / 2)
-    A = numpy.zeros((d, d))
-    k = 0
-    for j in range(d):
-        for i in range(j, d):
-            A[i, j] = a[k]
-            k += 1
-    return A
-
 def bilinear(v, A):
     return numpy.dot(numpy.dot(v, A), v)
 
+def progress(k, n, text=None, ticks=50):
+    if 100 * k % n == 0:
+        progress = int(ticks * k / float(n))
+        s = '%.1f%%' % (k * 100.0 / float(n))
+        length = len(s)
+        if progress > ticks / 2 - length:
+            sys.stdout.write('\r[' + (ticks / 2 - length) * '-' + s
+                             + (progress - ticks / 2) * '-' + min(ticks - progress, ticks / 2) * ' ' + ']')
+        else:
+            sys.stdout.write('\r[' + progress * '-' + (ticks / 2 - length - progress) * ' ' + s
+                             + (ticks / 2) * ' ' + ']')
+        if not text is None: sys.stdout.write(text)
+        sys.stdout.flush()

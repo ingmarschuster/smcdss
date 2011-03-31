@@ -1,11 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
-'''
-    @author Christian Schäfer
-    $Date: 2011-03-29 12:04:52 +0200 (mar., 29 mars 2011) $
-    $Revision: 91 $
-'''
+#
+#    $Author: Christian Schäfer
+#    $Date: 2011-03-07 17:03:12 +0100 (lun., 07 mars 2011) $
 
 __version__ = "$Revision: 91 $"
 

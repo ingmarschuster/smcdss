@@ -1,10 +1,20 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+#
+#    $Author: Christian Schäfer
+#    $Date$
 
-import os, sys
+__version__ = "$Revision$"
 
-import binary, mcmc, smc
+import os
+import sys
+
+import binary
 from numpy import inf
+from mcmc import mcmc
+from smc import smc
+
+CONST_PRECISION = 1e-8
 
 v = dict(
 
@@ -54,7 +64,7 @@ SMC_BINARY_MODEL=binary.LogisticBinary,
 
 # The Markov kernel to be used in the algorithm. Possible kernels are
 # SymmetricMetropolisHastings, AdaptiveMetropolisHastings and Gibbs
-MCMC_KERNEL=mcmc.SymmetricMetropolisHastings,
+MCMC_KERNEL=SymmetricMetropolisHastings,
 
 # The maximum number of iterations to perform.
 MCMC_MAX_EVALS=2e6,

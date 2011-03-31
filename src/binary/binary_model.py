@@ -75,7 +75,7 @@ class Binary(stats.rv_discrete):
         '''
         ncpus, job_server = _check_job_server(size, job_server)
         Y = numpy.empty((size, self.d), dtype=bool)
-        U = numpy.random.random((size, self.d))
+        U = self.rvsbase(size)
 
         if not job_server is None:
             # start jobs
@@ -94,7 +94,7 @@ class Binary(stats.rv_discrete):
                 Y[start:end] = job()
         else:
             # no job server
-            Y = self.f_rvs(U=U, param=self.param)
+            Y = self.f_rvs(U, param=self.param)
 
         if self.m2v_perm is not None:
             Y = Y[:, self.m2v_perm]
@@ -109,7 +109,7 @@ class Binary(stats.rv_discrete):
         '''
         ncpus, job_server = _check_job_server(size, job_server)
         Y = numpy.empty((size, self.d), dtype=bool)
-        U = numpy.random.random((size, self.d))
+        U = self.rvsbase(size)
         L = numpy.empty(size, dtype=float)
 
         if not job_server is None:
@@ -129,13 +129,16 @@ class Binary(stats.rv_discrete):
                 Y[start:end], L[start:end] = job()
         else:
             # no job server
-            Y, L = self.f_rvslpmf(U=U, param=self.param)
+            Y, L = self.f_rvslpmf(U, param=self.param)
 
         if self.m2v_perm is not None:
             Y = Y[:, self.m2v_perm]
 
         if size == 1: return Y[0], L[0]
         else: return Y, L
+
+    def rvsbase(self, size):
+        return numpy.random.random((size, self.d))
 
     def rvstest(self, n):
         '''
@@ -144,8 +147,8 @@ class Binary(stats.rv_discrete):
         '''
         sample = utils.data.data()
         sample.sample(self, n)
-        return format(sample.mean, 'sample (n = %i) mean' % n) + '\n' + \
-               format(sample.cor, 'sample (n = %i) correlation' % n)
+        return utils.format.format(sample.mean, 'sample (n = %i) mean' % n) + '\n' + \
+               utils.format.format(sample.cor, 'sample (n = %i) correlation' % n)
 
     def marginals(self):
         '''
@@ -159,8 +162,23 @@ class Binary(stats.rv_discrete):
             sample.append(bin, self.lpmf(bin))
         return sample
 
+    def _getD(self):
+        return self.getD()
+
     def getD(self):
-        pass
+        ''' Get dimension.
+            @return dimension 
+        '''
+        return 0
+
+    def _getRandom(self):
+        return self.getRandom()
+
+    def getRandom(self):
+        ''' Get index list of random components.
+            @return index list 
+        '''
+        return []
 
     def getv2m(self):
         return self._v2m_perm
@@ -178,7 +196,8 @@ class Binary(stats.rv_discrete):
 
     v2m_perm = property(fget=getv2m, fset=setv2m, doc="vector to model permutation")
     m2v_perm = property(fget=getm2v, fset=setm2v, doc="model to vector permutation")
-    d = property(fget=getD, doc="dimension")
+    d = property(fget=_getD, doc="dimension")
+    r = property(fget=_getRandom, doc="random components")
 
 def _parts_job_server(size, ncpus):
     return [[i * size // ncpus, min((i + 1) * size // ncpus + 1, size)] for i in range(ncpus)]

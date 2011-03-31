@@ -1,3 +1,12 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+'''
+    @author Christian Schäfer
+    $Date$
+    $Revision$
+'''
+
 import os, sys
 import numpy as np
 import pyximport
@@ -25,7 +34,6 @@ try:
     opts += ['cython']
 except:
     print "cython error:", sys.exc_info()[0]
-
 
 def inv_logit(x):
     return 1 / (1 + np.exp(-x))

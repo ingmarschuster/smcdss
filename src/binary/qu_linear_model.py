@@ -11,7 +11,7 @@ __version__ = "$Revision$"
 
 from binary_model import *
 
-class LinearBinary(Binary):
+class QuLinearBinary(Binary):
     '''
         A multivariate Bernoulli with additive probability mass function.
     '''
@@ -291,7 +291,7 @@ def fit_logistic_model(d=6, n=5000):
     p, R = random_problem(d)
 
     # construct a linear binary model from p and R
-    b = LinearBinary.from_moments(p, R)
+    b = QuLinearBinary.from_moments(p, R)
     print utils.format.format(p, 'p')
     print utils.format.format(R, 'R')
 

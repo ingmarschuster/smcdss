@@ -9,7 +9,7 @@
 
 __version__ = "$Revision$"
 
-import copy, time, sys, pickle
+import time, sys, pickle
 from numpy import *
 
 from utils.format import *
@@ -72,8 +72,9 @@ class data(object):
         '''
         if not self.isWeighted(): return ones(self.size) / float(self.size)
         w = array(self._W)
-        max = w.max()
-        w = exp(self._W - max)
+        if w.min() < 0:
+            max = w.max()
+            w = exp(self._W - max)
         return w / w.sum()
 
     def getWeights(self, normalized=False):
@@ -249,8 +250,18 @@ class data(object):
                     drawn += n
         self._W = array(self._W)
         self._W = v + list(self._W[argsort(lexorder)])
-
         if verbose: print ']\nDone. %i evaluation in %.2f seconds.\n' % (self.size - k, time.clock() - t)
+
+    def dichotomize_weights(self, f, fraction):
+        w = numpy.empty(self.size)
+        for k in range(self.size):
+            w[k] = f.lpmf(self._X[k])
+        order = w.argsort(axis=0).tolist()
+        order.reverse()
+        k = int(fraction * self.size)
+        v = w[order][k]
+        self._W = list((w > v) * 1.0)
+        return w[order[0]], self._X[order[0]]
 
     def distinct(self):
         X = self._X

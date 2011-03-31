@@ -1,24 +1,22 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+#
+#    $Author: Christian Schäfer
+#    $Date$
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+__version__ = "$Revision$"
 
-import time, datetime, sys
+import time, datetime, sys, operator
+import numpy
 
-from operator import setitem
-from numpy import *
-
+import ibs
 import utils
 
-CONST_PRECISION = 1e-8
+class smc():
+    header = ['NO_EVALS', 'TIME']
+    run = integrate_smc
 
-header = lambda: ['NO_EVALS', 'TIME']
-
-def run(param):
+def integrate_smc(param):
 
     sys.stdout.write('running smc')
 
@@ -55,7 +53,7 @@ class ParticleSystem(object):
 
         ## target function
         self.f = v['f']
-        self.job_server=v['JOB_SERVER']
+        self.job_server = v['JOB_SERVER']
 
         ## proposal model
         self.prop = v['SMC_BINARY_MODEL'].uniform(self.f.d)
@@ -66,9 +64,9 @@ class ParticleSystem(object):
         self.n = v['SMC_N_PARTICLES']
 
         ## array of log weights
-        self.log_W = zeros(self.n, dtype=float)
+        self.log_W = numpy.zeros(self.n, dtype=float)
         ## array of log evaluation of the proposal model
-        self.log_prop = empty(self.n, dtype=float)
+        self.log_prop = numpy.empty(self.n, dtype=float)
         ## array of ids
         self.id = [0] * self.n
 
@@ -89,7 +87,7 @@ class ParticleSystem(object):
         ## min correlation to be considered part of a logistic model
         self.delta = v['SMC_DELTA']
 
-        self.__k = array([2 ** i for i in xrange(self.d)])
+        self.__k = numpy.array([2 ** i for i in xrange(self.d)])
 
         if self.verbose:
             sys.stdout.write('initializing...')
@@ -113,7 +111,7 @@ class ParticleSystem(object):
                 ','.join(['%.5f' % x for x in self.log_f]))
 
     def getMean(self):
-        return dot(self.nW, self.X)
+        return numpy.dot(self.nW, self.X)
 
     def getId(self, x):
         '''
@@ -121,7 +119,7 @@ class ParticleSystem(object):
             @param x binary vector.
             @return id
         '''
-        return dot(self.__k, array(x, dtype=int))
+        return numpy.dot(self.__k, numpy.array(x, dtype=int))
 
     def getEss(self, alpha=None):
         ''' Computes the effective sample size (ess).
@@ -130,7 +128,7 @@ class ParticleSystem(object):
         '''
         if alpha is None: w = self.log_W
         else:             w = alpha * self.log_f
-        w = exp(w - w.max())
+        w = numpy.exp(w - w.max())
         w /= w.sum()
         return 1 / (self.n * pow(w, 2).sum())
 
@@ -139,7 +137,7 @@ class ParticleSystem(object):
             @return particle diversity
         '''
         dic = {}
-        map(setitem, (dic,)*self.n, self.id, [])
+        map(operator.setitem, (dic,)*self.n, self.id, [])
         return len(dic.keys()) / float(self.n)
 
     def reweight(self):
@@ -157,7 +155,7 @@ class ParticleSystem(object):
             else:
                 l = alpha; alpha = 0.5 * (alpha + u)
 
-            if abs(l - u) < CONST_PRECISION or self.rho + l > 1.0: break
+            if abs(l - u) < ibs.CONST_PRECISION or self.rho + l > 1.0: break
 
         # update rho and and log weights
         if self.rho + alpha > 1.0: alpha = 1.0 - self.rho
@@ -187,7 +185,7 @@ class ParticleSystem(object):
             Get the normalized weights.
             @return normalized weights
         '''
-        w = exp(self.log_W - max(self.log_W))
+        w = numpy.exp(self.log_W - max(self.log_W))
         return w / w.sum()
 
     def getSystemStructure(self):
@@ -245,7 +243,7 @@ class ParticleSystem(object):
         log_pi_X = self.rho * self.log_f
         log_prop_X = self.log_prop
 
-        accept = random.random(self.n) < exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y)
+        accept = numpy.random.random(self.n) < numpy.exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y)
         self.X[accept] = Y[accept]
         self.log_f[accept] = log_f_Y[accept]
         self.log_prop[accept] = log_prop_Y[accept]
@@ -260,7 +258,7 @@ class ParticleSystem(object):
         if self.verbose:
             t = time.time()
             sys.stdout.write('resampling...')
-        indices = self._resample(self.nW, random.random())
+        indices = self._resample(self.nW, numpy.random.random())
 
         # move objects according to resampled order
         self.id = [self.id[i] for i in indices]

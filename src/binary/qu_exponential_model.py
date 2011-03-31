@@ -9,9 +9,9 @@
 
 __version__ = "$Revision$"
 
-from binary_model import *
+from binary import *
 
-class QuExpBinary(product_model.ProductBinary):
+class QuExpBinary(ProductBinary):
 
 
     def __init__(self, A, name='quadratic exponential binary', longname='A quadratic exponential binary model.'):
@@ -19,7 +19,7 @@ class QuExpBinary(product_model.ProductBinary):
             @param A matrix of coefficients
         '''
 
-        product_model.ProductBinary.__init__(self, name=name, longname=longname)
+        ProductBinary.__init__(self, name=name, longname=longname)
         self.f_lpmf = _lpmf
         self.f_rvs = None
         self.f_rvslpmf = None
@@ -57,9 +57,12 @@ class QuExpBinary(product_model.ProductBinary):
             Get dimension.
             @return dimension 
         '''
-        return self.param['A'].shape[0]
+        return self.A.shape[0]
 
-    d = property(fget=getD, doc="dimension")
+    def getA(self):
+        return self.param['A']
+
+    A = property(fget=getA, doc="A")
 
 def _lpmf(gamma, param):
     '''
@@ -121,7 +124,7 @@ def calc_marginal(A):
         # pick component with least error
         k = eps.index(min(eps))
         xi = xi[k]
-        
+
         # the original Taylor series approach corresponds to 
         # xi = [0, 0.5 * numpy.tanh(0.5 * A[k, k]), 0.125 / (numpy.cosh(0.5 * A[k, k])** 2)]
 
