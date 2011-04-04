@@ -1,4 +1,9 @@
-#Wed Feb 16 11:16:35 CET 2011
+#Mon Apr 04 16:28:56 CEST 2011
 eclipse.preferences.version=1
+encoding//src/binary/qu_exp_model.py=utf-8
+encoding//src/ibs/exec.py=utf-8
+encoding//src/utils/cython.pyx=utf-8
 encoding//src/utils/logger.py=utf-8
 encoding//src/utils/plotter.py=utf-8
+encoding//src/utils/test.py=utf-8
+encoding//src/utils/ubqp.py=utf-8

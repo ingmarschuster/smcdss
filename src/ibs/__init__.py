@@ -18,9 +18,10 @@ CONST_PRECISION = 1e-8
 
 v = {'SYS_ROOT':os.path.abspath(os.path.join(*([os.getcwd()] + ['..']*1)))}
 
-def read_config(file='ibs/default'):
+def read_config(file=os.path.join(v['SYS_ROOT'], 'src', 'ibs', 'default')):
+
     config = ConfigParser.SafeConfigParser()
-    config.read(file + '.cfg')
+    config.read(file + '.ini')
 
     for s_key in config._sections.keys():
         for e_key in config._sections[s_key].keys():

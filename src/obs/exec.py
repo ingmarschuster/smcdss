@@ -45,7 +45,7 @@ def main():
     obs.read_config()
     RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
     RUN_FOLDER = os.path.join(obs.v['RUN_PATH'], RUN_NAME)
-    RUN_FILE = os.path.join(obs.v['RUN_PATH'], RUN_NAME + '.cfg')
+    RUN_FILE = os.path.join(obs.v['RUN_PATH'], RUN_NAME + '.ini')
     if not os.path.isfile(RUN_FILE):
         print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
         sys.exit(0)
@@ -63,7 +63,7 @@ def main():
     if '-r' in opts: run(v=obs.v, verbose=True)
     if '-e' in opts: eval(v=obs.v)
     if '-v' in opts:
-        if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): eval(v=obs.v)
+        if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=obs.v)
         subprocess.Popen(['okular', os.path.join(RUN_FOLDER, 'plot.pdf')])
 
 def run(v, verbose=False):

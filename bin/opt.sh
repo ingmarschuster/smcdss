@@ -1,4 +1,9 @@
 #!/bin/sh
 export PYTHONPATH=$HOME/Documents/Python/smcdss/src
-python $HOME/Documents/Python/smcdss/src/obs/exec.py $*
+export PYTHONPATH=$HOME/Documents/Python/smcdss/src
+PROJECT=Documents/Python/smcdss/src
+SAVE_PWD=$PWD
+cd $HOME/$PROJECT
+python $HOME/$PROJECT/obs/exec.py $*
+cd $SAVE_PWD
 

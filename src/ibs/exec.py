@@ -46,7 +46,7 @@ def main():
     ibs.read_config()
     RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
     RUN_FOLDER = os.path.join(ibs.v['RUN_PATH'], RUN_NAME)
-    RUN_FILE = os.path.join(ibs.v['RUN_PATH'], RUN_NAME + '.cfg')
+    RUN_FILE = os.path.join(ibs.v['RUN_PATH'], RUN_NAME + '.ini')
     if not os.path.isfile(RUN_FILE):
         print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
         sys.exit(0)
@@ -63,8 +63,8 @@ def main():
     if '-e' in opts: plot(v=ibs.v)
     if '-v' in opts:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')):
-            print 'No file %s found.' % os.path.join(RUN_FOLDER, 'plot.pdf')
-            sys.exit(2)
+            plot(v=ibs.v)
+            time.sleep(1.0)
         subprocess.Popen(['okular', os.path.join(RUN_FOLDER, 'plot.pdf')])
 
 def run(v, verbose=False):
@@ -94,7 +94,6 @@ def run(v, verbose=False):
         log_id = str(0)
 
     # Setup job server.
-    print 'RUN CPUS::: ', v['RUN_CPUS']
     if v['RUN_CPUS'] is None:
         v.update({'JOB_SERVER':None})
     else:
