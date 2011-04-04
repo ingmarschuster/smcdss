@@ -69,16 +69,19 @@ def dec2bin(n, d=0):
 def bilinear(v, A):
     return numpy.dot(numpy.dot(v, A), v)
 
-def progress(k, n, text=None, ticks=50):
-    if 100 * k % n == 0:
-        progress = int(ticks * k / float(n))
-        s = '%.1f%%' % (k * 100.0 / float(n))
-        length = len(s)
-        if progress > ticks / 2 - length:
-            sys.stdout.write('\r[' + (ticks / 2 - length) * '-' + s
-                             + (progress - ticks / 2) * '-' + min(ticks - progress, ticks / 2) * ' ' + ']')
-        else:
-            sys.stdout.write('\r[' + progress * '-' + (ticks / 2 - length - progress) * ' ' + s
-                             + (ticks / 2) * ' ' + ']')
-        if not text is None: sys.stdout.write(text)
-        sys.stdout.flush()
+def isnumeric(s):
+    return s.startswith('-') and s[1:].isdigit() or s.isdigit()
+
+def progress(ratio, text=None, ticks=50):
+    progress = int(ticks * ratio)
+    s = '%.1f%%' % (100.0 * ratio)
+    length = len(s)
+    if progress > ticks / 2 - length:
+        sys.stdout.write('\r[' + (ticks / 2 - length) * '-' + s
+                         + (progress - ticks / 2) * '-' + min(ticks - progress, ticks / 2) * ' ' + ']')
+    else:
+        sys.stdout.write('\r[' + progress * '-' + (ticks / 2 - length - progress) * ' ' + s
+                         + (ticks / 2) * ' ' + ']')
+    if not text is None: sys.stdout.write(text)
+    sys.stdout.flush()
+    

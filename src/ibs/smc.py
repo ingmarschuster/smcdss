@@ -14,7 +14,9 @@ import utils
 
 class smc():
     header = ['NO_EVALS', 'TIME']
-    run = integrate_smc
+    @staticmethod
+    def run(v):
+        return integrate_smc(v)
 
 def integrate_smc(param):
 

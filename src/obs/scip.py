@@ -6,10 +6,13 @@
 
 __version__ = "$Revision: 94 $"
 
-import numpy
-import time
-import os
 import subprocess
+from obs import *
+
+class scip(ubqo.ubqo):
+    header = []
+    def run(self):
+        return solve_scip(f=binary.QuExpBinary(self.A))
 
 def solve_scip(f):
     '''
@@ -51,7 +54,7 @@ def solve_scip(f):
         x = x.split()[0].split('#')[1:]
         if x[0] == x[1]: best_soln[int(x[0]) - 1] = True
 
-    return best_obj, best_soln, time.time() - t
+    return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
 
 def main():
     pass

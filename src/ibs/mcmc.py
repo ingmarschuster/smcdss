@@ -13,7 +13,9 @@ import scipy.stats as stats
 
 class mcmc():
     header = ['LENGTH', 'NO_EVALS', 'NO_MOVES', 'ACC_RATE' , 'TIME']
-    run = integrate_mcmc
+    @staticmethod
+    def run(v):
+        return integrate_mcmc(v)
 
 def integrate_mcmc(v, verbose=True):
 
@@ -26,7 +28,6 @@ def integrate_mcmc(v, verbose=True):
         mc.kernel.adapt(mc.mean, mc.cov)
 
     return mc.getCsv()
-
 
 class MarkovChain():
 

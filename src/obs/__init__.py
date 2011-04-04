@@ -6,80 +6,36 @@
 
 __version__ = "$Revision$"
 
-import sys
-import os
-import ubqo
+import sys, os, time
 import numpy
+
+import ubqo
 import binary
+import utils
+import ConfigParser
 
-from bf import solve_bf
-from ce import solve_ce
-from sa import solve_sa
-from scip import solve_scip 
+from numpy import inf
+from bf import solve_bf, bf
+from ce import solve_ce, ce
+from sa import solve_sa, sa
+from scip import solve_scip, scip
+from binary import LogisticBinary as logistic, ProductBinary as product, GaussianCopulaBinary as gaussian
 
-v = dict(
+v = {'SYS_ROOT':os.path.abspath(os.path.join(*([os.getcwd()] + ['..']*1)))}
 
-#---------------------------------------------------------------------------
-# System configurations
-#---------------------------------------------------------------------------
+def read_config(file='obs/default'):
+    config = ConfigParser.SafeConfigParser()
+    config.read(file + '.cfg')
 
-# The root directory of the project
-SYS_ROOT=os.path.split(os.path.split(sys.path[0])[0])[0],
+    for s_key in config._sections.keys():
+        for e_key in config._sections[s_key].keys():
+            key = e_key.upper()
+            v.update({key:config._sections[s_key][e_key]})
+            if v[key] == '': v[key] = None
+            try:
+                v[key] = eval(v[key])
+            except:
+                pass
 
-#---------------------------------------------------------------------------
-# Cross entropy method
-#---------------------------------------------------------------------------
-
-# The number of particles to use for the Cross entropy method.
-CE_N_PARTICLES = 4000,
-
-# The binary model to used in th CE algorithm.
-CE_BINARY_MODEL = binary.logistic_cond_model.LogisticBinary,
-
-# The elite fraction used to estimate the next parameter.
-CE_ELITE = 0.2,
-
-# The lag in the parameter update.
-CE_LAG = 0.3,
-
-
-#---------------------------------------------------------------------------
-# Simulated annealing
-#---------------------------------------------------------------------------
-
-# The Markov kernel to be used in the algorithm. Possible kernels are
-# SymmetricMetropolisHastings, AdaptiveMetropolisHastings and Gibbs
-SA_KERNEL = 'mh',
-
-# The maximal running time in minutes.
-SA_MAX_TIME = 30.0,
-
-# The maximal number of iterations to perform.
-SA_MAX_ITER = numpy.inf,
-
-
-#---------------------------------------------------------------------------
-# Running
-#---------------------------------------------------------------------------
-
-# The number of CPUs to be used. None implies that the algortihms are run
-# without job server. The string 'autodetect' implies that all available
-# CPUs are used.
-RUN_CPUS=None,
-
-# The default algorithm to run. 
-RUN_ALGO=solve_bf,
-
-# The default path to test run directory.
-RUN_PATH='data/testopt',
-
-# Write result into an output file.
-RUN_OUTPUT=True,
-
-# Write extensive information to stdout.
-RUN_VERBOSE=False,
-
-# The number of runs to be performed.
-RUN_N=200
-
-)
+    if not os.path.isabs(v['RUN_PATH']):
+        v['RUN_PATH'] = os.path.join(v['SYS_ROOT'], os.path.normpath(v['RUN_PATH']))

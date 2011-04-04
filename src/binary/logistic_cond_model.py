@@ -243,6 +243,8 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
         @return vector of regression coefficients
     '''
 
+    CONST_PRECISION = 1e-5
+
     # Initialize variables. 
     n = X.shape[0]
     d = X.shape[1]
@@ -253,7 +255,7 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
     llh = -numpy.inf
     _lambda = 1e-8
 
-    for i in range(CONST_ITERATIONS):
+    for i in xrange(50):
 
         # Save last iterations values.
         last_llh = llh

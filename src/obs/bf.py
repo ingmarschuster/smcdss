@@ -6,8 +6,12 @@
 
 __version__ = "$Revision: 91 $"
 
-import numpy
-import utils
+from obs import *
+
+class bf(ubqo.ubqo):
+    header = []
+    def run(self):
+        return solve_bf(f=binary.QuExpBinary(self.A))
 
 def solve_bf(f, best_obj= -numpy.inf, gamma=None, index=None):
     '''
@@ -20,6 +24,8 @@ def solve_bf(f, best_obj= -numpy.inf, gamma=None, index=None):
         @return best_soln best solution after solving the sub-problem
         @todo Write cython version of brute force search.
     '''
+
+    t = time.time()
     if not index is None:
         d = len(index)
     else:
@@ -27,14 +33,14 @@ def solve_bf(f, best_obj= -numpy.inf, gamma=None, index=None):
         gamma = numpy.zeros(d)
     best_soln = gamma.copy()
     if d > 0:
-        for dec in range(2 ** d):
+        for dec in xrange(2 ** d):
             bin = utils.format.dec2bin(dec, d)
             gamma[index] = bin
             v = f.lpmf(gamma)
             if v > best_obj:
                 best_obj = v
                 best_soln = gamma.copy()
-    return best_obj, best_soln
+    return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
 
 def main():
     pass

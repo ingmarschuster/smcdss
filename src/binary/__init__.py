@@ -24,3 +24,4 @@ from logistic_cond_model import LogisticBinary
 from qu_exponential_model import QuExpBinary
 from qu_linear_model import QuLinearBinary
 from gaussian_cop_model import GaussianCopulaBinary
+from posterior_bvs import PosteriorBinary

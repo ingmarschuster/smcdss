@@ -7,7 +7,7 @@
 
 '''
 USAGE:
-        exec <file>
+        exec <option> <file>
 
 OPTIONS:
         -h    display help
@@ -33,30 +33,34 @@ def main():
         print msg
         sys.exit(2)
 
-    if len(args) > 0:
+    opts = [o[0] for o in opts]
+    if len(opts) == 0: sys.exit(0)
+    if len(args) == 0:
+        if '-h' in opts:
+            print __doc__
+        else:
+            print 'No file specified.'
+        sys.exit(0)
 
-        # Load run file.
-        RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
-        RUN_FOLDER = os.path.join(ibs.v['SYS_ROOT'], ibs.v['RUN_PATH'], RUN_NAME)
-        RUN_FILE = os.path.join(ibs.v['SYS_ROOT'], ibs.v['RUN_PATH'], RUN_NAME + '.py')
-        if not os.path.isfile(RUN_FILE):
-            print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
-            sys.exit(0)
-        ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE, 'RUN_FOLDER':RUN_FOLDER})
-    
-        # Import run file variables.
-        sys.path.insert(0, os.path.join(ibs.v['SYS_ROOT'] , ibs.v['RUN_PATH']))
-        USER_VARS = __import__(RUN_NAME)
-        ibs.v.update(USER_VARS.v)
+    # Load run file.
+    ibs.read_config()
+    RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
+    RUN_FOLDER = os.path.join(ibs.v['RUN_PATH'], RUN_NAME)
+    RUN_FILE = os.path.join(ibs.v['RUN_PATH'], RUN_NAME + '.cfg')
+    if not os.path.isfile(RUN_FILE):
+        print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
+        sys.exit(0)
+    ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE, 'RUN_FOLDER':RUN_FOLDER})
+
+    # Initialize problem
+    ibs.read_config(os.path.join(ibs.v['RUN_PATH'], RUN_NAME))
 
     # Process options.
-    opts = [o[0] for o in opts]
-    if '-h' in opts: print __doc__
     if '-c' in opts:
         try: shutil.rmtree(RUN_FOLDER)
         except: pass
     if '-r' in opts: run(v=ibs.v, verbose=True)
-    if '-e' in opts: eval(v=ibs.v)
+    if '-e' in opts: plot(v=ibs.v)
     if '-v' in opts:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')):
             print 'No file %s found.' % os.path.join(RUN_FOLDER, 'plot.pdf')
@@ -68,21 +72,7 @@ def run(v, verbose=False):
         @param v parameters
     '''
 
-    # Read data.
-    DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_SET'], v['DATA_SET'] + '.csv')
-    reader = csv.reader(open(DATA_FILE, 'r'), delimiter=',')
-    DATA_HEADER = reader.next()
-    d = len(DATA_HEADER)
-    if not isinstance(v['DATA_EXPLAINED'], str):Y_pos = v['DATA_EXPLAINED'] - 1
-    else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED'])
-    if not isinstance(v['DATA_FIRST_COVARIATE'], str):X_first = v['DATA_FIRST_COVARIATE'] - 1
-    else: X_first = DATA_HEADER.index(v['DATA_FIRST_COVARIATE'])
-    if not isinstance(v['DATA_LAST_COVARIATE'], str): X_last = min(v['DATA_LAST_COVARIATE'] - 1, d)
-    else: X_last = DATA_HEADER.index(v['DATA_LAST_COVARIATE'])
-    sample = numpy.array([numpy.array([eval(x) for x in [row[Y_pos]] + row[X_first:X_last]])
-                          for row in reader if len(row) > 0 and not row[Y_pos]=='NA'])
-
-    v.update({'f': posterior_bvs.PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], posterior_type=v['POSTERIOR_TYPE'])})
+    v = readData(v)
 
     # Setup test folder.
     if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
@@ -92,7 +82,7 @@ def run(v, verbose=False):
     result_file = v['RUN_FOLDER'] + '/' + 'result.csv'
     if not os.path.isfile(result_file):
         file = open(result_file, 'w')
-        file.write(','.join(DATA_HEADER[X_first:X_last] + ['LOG_FILE', 'LOG_NO'] + v['RUN_ALGO'].header()) + '\n')
+        file.write(','.join(v['DATA_HEADER'] + ['LOG_FILE', 'LOG_NO'] + v['RUN_ALGO'].header) + '\n')
         file.close()
 
     # Setup logger.
@@ -104,6 +94,7 @@ def run(v, verbose=False):
         log_id = str(0)
 
     # Setup job server.
+    print 'RUN CPUS::: ', v['RUN_CPUS']
     if v['RUN_CPUS'] is None:
         v.update({'JOB_SERVER':None})
     else:
@@ -137,12 +128,32 @@ def run(v, verbose=False):
                 else:
                     print 'Failed to write to %s.' % result_file
 
+def readData(v):
+    ''' Reads the data file and adds the posterior distribution to the parameters.
+        @param v parameters
+    '''
+    DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_SET'], v['DATA_SET'] + '.csv')
+    reader = csv.reader(open(DATA_FILE, 'r'), delimiter=',')
+    DATA_HEADER = reader.next()
+    d = len(DATA_HEADER)
+    if not isinstance(v['DATA_EXPLAINED'], str):Y_pos = v['DATA_EXPLAINED'] - 1
+    else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED'])
+    if not isinstance(v['DATA_FIRST_COVARIATE'], str):X_first = v['DATA_FIRST_COVARIATE'] - 1
+    else: X_first = DATA_HEADER.index(v['DATA_FIRST_COVARIATE'])
+    if not isinstance(v['DATA_LAST_COVARIATE'], str): X_last = min(v['DATA_LAST_COVARIATE'] - 1, d)
+    else: X_last = DATA_HEADER.index(v['DATA_LAST_COVARIATE'])
+    sample = numpy.array([numpy.array([eval(x) for x in [row[Y_pos]] + row[X_first:X_last]])
+                          for row in reader if len(row) > 0 and not row[Y_pos]=='NA'])
+    v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:],
+                                                 posterior_type=v['POSTERIOR_TYPE']),
+                                                 'DATA_HEADER' : DATA_HEADER[X_first:X_last]})
+    return v
 
-def eval(v, verbose=True):
+def plot(v, verbose=True):
     ''' Create pdf-boxplots from run files.
         @param v parameters
     '''
-    
+
     if not os.path.isfile(os.path.join(v['RUN_FOLDER'], 'result.csv')):
         print 'No file %s found.' % os.path.join(v['RUN_FOLDER'], 'result.csv')
         sys.exit(2)
