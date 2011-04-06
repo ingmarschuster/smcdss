@@ -10,6 +10,7 @@ from obs import *
 
 class ce(ubqo.ubqo):
     header = []
+    name = 'CE'
     def run(self):
         return solve_ce(f=binary.QuExpBinary(self.A),
                         n=int(self.v['CE_N_PARTICLES']),
@@ -30,7 +31,7 @@ def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, verbose=
     t = time.time()
     bf = int(numpy.log(2 * n) / numpy.log(2)) + 1
     model = model.uniform(f.d)
-    print 'running ceopt using ' + model.name
+    print 'running ce using ' + model.name
 
     d = utils.data.data()
     best_obj = -numpy.inf

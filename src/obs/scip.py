@@ -10,6 +10,7 @@ import subprocess
 from obs import *
 
 class scip(ubqo.ubqo):
+    name = 'SCIP'
     header = []
     def run(self):
         return solve_scip(f=binary.QuExpBinary(self.A))
@@ -24,7 +25,7 @@ def solve_scip(f):
 
     t = time.time()
     # write matrix
-    file = open('scip/matrix.dat', 'w')
+    file = open('obs/scip/matrix.dat', 'w')
     file.write('%i\n' % f.d)
     for j in xrange(f.d):
         for i in xrange(j, f.d):
@@ -34,11 +35,11 @@ def solve_scip(f):
     file.close()
 
     # invoke scip
-    if os.path.exists('scip/scip.log'): os.remove('scip/scip.log')
-    subprocess.Popen(['/home/cschafer/ziboptsuite-2.0.1/scip-2.0.1/bin/scip', '-l', 'scip/scip.log', '-f', 'scip/uqbo.zpl', '-q']).wait()
+    if os.path.exists('obs/scip/scip.log'): os.remove('obs/scip/scip.log')
+    subprocess.Popen(['/home/cschafer/ziboptsuite-2.0.1/scip-2.0.1/bin/scip', '-l', 'obs/scip/scip.log', '-f', 'obs/scip/uqbo.zpl', '-q']).wait()
 
     # read log
-    file = open('scip/scip.log', 'r')
+    file = open('obs/scip/scip.log', 'r')
     s = file.read()
     file.close
     s = s.split('primal solution:\n================\n\n', 2)[1]
@@ -54,6 +55,7 @@ def solve_scip(f):
         x = x.split()[0].split('#')[1:]
         if x[0] == x[1]: best_soln[int(x[0]) - 1] = True
 
+    print 'objective: %.1f ' % best_obj
     return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
 
 def main():

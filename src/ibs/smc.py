@@ -165,10 +165,8 @@ class ParticleSystem(object):
         self.log_W = alpha * self.log_f
 
         if self.verbose:
-            print 'progress %.1f' % (100 * self.rho) + '%'
+            utils.format.progress(ratio=self.rho, text='\n')
             print '\n' + str(self) + '\n'
-        else:
-            sys.stdout.write('\rrunning smc %.1f' % (100 * self.rho) + '%')
 
     def fit_proposal(self):
         ''' Adjust the proposal model to the particle system.

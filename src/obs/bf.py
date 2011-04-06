@@ -10,6 +10,7 @@ from obs import *
 
 class bf(ubqo.ubqo):
     header = []
+    name = 'BF'
     def run(self):
         return solve_bf(f=binary.QuExpBinary(self.A))
 

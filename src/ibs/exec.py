@@ -47,7 +47,7 @@ def main():
     RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
     RUN_FOLDER = os.path.join(ibs.v['RUN_PATH'], RUN_NAME)
     RUN_FILE = os.path.join(ibs.v['RUN_PATH'], RUN_NAME + '.ini')
-    if not os.path.isfile(RUN_FILE):
+    if not os.path.isfile(RUN_FILE):           
         print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
         sys.exit(0)
     ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE, 'RUN_FOLDER':RUN_FOLDER})
@@ -62,9 +62,7 @@ def main():
     if '-r' in opts: run(v=ibs.v, verbose=True)
     if '-e' in opts: plot(v=ibs.v)
     if '-v' in opts:
-        if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')):
-            plot(v=ibs.v)
-            time.sleep(1.0)
+        if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=ibs.v)
         subprocess.Popen(['okular', os.path.join(RUN_FOLDER, 'plot.pdf')])
 
 def run(v, verbose=False):
@@ -236,7 +234,9 @@ def plot(v, verbose=True):
     R_file.close()
 
     # Execute R-script.
-    subprocess.Popen([v['SYS_R'], 'CMD', 'BATCH', '--vanilla', os.path.join(v['RUN_FOLDER'], 'plot.R'), os.path.join(v['RUN_FOLDER'], 'plot.Rout')])
+    subprocess.Popen([v['SYS_R'], 'CMD', 'BATCH', '--vanilla',
+                      os.path.join(v['RUN_FOLDER'], 'plot.R'),
+                      os.path.join(v['RUN_FOLDER'], 'plot.Rout')]).wait()
 
 if __name__ == "__main__":
     main()

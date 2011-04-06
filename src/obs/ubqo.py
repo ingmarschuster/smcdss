@@ -13,8 +13,11 @@ import utils
 import cPickle as pickle
 
 class ubqo():
-    def __init__(self, v):
-        self.A = load_ubqo_problem(v['RUN_TESTSUITE'])[v['RUN_PROBLEM'] - 1]['problem']
+    def __init__(self, v, problem=None):
+        if problem is None: problem = v['RUN_PROBLEM'][0]
+        self.problem = problem
+        self.A = load_ubqo_problem(v['RUN_TESTSUITE'])[problem - 1]['problem']
+        self.best_obj = load_ubqo_problem(v['RUN_TESTSUITE'])[problem - 1]['best_obj']
         self.d = self.A.shape[0]
         self.v = v
 
@@ -45,6 +48,9 @@ def import_beasly_lib(filename):
         while len(line) == 3:
             A[int(line[1]) - 1, int(line[0]) - 1] = float(line[2])
             line = file.readline().strip().split(' ')
+        for i in xrange(A.shape[0]):
+            for j in xrange(i):
+                A[j, i] = A[i, j]
         L.append({'best_obj' : float(best_obj[filename][k]), 'problem' : A})
 
     file.close()
@@ -88,7 +94,7 @@ def generate_ubqo_problem(d, p, c, n=1, filename=None):
                 if p > numpy.random.random():
                     A[i, j] = numpy.random.randint(-c, c)
                     A[j, i] = A[i, j]
-        L.append({'best_obj' : None, 'problem' : A})
+        L.append({'best_obj' :-numpy.inf, 'problem' : A})
         if not filename is None:
             file = open(os.path.join(path, filename + '.pickle'), 'w')
             pickle.dump(obj=L, file=file)

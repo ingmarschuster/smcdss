@@ -71,7 +71,7 @@ def _lpmf(gamma, param):
     '''
     L = numpy.empty(gamma.shape[0])
     for k in xrange(gamma.shape[0]):
-        L[k] = float(numpy.dot(numpy.dot(gamma, param['A']), gamma.T))
+        L[k] = float(numpy.dot(numpy.dot(gamma[k], param['A']), gamma[k].T))
     return L
 
 def calc_marginal(A):

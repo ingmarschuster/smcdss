@@ -43,8 +43,10 @@ def main():
 
     # Load run file.
     obs.read_config()
-    RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
-    RUN_FOLDER = os.path.join(obs.v['RUN_PATH'], RUN_NAME)
+    RUN_NAME = args[0].split('.')
+    if RUN_NAME[-1] == 'ini': RUN_NAME = '.'.join(RUN_NAME[:-1])
+    else: RUN_NAME = '.'.join(RUN_NAME)
+    RUN_FOLDER = os.path.join(obs.v['RUN_PATH'], RUN_NAME.split('.')[0])
     RUN_FILE = os.path.join(obs.v['RUN_PATH'], RUN_NAME + '.ini')
     if not os.path.isfile(RUN_FILE):
         print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
@@ -61,10 +63,10 @@ def main():
                 os.remove(os.path.join(RUN_FOLDER, file))
         except: pass
     if '-r' in opts: run(v=obs.v, verbose=True)
-    if '-e' in opts: eval(v=obs.v)
+    if '-e' in opts: plot(v=obs.v)
     if '-v' in opts:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=obs.v)
-        subprocess.Popen(['okular', os.path.join(RUN_FOLDER, 'plot.pdf')])
+        subprocess.Popen([obs.v['SYS_VIEWER'], os.path.join(RUN_FOLDER, 'plot.pdf')])
 
 def run(v, verbose=False):
     ''' Run algorithm from specified file and store results.
@@ -77,9 +79,12 @@ def run(v, verbose=False):
 
     # Setup result file.
     result_file = v['RUN_FOLDER'] + '/' + 'result.csv'
+
+    # Setup problem calling ubqo super constructor of algo
+    v['RUN_ALGO'] = v['RUN_ALGO'](v)
     if not os.path.isfile(result_file):
         file = open(result_file, 'w')
-        file.write(','.join(['OBJ'] + ['S%0*d' % (3, i + 1) for i in xrange(v['RUN_ALGO'].d)] + \
+        file.write(','.join(['OBJ', 'ALGO', 'PROBLEM', 'BEST_OBJ'] + ['S%0*d' % (3, i + 1) for i in xrange(v['RUN_ALGO'].d)] + \
                             ['TIME', 'LOG_FILE', 'LOG_NO'] + v['RUN_ALGO'].header) + '\n')
         file.close()
 
@@ -100,29 +105,52 @@ def run(v, verbose=False):
         v.update({'JOB_SERVER':pp.Server(ncpus=v['RUN_CPUS'], ppservers=())})
         print '\rjob server (%i) started in %.2f sec' % (v['JOB_SERVER'].get_ncpus(), time.time() - t)
 
-    if v['RUN_N'] > 1: print 'start test suite of %i runs...' % v['RUN_N']
-    for i in xrange(v['RUN_N']):
+    # Loop over problems in testsuite.
+    for problem in v['RUN_PROBLEM']:
 
-        if v['RUN_N'] > 1: print '\nstarting %i/%i' % (i + 1, v['RUN_N'])
-        result = v['RUN_ALGO'].run()
+        # Initilize solver algorithm
+        v['RUN_ALGO'].__init__(v, problem)
 
-        for j in xrange(4):
-            try:
-                file = open(result_file, 'a')
-                file.write(','.join(['%.1f' % result['obj']] +
-                                    ['%d' % x for x in result['soln']] +
-                                    ['%.3f' % (result['time'] / 60.0)] + [log_id] + [str(i + 1)]) + '\n')
-                file.close()
-                break
-            except:
-                if j < 3:
-                    print 'Could not write to %s. Trying again in 3 seconds...' % result_file
-                    time.sleep(3)
-                else:
-                    print 'Failed to write to %s.' % result_file
+        # Do repeated runs of the algorithm.
+        if v['RUN_N'] > 1: print 'start test suite of %i runs...' % v['RUN_N']
+        for i in xrange(v['RUN_N']):
+
+            if v['RUN_N'] > 1: print '\nstarting %i/%i' % (i + 1, v['RUN_N'])
+            print 'working on testsuite %s problem %d' % (v['RUN_TESTSUITE'], v['RUN_ALGO'].problem)
+            result = v['RUN_ALGO'].run()
+
+            # Write result to result.csv
+            for j in xrange(4):
+                try:
+                    file = open(result_file, 'a')
+                    file.write(','.join(['%.1f' % result['obj'], v['RUN_ALGO'].name, '%d' % v['RUN_ALGO'].problem, '%.1f' % v['RUN_ALGO'].best_obj] +
+                                        ['%d' % x for x in result['soln']] +
+                                        ['%.3f' % (result['time'] / 60.0)] + [log_id] + [str(i + 1)]) + '\n')
+                    file.close()
+                    break
+                except:
+                    if j < 3:
+                        print 'Could not write to %s. Trying again in 3 seconds...' % result_file
+                        time.sleep(3)
+                    else:
+                        print 'Failed to write to %s.' % result_file
 
 def plot(v):
-    pass
+    # Open R-template.
+    f = open(os.path.join(v['SYS_ROOT'], 'src', 'obs', 'plot.R'), 'r')
+    R_script = f.read() % {'resultfile':os.path.join(v['RUN_FOLDER'], 'result.csv'),
+                           'pdffile':os.path.join(v['RUN_FOLDER'], 'plot.pdf')}
+    f.close()
+
+    # Copy plot.R to its run folder.
+    f = open(os.path.join(v['RUN_FOLDER'], 'plot.R'), 'w')
+    f.write(R_script)
+    f.close()
+
+    # Execute R-script.
+    subprocess.Popen([v['SYS_R'], 'CMD', 'BATCH', '--vanilla',
+                      os.path.join(v['RUN_FOLDER'], 'plot.R'),
+                      os.path.join(v['RUN_FOLDER'], 'plot.Rout')]).wait()
 
 if __name__ == "__main__":
     main()

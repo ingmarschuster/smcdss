@@ -9,6 +9,7 @@ __version__ = "$Revision: 94 $"
 from obs import *
 
 class sa(ubqo.ubqo):
+    name = 'SA'
     header = ['NO_MOVES', 'ACC_RATE']
     def run(self):
         return solve_sa(f=binary.QuExpBinary(self.A), n=self.v['SA_MAX_ITER'], m=self.v['SA_MAX_TIME'])
@@ -26,7 +27,7 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
     if m < numpy.inf: print 'for %.2f minutes' % m
 
     t = time.time()
-    k, s = 0, 0
+    a, k, s, v = 0, 0, 0, 1e-10
     best_soln = None
     best_obj = -numpy.inf
     curr_soln = binary.ProductBinary.uniform(d=f.d).rvs()
@@ -34,17 +35,18 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
 
     while True:
 
+        k += 1
+
         # update break criterion
         if n is numpy.inf:
             r = (time.time() - t) / (60.0 * m)
         else:
-            k += 1
-            r = k / n
+            r = k / float(n)
 
         # show progress bar
         if verbose:
             if r - s >= 0.01:
-                utils.format.progress(r, ' objective: %.1f' % best_obj)
+                utils.format.progress(r, 'ar: %.3f, objective: %.1f' % (a / float(k), best_obj))
                 s = r
 
         if r > 1:
@@ -61,9 +63,13 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
             best_obj = proposal_obj
             best_soln = proposal.copy()
 
-        if (proposal_obj - curr_obj) * k / float(n) > numpy.log(numpy.random.random()):
+        if (proposal_obj - curr_obj) * v > numpy.log(numpy.random.random()):
+            a += 1
             curr_soln = proposal
             curr_obj = proposal_obj
+
+        if a / float(k) < 1-r: v *= 0.999
+        else:  v *= 1.001
 
     if verbose: sys.stdout.write('\n')
     return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
