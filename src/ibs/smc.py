@@ -197,6 +197,10 @@ class ParticleSystem(object):
         k = [ l.count(i) * i for i in xrange(1, 101) ]
         return str(k) + ' %i ' % sum(k)
 
+    def getMax(self):
+        index = numpy.argmax(self.log_f)
+        return self.log_f[index], self.X[index]
+
     def move(self):
         ''' Moves the particle system according to an independent Metropolis-Hastings kernel
             to fight depletion of the particle system.

@@ -81,7 +81,7 @@ class ProductBinary(Binary):
 
     def getRandom(self, xi=CONST_MIN_MARGINAL_PROB):
         ''' Get index list of random components.
-            @return index list 
+            @return index list
         '''
         return [i for i, p in enumerate(self.param['p']) if min(p, 1.0 - p) > xi]
 

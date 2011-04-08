@@ -253,9 +253,7 @@ class data(object):
         if verbose: print ']\nDone. %i evaluation in %.2f seconds.\n' % (self.size - k, time.clock() - t)
 
     def dichotomize_weights(self, f, fraction):
-        w = numpy.empty(self.size)
-        for k in range(self.size):
-            w[k] = f.lpmf(self._X[k])
+        w = f.lpmf(numpy.array(self._X))
         order = w.argsort(axis=0).tolist()
         order.reverse()
         k = int(fraction * self.size)
@@ -314,28 +312,15 @@ class data(object):
         '''
         return copy.deepcopy(self)
 
-    def sample(self, f, size, verbose=False):
+    def sample(self, f, size, job_server=None):
         '''
             Samples from a random generator.
-            @param q random generator
+            @param f random variable
             @param size sample size
             @param verbose print status line
         '''
-        if verbose:
-            t = time.clock()
-            bars = 20
-            drawn = 0
-            print 'Sampling from ' + f.name + '...'
-            sys.stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
-        for i in range(1, size + 1):
-            self.append(f.rvs())
-            if verbose:
-                n = bars * i / size - drawn
-                if n > 0:
-                    sys.stdout.write(n * "-")
-                    sys.stdout.flush()
-                    drawn += n
-        if verbose: print ']\nDone. %i variables sampled in %.2f seconds.\n' % (size, time.clock() - t)
+        self._X += list(f.rvs(size, job_server))
+
 
     def save(self, filename):
         '''

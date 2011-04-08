@@ -7,7 +7,7 @@
     $Revision: 71 $
 '''
 
-import numpy
+import numpy, datetime
 import sys
 
 def format(X, name=''):
@@ -72,6 +72,9 @@ def bilinear(v, A):
 def isnumeric(s):
     return s.startswith('-') and s[1:].isdigit() or s.isdigit()
 
+def time(seconds):
+    return str(datetime.timedelta(seconds=seconds)).split('.')[0]
+
 def progress(ratio, text=None, ticks=50):
     progress = int(ticks * ratio)
     s = '%.1f%%' % (100.0 * ratio)
@@ -84,4 +87,4 @@ def progress(ratio, text=None, ticks=50):
                          + (ticks / 2) * ' ' + ']')
     if not text is None: sys.stdout.write(text)
     sys.stdout.flush()
-    
+

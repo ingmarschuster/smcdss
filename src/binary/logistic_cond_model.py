@@ -99,7 +99,7 @@ class LogisticBinary(ProductBinary):
 
         # Set convex combination of old and new parameter.
         self.param['Beta'] = (1 - lag) * newBeta + lag * self.param['Beta']
-        self.param['p'] = utils.inv_logit(numpy.diagonal(self.Beta))
+        self.param['p'] = utils.inv_logit(self.Beta.sum(axis=1))
 
     @classmethod
     def from_loglinear_model(cls, llmodel):

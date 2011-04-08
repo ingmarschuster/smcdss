@@ -58,10 +58,10 @@ def main():
 
     # Process options.
     if '-c' in opts:
-        try:
-            for file in os.listdir(RUN_FOLDER):
+        for file in os.listdir(RUN_FOLDER):
+            try:
                 os.remove(os.path.join(RUN_FOLDER, file))
-        except: pass
+            except: pass
     if '-r' in opts: run(v=obs.v, verbose=True)
     if '-e' in opts: plot(v=obs.v)
     if '-v' in opts:
@@ -75,7 +75,7 @@ def run(v, verbose=False):
 
     # Setup test folder.
     if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
-    shutil.copyfile(v['RUN_FILE'], os.path.join(v['RUN_FOLDER'] , v['RUN_NAME']) + '.cfg')
+    shutil.copyfile(v['RUN_FILE'], os.path.join(v['RUN_FOLDER'] , v['RUN_NAME']) + '.ini')
 
     # Setup result file.
     result_file = v['RUN_FOLDER'] + '/' + 'result.csv'

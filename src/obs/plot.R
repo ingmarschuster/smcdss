@@ -3,8 +3,8 @@
 ##
 
 # constants
-colors   = c('CE'='olivedrab4', 'SA'='orangered4', 'SMC'='green')
-linetype = c('CE'=1,            'SA'=2,            'SMC'=3)
+colors   = c('CE'='olivedrab4', 'SA'='orangered4', 'SMC'='black')
+linetype = c('CE'=1,            'SA'=2,            'SMC'=5)
 
 # read data
 data=read.csv('%(resultfile)s')
@@ -18,18 +18,20 @@ for (problem in problems) {
 	
 	probdata=subset(data[c('OBJ','BEST_OBJ','ALGO')], data['PROBLEM']==problem)
 	
-	# determine range
-	min_x = min(probdata$OBJ)
-	max_x = max(probdata$BEST_OBJ)
-	
 	# construct list of algorithms
 	algos = as.matrix(unique(probdata$ALGO))
+	best_obj = probdata$BEST_OBJ[1]
+	if (best_obj=='-Inf') best_obj=max(probdata$OBJ)
+	
+	# determine range
+	min_x = min(probdata$OBJ)
+	max_x = max(best_obj)
 	
 	# construct kernel density estimates
 	density_plot=list(); max_y=list()	
 	for(algo in algos) {
 		algodata=subset(probdata[c('OBJ','BEST_OBJ')], probdata['ALGO'] == algo)
-		density_plot[[algo]] = density(algodata$OBJ, to=max_x)
+		density_plot[[algo]] = density(algodata$OBJ, kernel='triangular', to=max_x)
 		max_y[algo] = max(density_plot[[algo]]$y)
 	}
 	
@@ -43,7 +45,7 @@ for (problem in problems) {
 	}
 	
 	# add vertical line at best known objective value
-	abline(v = algodata$BEST_OBJ[1], col = 'royalblue')
+	abline(v = best_obj, col = 'royalblue')
 	
 	# add legend
 	legend(x='topleft', inset=0.1, legend=c('Cross-Entropy','Simulated Annealing','Sequential Monte Carlo'), cex=1, col=colors, lty=linetype)

@@ -16,9 +16,10 @@ class ce(ubqo.ubqo):
                         n=int(self.v['CE_N_PARTICLES']),
                         model=self.v['CE_BINARY_MODEL'],
                         lag=self.v['CE_LAG'],
-                        elite=self.v['CE_ELITE'])
+                        elite=self.v['CE_ELITE'],
+                        job_server=self.v['JOB_SERVER'])
 
-def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, verbose=True):
+def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, job_server=None, verbose=True):
     ''' Finds a maximum via cross-entropy optimization.
         @param f function
         @param n number of particles
@@ -40,7 +41,7 @@ def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, verbose=
     # run optimization scheme
     for step in xrange(1, 100):
 
-        d.sample(model, n, verbose=False)
+        d.sample(model, n, job_server)
         best_obj, best_soln = d.dichotomize_weights(f=f, fraction=elite)
 
         model.renew_from_data(sample=d, lag=lag, verbose=False)
@@ -49,13 +50,13 @@ def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, verbose=
         r = (model.d - len(model.getRandom(0.05 + 0.5 / (step + 1)))) / float(model.d)
 
         # show progress bar
-        if verbose: utils.format.progress(r, ' %02i, %03i, objective: %.1f' % (step, len(model.r), best_obj))
+        if verbose: utils.format.progress(r, ' %02i, %03i, objective: %.1f, time %s' % (step, len(model.r), best_obj, utils.format.time(time.time() - t)))
 
         # check if dimension is sufficiently reduced
         if len(model.r) < bf:
             v = solve_bf(f=f, best_obj=best_obj, gamma=best_soln, index=model.r)
             best_obj, best_soln = v['obj'], v['soln']
-            if verbose: utils.format.progress(1.0, ' %02i, %03i, objective: %.1f' % (step + 1, len(model.r), best_obj))
+            if verbose: utils.format.progress(1.0, ' %02i, %03i, objective: %.1f, time %s' % (step + 1, len(model.r), best_obj, utils.format.time(time.time() - t)))
             break
         d.clear(fraction=elite)
 

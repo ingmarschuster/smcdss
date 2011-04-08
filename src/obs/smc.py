@@ -22,6 +22,7 @@ def solve_smc(f, v, verbose=True):
     ps = ParticleSystem(v)
     model = ps.prop
     print 'running smc using ' + model.name
+    best_obj, best_soln = -numpy.inf, None
     bf = int(numpy.log(2 * ps.n) / numpy.log(2)) + 1
 
     # run sequential MC scheme
@@ -31,15 +32,17 @@ def solve_smc(f, v, verbose=True):
         r = max(ps.rho, (model.d - len(model.getRandom(0.05))) / float(model.d))
 
         # show progress bar
-        best_soln = numpy.array([x > 0.5 for x in model.p])
-        best_obj = ps.f.lpmf(best_soln)
-        if verbose: utils.format.progress(r, ' %03i, objective: %.1f' % (len(model.r), best_obj))
+        current_obj, current_soln = ps.getMax()
+        if best_obj < current_obj:
+            best_soln = current_soln
+            best_obj = current_obj
+        if verbose: utils.format.progress(r, ' %03i, objective: %.1f, time %s' % (len(model.r), best_obj, utils.format.time(time.time() - t)))
 
         # check if dimension is sufficiently reduced
         if len(model.r) < bf:
-            v = solve_bf(f=f, best_obj=best_obj, gamma=best_soln, index=model.r)
+            v = solve_bf(f=f, best_obj=best_obj, gamma=numpy.array([x > 0.5 for x in model.p]), index=model.r)
             best_obj, best_soln = v['obj'], v['soln']
-            if verbose: utils.format.progress(1.0, ' %03i, objective: %.1f' % (len(model.r), best_obj))
+            if verbose: utils.format.progress(1.0, ' %03i, objective: %.1f, time %s' % (len(model.r), best_obj, utils.format.time(time.time() - t)))
             break
 
         ps.fit_proposal()

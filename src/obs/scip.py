@@ -15,7 +15,7 @@ class scip(ubqo.ubqo):
     def run(self):
         return solve_scip(f=binary.QuExpBinary(self.A))
 
-def solve_scip(f):
+def solve_scip_linux(f):
     '''
         Solve UBQO using SCIP and ZIMPL from the ZIB Optimization Suite http://zibopt.zib.de.
         @param f quadratic exponential model.
@@ -23,6 +23,7 @@ def solve_scip(f):
         @return best_soln maximizer
     '''
 
+    print 'running scip 2.01 using zimpl 3.1.0'
     t = time.time()
     # write matrix
     file = open('obs/scip/matrix.dat', 'w')
@@ -57,6 +58,58 @@ def solve_scip(f):
 
     print 'objective: %.1f ' % best_obj
     return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
+
+def solve_scip_win(f):
+    '''
+        Solve UBQO using SCIP and ZIMPL from the ZIB Optimization Suite http://zibopt.zib.de.
+        @param f quadratic exponential model.
+        @return best_obj maximum
+        @return best_soln maximizer
+    '''
+
+    print 'running scip 2.01 using zimpl 3.1.0'
+    t = time.time()
+    # write matrix
+    file = open('obs\\scip\\matrix.dat', 'w')
+    file.write('%i\n' % f.d)
+    for j in xrange(f.d):
+        for i in xrange(j, f.d):
+            if i == j: a = f.A[i, j]
+            else: a = 2 * f.A[i, j]
+            file.write('%.16f\n' % a)
+    file.close()
+
+    # invoke scip
+    if os.path.exists('obs\\scip\\scip_win.log'): os.remove('obs\\scip\\scip_win.log')
+    bin_path = os.path.join('W:\\', 'Documents', 'Python', 'smcdss', 'bin')
+    cwd_path = os.getcwd()
+    os.chdir(os.path.join('obs', 'scip'))
+    subprocess.Popen([os.path.join(bin_path, 'zimpl.exe'), '-O', '-v 0' , 'uqbo.zpl']).wait()
+    os.chdir(cwd_path)
+    subprocess.Popen([os.path.join(bin_path, 'scip.exe'), '-l', 'obs\\scip\\scip_win.log', '-f', 'obs\\scip\\uqbo.lp', '-q']).wait()
+
+    # read log
+    file = open('obs\\scip\\scip_win.log', 'r')
+    s = file.read()
+    file.close
+    s = s.split('primal solution:\n================\n\n', 2)[1]
+    s = s.split('\n\nStatistics\n==========\n', 2)[0]
+    s = s.split('\n')
+
+    # retrieve best objective
+    best_obj = float(s[0][16:].strip())
+
+    # retrieve best solution
+    best_soln = numpy.zeros(f.d, dtype=bool)
+    for x in s[1:]:
+        x = x.split()[0].split('#')[1:]
+        if x[0] == x[1]: best_soln[int(x[0]) - 1] = True
+
+    print 'objective: %.1f ' % best_obj
+    return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
+
+if os.name == 'posix': solve_scip = solve_scip_linux
+else: solve_scip = solve_scip_win
 
 def main():
     pass

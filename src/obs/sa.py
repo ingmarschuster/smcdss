@@ -28,8 +28,7 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
 
     t = time.time()
     a, k, s, v = 0, 0, 0, 1e-10
-    best_soln = None
-    best_obj = -numpy.inf
+    best_obj, best_soln = -numpy.inf, None
     curr_soln = binary.ProductBinary.uniform(d=f.d).rvs()
     curr_obj = f.lpmf(curr_soln)
 
@@ -46,11 +45,11 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
         # show progress bar
         if verbose:
             if r - s >= 0.01:
-                utils.format.progress(r, 'ar: %.3f, objective: %.1f' % (a / float(k), best_obj))
+                utils.format.progress(r, 'ar: %.3f, objective: %.1f, time %s' % (a / float(k), best_obj, utils.format.time(time.time() - t)))
                 s = r
 
         if r > 1:
-            if verbose: utils.format.progress(1.0, ' objective: %.1f' % best_obj)
+            if verbose: utils.format.progress(1.0, ' objective: %.1f, time %s' % (best_obj, utils.format.time(time.time() - t)))
             break
 
         # generate proposal
@@ -68,7 +67,7 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
             curr_soln = proposal
             curr_obj = proposal_obj
 
-        if a / float(k) < 1-r: v *= 0.999
+        if a / float(k) < 1 - r: v *= 0.999
         else:  v *= 1.001
 
     if verbose: sys.stdout.write('\n')

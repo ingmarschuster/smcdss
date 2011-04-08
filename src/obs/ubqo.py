@@ -82,18 +82,39 @@ def import_glover_lib(filename):
         file.close()
     return L
 
-def generate_ubqo_problem(d, p, c, n=1, filename=None):
+def random_cho(d):
+    c = numpy.random.normal(size=(d, d))
+    c = numpy.dot(c, c.T) + 1e-3 * numpy.eye(d)
+    v = numpy.sqrt(c.diagonal()[numpy.newaxis, :])
+    c /= numpy.dot(v.T, v)
+    return numpy.linalg.cholesky(c)
+
+def uniform(d, rho=1.0, xi=0.0, c=100):
+    return numpy.random.randint(low=c * (xi - 1.0), high=c * xi, size=d) * (numpy.random.random(size=d) <= rho)
+
+def binomial(d, rho=1.0, xi=0.5, c=1000):
+    f = c
+    return (numpy.random.binomial(n=f, p=0.5, size=d) - 0.5 * f + 200) * (numpy.random.random(size=d) <= rho)
+
+def normal(d, rho=1.0, xi=0.5, c=None):
+    if c is None: c = random_cho(d)
+    x = numpy.random.normal(size=d)
+    x = numpy.dot(c[:d, :d], x)
+    return x * (numpy.random.random(size=d) <= rho)
+
+def generate_ubqo_problem(d, rho=1.0, xi=0.0, c=500, n=1, random=binomial, filename=None):
+    '''
+
+    '''
     path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
     L = list()
+    c = random_cho(d)
     for k in xrange(n):
         print '%s\t d=%d' % (k + 1, d)
         A = numpy.zeros((d, d))
         for i in xrange(d):
-            if p > numpy.random.random(): A[i, i] = numpy.random.randint(-c, c)
-            for j in xrange(i):
-                if p > numpy.random.random():
-                    A[i, j] = numpy.random.randint(-c, c)
-                    A[j, i] = A[i, j]
+            A[i, : i + 1] = random(d=i + 1, rho=rho, xi=xi, c=c)
+            A[:i, i] = A[i, :i]
         L.append({'best_obj' :-numpy.inf, 'problem' : A})
         if not filename is None:
             file = open(os.path.join(path, filename + '.pickle'), 'w')
@@ -123,3 +144,10 @@ def load_ubqo_problem(filename, repickle=False):
     file = open(path, 'r')
     return pickle.load(file)
     file.close()
+
+def main():
+    x = generate_ubqo_problem(d=250, rho=1, random=normal, filename='binom')
+    print utils.format.format(x[0]['problem'])
+
+if __name__ == "__main__":
+    main()
