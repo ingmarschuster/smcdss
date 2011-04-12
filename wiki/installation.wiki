@@ -1,12 +1,12 @@
 #summary Installation guide
 
-= Introduction =
+== Introduction ==
 
-The Sequential Monte Carlo algorithm is written in Python 2.7 and started on the command line. The parameters are administered using an INI-file.
+The Sequential Monte Carlo algorithm is written in Python 2.7 and requires several auxiliary modules that come with the project. The algorithm is started on command line, the parameters are administered using an INI-file.
 
-= External packages =
+== External packages ==
 
 The project uses several external packages.
-  * Text in *bold* or _italic_
-  * Headings, paragraphs, and lists
-  * Automatic links to other wiki pages
+  * [http://www.scipy.org/ SciPy and NumPy] for scientific computing and fast array manipulations.
+  * [http://www.parallelpython.com/ Parallel Python] for parallelized computing.
+  * [http://cython.org Cython] for C-extensions to speed up some loops
