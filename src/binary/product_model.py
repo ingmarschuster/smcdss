@@ -1,26 +1,30 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Binary model with independent components.
+"""
 
-__version__ = "$Revision$"
+"""
+@namespace binary.product_model
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 from binary_model import *
 
 class ProductBinary(Binary):
-    '''
-        A binary model with independent components.
-    '''
-    def __init__(self, p=None, name='product-binary', longname='A binary model with independent components.'):
-        ''' Constructor.
+    """ Binary model with independent components. """
+    def __init__(self, p=None, name='product-binary',
+                 longname='Binary model with independent components.'):
+        """ 
+            Constructor.
             @param p mean vector
             @param name name
             @param longname longname
-        '''
+        """
         Binary.__init__(self, name=name, longname=longname)
         if not p is None:
             if isinstance(p, (numpy.ndarray, list)):
@@ -38,35 +42,39 @@ class ProductBinary(Binary):
 
     @classmethod
     def random(cls, d):
-        ''' Construct a random product model for testing.
+        """ 
+            Construct a random product model for testing.
             @param cls class
             @param d dimension
-        '''
+        """
         return cls(numpy.random.random(d))
 
     @classmethod
     def uniform(cls, d):
-        ''' Construct a random product model for testing.
+        """ 
+            Construct a random product model for testing.
             @param cls class
             @param d dimension
-        '''
+        """
         return cls(p=0.5 * numpy.ones(d))
 
     @classmethod
     def from_data(cls, sample):
-        ''' Construct a product model from data.
+        """ 
+            Construct a product model from data.
             @param cls class
             @param sample a sample of binary data
-        '''
+        """
         return cls(sample.mean)
 
     def renew_from_data(self, sample, lag=0.0, verbose=False):
-        ''' Updates the product model from data.
+        """ 
+            Updates the product model from data.
             @param cls class
             @param sample a sample of binary data
             @param lag lag
             @param verbose detailed information
-        '''
+        """
         p = sample.getMean(weight=(sample.ess > 0.5))
         self.param['p'] = (1 - lag) * p + lag * self.p
 
@@ -74,26 +82,27 @@ class ProductBinary(Binary):
         return self.param['p']
 
     def getD(self):
-        ''' Get dimension.
+        """ Get dimension.
             @return dimension 
-        '''
+        """
         return self.p.shape[0]
 
     def getRandom(self, xi=CONST_MIN_MARGINAL_PROB):
-        ''' Get index list of random components.
+        """ Get index list of random components.
             @return index list
-        '''
+        """
         return [i for i, p in enumerate(self.param['p']) if min(p, 1.0 - p) > xi]
 
     p = property(fget=getP, doc="p")
 
 
 def _lpmf(gamma, param):
-    ''' Log-probability mass function.
+    """ 
+        Log-probability mass function.
         @param gamma binary vector
         @param param parameters
         @return log-probabilities
-    '''
+    """
     p = param['p']
     L = numpy.empty(gamma.shape[0])
     for k in xrange(gamma.shape[0]):
@@ -105,11 +114,12 @@ def _lpmf(gamma, param):
     return numpy.log(L)
 
 def _rvs(U, param):
-    ''' Generates a random variable.
+    """ 
+        Generates a random variable.
         @param U uniform variables
         @param param parameters
         @return binary variables
-    '''
+    """
     p = param['p']
     Y = numpy.empty((U.shape[0], U.shape[1]), dtype=bool)
     for k in xrange(U.shape[0]):
@@ -117,11 +127,12 @@ def _rvs(U, param):
     return Y
 
 def _rvslpmf(U, param):
-    ''' Generates a random variable and computes its probability.
+    """ 
+        Generates a random variable and computes its probability.
         @param U uniform variables
         @param param parameters
         @return binary variables, log-probabilities
-    '''
+    """
     Y = _rvs(U, param)
     return Y, _lpmf(Y, param)
 

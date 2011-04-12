@@ -1,23 +1,29 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Binary model with exponential quadratic multilinear form.
+"""
 
-__version__ = "$Revision$"
+"""
+@namespace binary.qu_exponential_model
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 from binary import *
 
 class QuExpBinary(ProductBinary):
+    """ Binary model with exponential quadratic multilinear form. """
 
-
-    def __init__(self, A, name='quadratic exponential binary', longname='A quadratic exponential binary model.'):
-        ''' Constructor.
+    def __init__(self, A, name='quadratic exponential binary',
+                 longname='Binary model with exponential quadratic multilinear form.'):
+        """ 
+            Constructor.
             @param A matrix of coefficients
-        '''
+        """
 
         ProductBinary.__init__(self, name=name, longname=longname)
         self.f_lpmf = _lpmf
@@ -27,23 +33,23 @@ class QuExpBinary(ProductBinary):
 
     @classmethod
     def independent(cls, p):
-        '''
+        """
             Constructs a log-linear-binary model with independent components.
             @param cls class 
             @param p mean
-        '''
+        """
         d = p.shape[0]
         logOdds = numpy.log(p / (numpy.ones(d) - p))
         return cls(numpy.diag(logOdds))
 
     @classmethod
     def random(cls, d, scale=0.5):
-        '''
+        """
             Constructs a random log-linear-binary model for testing.
             @param cls class 
             @param d dimension
             @param scale standard deviation of the off-diagonal elements
-        '''
+        """
         p = numpy.random.random(d)
         logratio = numpy.log(p / (1 - p))
         A = numpy.diag(logratio)
@@ -53,10 +59,9 @@ class QuExpBinary(ProductBinary):
         return QuExpBinary(A)
 
     def getD(self):
-        '''
-            Get dimension.
+        """ Get dimension.
             @return dimension 
-        '''
+        """
         return self.A.shape[0]
 
     def getA(self):
@@ -65,23 +70,26 @@ class QuExpBinary(ProductBinary):
     A = property(fget=getA, doc="A")
 
 def _lpmf(gamma, param):
-    '''
-        Log probability mass function of the underlying quadratic exponential model.
+    """
+        Log probability mass function of the underlying quadratic exponential
+        model.
         @return random variable
-    '''
+    """
     L = numpy.empty(gamma.shape[0])
     for k in xrange(gamma.shape[0]):
         L[k] = float(numpy.dot(numpy.dot(gamma[k], param['A']), gamma[k].T))
     return L
 
 def calc_marginal(A):
-    '''
-        Computes a quadratic exponential model where the component that causes the least
-        quadratic approximation error has been marginalized. The method is inspired by Cox and Wermuth,
-        A note on the quadratic exponential binary distribution, Biometrika 1994, 81, 2, pp. 403-8.
+    """
+        Computes a quadratic exponential model where the component that causes
+        the least quadratic approximation error has been marginalized. The
+        method is inspired by Cox and Wermuth, A note on the quadratic
+        exponential binary distribution, Biometrika 1994, 81, 2, pp. 403-8.
+        
         @param A coefficient matrix
         @return model the approximate marginal distribution
-    '''
+    """
 
     I = range(A.shape[0])
     d = len(I)
@@ -144,12 +152,12 @@ def calc_marginal(A):
     return model
 
 def calc_logistic_model(A):
-    '''
+    """
         Constructs a logistic conditional model from a quadratic exponential model by
         repeatedly computing the approximate marginal distributions
         @param A coefficient matrix
         @return model a logistic conditional model
-    '''
+    """
     d = A.shape[0]
     Beta = numpy.zeros((d, d))
     perm = list()

@@ -1,11 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Plotting via R.
+"""
+
+"""
+@namespace utils.plotter
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 __version__ = "$Revision$"
 
@@ -15,13 +21,13 @@ from data import *
 from binary import *
 
 def plot4(f, path, models=None):
-    '''
+    """
         Compares f to its binary model approximations. Generates a pseudo sample from f to initialize the binary models.
         Plots the true f and histograms obtained from the models. Works only for dimensions up to 5.  
         @param f target function
         @param outfile output file
         @param models list of binary models
-    '''
+    """
 
     m = 5000 # number of pseudo samples from f
     n = 5000 # number of random draws from models
@@ -59,7 +65,7 @@ def plot4(f, path, models=None):
                 ymax=ymax,
                 colors="', '".join(['grey75', 'black', 'blue']),
                 pdfnames="', '".join(['function', 'product', 'logregr']))
-    R = '''
+    R = """
     hist = list(\n%(hist)s)
     names = c('%(names)s')
     colors = c('%(colors)s')
@@ -70,7 +76,7 @@ def plot4(f, path, models=None):
         par(oma=c(0, 0, 0, 0), mar=c(3.5, 2.5, 0, 0), family="serif")
         barplot(hist[[index]], ylim=c(0, %(ymax).6f), names=names, cex.names=1.5, las=3, col=colors[index], family="serif", cex.axis=1.5)
         dev.off()
-    } ''' % args
+    } """ % args
 
     file = open(os.path.join(path, 'toy.R'), 'w')
     file.write(R)

@@ -1,10 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date: 2011-03-07 17:03:12 +0100 (lun., 07 mars 2011) $
 
-__version__ = "$Revision: 94 $"
+"""
+SCIP.
+"""
+
+"""
+@namespace obs.scip
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import subprocess
 from obs import *
@@ -16,12 +23,12 @@ class scip(ubqo.ubqo):
         return solve_scip(f=binary.QuExpBinary(self.A))
 
 def solve_scip_linux(f):
-    '''
+    """
         Solve UBQO using SCIP and ZIMPL from the ZIB Optimization Suite http://zibopt.zib.de.
         @param f quadratic exponential model.
         @return best_obj maximum
         @return best_soln maximizer
-    '''
+    """
 
     print 'running scip 2.01 using zimpl 3.1.0'
     t = time.time()
@@ -60,12 +67,12 @@ def solve_scip_linux(f):
     return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
 
 def solve_scip_win(f):
-    '''
+    """
         Solve UBQO using SCIP and ZIMPL from the ZIB Optimization Suite http://zibopt.zib.de.
         @param f quadratic exponential model.
         @return best_obj maximum
         @return best_soln maximizer
-    '''
+    """
 
     print 'running scip 2.01 using zimpl 3.1.0'
     t = time.time()
@@ -118,7 +125,7 @@ if __name__ == "__main__":
     main()
 
 
-'''
+"""
 # read dimension
 param d := read "matrix.dat" as "1n" use 1;
 
@@ -143,4 +150,4 @@ subto or2: forall <i,j> in S do
    x[i,j] <= x[j,j];
 subto and1: forall <i,j> in S do
    x[i,j] >= x[i,i] + x[j,j] - 1;
-'''
+"""

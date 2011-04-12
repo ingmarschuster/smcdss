@@ -1,10 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date: 2011-03-07 17:03:12 +0100 (lun., 07 mars 2011) $
 
-__version__ = "$Revision: 91 $"
+"""
+Brute force search.
+"""
+
+"""
+@namespace obs.bf
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 from obs import *
 
@@ -15,7 +22,7 @@ class bf(ubqo.ubqo):
         return solve_bf(f=binary.QuExpBinary(self.A))
 
 def solve_bf(f, best_obj= -numpy.inf, gamma=None, index=None):
-    '''
+    """
         Finds a maximum via exhaustive enumeration.
         @param f f function
         @param best_obj current best objective
@@ -24,7 +31,7 @@ def solve_bf(f, best_obj= -numpy.inf, gamma=None, index=None):
         @return best_obj best objective after solving the sub-problem
         @return best_soln best solution after solving the sub-problem
         @todo Write cython version of brute force search.
-    '''
+    """
 
     t = time.time()
     if not index is None:

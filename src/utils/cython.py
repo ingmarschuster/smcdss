@@ -1,11 +1,16 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+"""
+Cython import.
+"""
 
-'''
-    @author Christian Schäfer
-    $Date: 2011-02-17 18:37:17 +0100 (jeu., 17 févr. 2011) $
-    $Revision: 74 $
-'''
+"""
+@namespace utils.cython
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import utils
 import numpy

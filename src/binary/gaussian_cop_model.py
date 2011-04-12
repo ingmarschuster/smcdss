@@ -1,27 +1,30 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Binary model obtained by dichotomizing a multivariate Gaussian.
+"""
 
-__version__ = "$Revision$"
+"""
+@namespace binary.gaussian_cop_model
+$Author$
+$Rev$
+$Date$
+@details The correlation structure of the model is therefore limited by the
+constraints of the elliptic Gaussian copula.
+"""
 
 from binary import *
 
 class GaussianCopulaBinary(product_model.ProductBinary):
-    '''
-        A multivariate Bernoulli as function of a hidden multivariate normal distribution.
-    '''
+    """ Binary model obtained by dichotomizing a multivariate Gaussian. """
 
     def __init__(self, p, R, verbose=False):
-        '''
+        """ 
             Constructor.
             @param p mean
             @param R correlation matrix
-        '''
+        """
         product_model.ProductBinary.__init__(self, p, name='Gaussian-copula-binary', \
                                              longname='A  Gaussian copula binary distribution.')
         self.f_rvs = _rvs
@@ -38,11 +41,11 @@ class GaussianCopulaBinary(product_model.ProductBinary):
 
     @classmethod
     def random(cls, d):
-        '''
-            Constructs a numpy.random hidden-stats.normal-binary model for testing.
+        """ 
+            Constructs a Gaussian copula model for testing.
             @param cls class 
             @param d dimension
-        '''
+        """
         p = 0.25 + 0.5 * numpy.random.rand(d)
 
         # For a numpy.random matrix X with entries U[-1,1], set Q = X*X^t and stats.normalize.
@@ -58,33 +61,40 @@ class GaussianCopulaBinary(product_model.ProductBinary):
 
     @classmethod
     def independent(cls, p):
-        '''
-            Constructs a hidden-stats.normal-binary model with independent components.
+        """ 
+            Constructs a Gaussian copula model model with independent components.
             @param cls class 
             @param p mean
-        '''
+        """
         return cls(p, numpy.eye(len(p)))
 
     @classmethod
     def uniform(cls, d):
-        '''
-            Construct a numpy.random product-binary model for testing.
+        """ 
+            Construct a uniform distribution as special case of the Gaussian
+            copula model
             @param cls class
             @param d dimension
-        '''
+        """
         return cls.independent(p=0.5 * numpy.ones(d))
 
     @classmethod
     def from_data(cls, sample, verbose=False):
-        '''
-            Construct a product-binary model from data.
+        """ 
+            Construct a Gaussian copula model from data.
             @param cls class
             @param sample a sample of binary data
-        '''
+        """
         return cls(sample.mean, sample.cor, verbose=verbose)
 
     def renew_from_data(self, sample, lag=0.0, verbose=False, **param):
-
+        """ 
+            Re-parameterizes the Gaussian copula model from data.
+            @param sample a sample of binary data
+            @param lag update lag
+            @param verbose verbose     
+            @param param parameters
+        """
         weight = sample.ess > 0.1
         self.param['R'] = sample.getCor(weight=weight)
         newP = sample.getMean(weight=weight)
@@ -118,11 +128,12 @@ class GaussianCopulaBinary(product_model.ProductBinary):
     mu = property(fget=getMu, doc="mu")
 
 def _rvs(V, param):
-    ''' Generates a random variable.
+    """ 
+        Generates a random variable.
         @param V normal variables
         @param param parameters
         @return binary variables
-    '''
+    """
     mu, C = param['mu'], param['C']
     Y = numpy.empty((V.shape[0], V.shape[1]), dtype=bool)
     for k in xrange(V.shape[0]):
@@ -130,12 +141,13 @@ def _rvs(V, param):
     return Y
 
 def calc_R(Q, mu, p):
-    '''
-        Computes the binary correlation matrix R induced by the Gaussian correlation matrix Q.
+    """ 
+        Computes the binary correlation matrix R induced by the Gaussian
+        correlation matrix Q.
         @param Q correlation matrix of the hidden stats.normal
         @param mu mean of the hidden stats.normal
         @param p mean of the binary
-    '''
+    """
     d = len(p)
     R = numpy.ones((d, d))
     for i in range(d):
@@ -148,14 +160,14 @@ def calc_R(Q, mu, p):
 
 
 def calc_local_Q(param, eps=0.03, delta=0.08, verbose=False):
-    '''
+    """ 
         Computes the Gaussian correlation matrix Q necessary to generate
         bivariate Bernoulli samples with a certain local correlation matrix R.
         @param R correlation matrix of the binary
         @param mu mean of the hidden stats.normal
         @param p mean of the binary
         @param verbose print to stdout 
-    '''
+    """
 
     t = time.time()
     R, mu, p = param['R'], param['mu'], param['p']
@@ -189,7 +201,7 @@ def calc_local_Q(param, eps=0.03, delta=0.08, verbose=False):
 
 
 def calc_local_q(mu, p, r, init=0, verbose=False):
-    '''
+    """ 
         Computes the Gaussian bivariate correlation q necessary to generate
         bivariate Bernoulli samples with a given correlation r.
         @param mu mean of the hidden stats.normal
@@ -197,7 +209,7 @@ def calc_local_q(mu, p, r, init=0, verbose=False):
         @param r correlation between the binary
         @param init initial value
         @param verbose print to stdout 
-    '''
+    """
 
     if r == 0.0: return 0.0, 0
 
@@ -224,14 +236,14 @@ def calc_local_q(mu, p, r, init=0, verbose=False):
 
 
 def newtonraphson(mu, p, r, init=0, verbose=False):
-    '''
+    """
         Newton-Raphson search for the correlation parameter q of the underlying stats.normal distibution.
         @param mu mean of the hidden stats.normal
         @param p mean of the binary            
         @param r correlation between the binary
         @param init initial value
         @param verbose print to stdout 
-    '''
+    """
     if verbose: print '\nNewton-Raphson search.'
 
     t = numpy.sqrt(p[0] * (1 - p[0]) * p[1] * (1 - p[1]))
@@ -261,7 +273,7 @@ def newtonraphson(mu, p, r, init=0, verbose=False):
 
 
 def bisectional(mu, p, r, l= -1, u=1, init=0, verbose=False):
-    '''
+    """
         Bisectional search for the correlation parameter q of the underlying stats.normal distibution.
         @param mu mean of the hidden stats.normal
         @param p mean of the binary            
@@ -270,7 +282,7 @@ def bisectional(mu, p, r, l= -1, u=1, init=0, verbose=False):
         @param u upper bound         
         @param init initial value
         @param verbose print to stdout 
-    '''
+    """
     if verbose: print '\nBisectional search.'
 
     t = numpy.sqrt(p[0] * (1 - p[0]) * p[1] * (1 - p[1]))
@@ -289,13 +301,13 @@ def bisectional(mu, p, r, l= -1, u=1, init=0, verbose=False):
 
 
 def decompose_Q(Q, mode='scaled', verbose=False):
-    '''
+    """
         Computes the Cholesky decompostion of Q. If Q is not positive definite, either the
         identity matrix, a scaled version of Q or the correlation matrix nearest to Q is used.
         @param Q summetric matrix 
         @param mode way of dealing with non-definite matrices [independent, scaled, nearest] 
         @param verbose print to stdout 
-    '''
+    """
     t = time.time()
     d = Q.shape[0]
     try:
@@ -320,11 +332,11 @@ def decompose_Q(Q, mode='scaled', verbose=False):
 
 
 def scale_Q(Q, verbose=False):
-    '''
+    """
         Rescales the locally adjusted matrix Q to make it positive definite.
         @param Q summetric matrix 
         @param verbose print to stdout 
-    '''
+    """
     t = time.time()
     d = Q.shape[0]
     try:
@@ -345,13 +357,13 @@ def scale_Q(Q, verbose=False):
 
 
 def nearest_Q(Q, verbose=False):
-    '''
+    """
         Computes the nearest (Frobenius stats.norm) correlation matrix for the locally adjusted matrix Q.
         The nearest correlation matrix problem is solved unumpy.sing the alternating projection method proposed
         in <i>Computing the Nearest Correlation Matrix - A problem from Finance</i> by N. Higham (2001).
         @param Q summetric matrix 
         @param verbose print to stdout 
-    '''
+    """
     t = time.time()
     d = len(Q[0])
     n = abs(Q).sum() - d
@@ -388,39 +400,39 @@ def nearest_Q(Q, verbose=False):
 
 
 class _bvnorm(stats.rv_continuous):
-    '''
+    """
         bivariate normal distribution with correlation r.
         stats.normal.pdf(x,y) = numpy.exp(-(x*x-2*r*x*y+y*y)/(2*(1-r*r))) / (2*numpy.pi*numpy.sqrt(1-r*r))
-    '''
+    """
 
     def cdf(self, x, r=0):
-        '''
+        """
             Computes the bivariate normal cumulative distribution function,
             i.e. the probability that X < x and Y < y. The function only calls lowerDW(x, y, r).
             @param x value
             @param r correlation coefficient 
-        '''
+        """
         return self.lower_DW(x[0], x[1], r)
 
     def pdf(self, x, r=0):
-        '''
+        """
             Computes the bivariate normal probability distribution function, i.e. the density at (x, y)
             @param x value
             @param r correlation coefficient 
-        '''
+        """
         z = x[0] * x[0] - 2 * r * x[0] * x[1] + x[1] * x[1]
         return numpy.exp(-z / (2 * (1 - r * r))) / (2 * numpy.pi * numpy.sqrt(1 - r * r))
 
     def rvs(self, r=0):
-        '''
+        """
             @param r correlation coefficient 
             @return random bivariate normal
-        '''
+        """
         v = numpy.random.stats.normal(0, 1)
         return r * v + numpy.sqrt(1 - r * r) * numpy.random.stats.normal(0, 1)
 
     def lower_DW(self, dh, dk, r):
-        '''
+        """
             Computes bivariate normal probabilities; lowerDW calculates the probability
             that x < dh and y < dk using the Drezner-Wesolowsky approximation.
             The function only calls upperDW(-dh, -dk, r).
@@ -428,11 +440,11 @@ class _bvnorm(stats.rv_continuous):
             @param dh 1st lower integration limit
             @param dk 2nd lower integration limit
             @param r correlation coefficient
-        '''
+        """
         return self.upper_DW(-dh, -dk, r)
 
     def upper_DW(self, dh, dk, r):
-        '''
+        """
             Computes bivariate normal probabilities; upperDW calculates the probability that x > dh and y > dk. 
               
             This function is based on the method described by Z. Drezner and G.O. Wesolowsky, (1989),
@@ -444,7 +456,7 @@ class _bvnorm(stats.rv_continuous):
             @param dh 1st lower integration limit
             @param dk 2nd lower integration limit
             @param r correlation coefficient
-        '''
+        """
         twopi = 2 * numpy.pi
         if abs(r) < 0.3:
             lg = 3
@@ -507,7 +519,7 @@ class _bvnorm(stats.rv_continuous):
         return p
 
     def lower_MC(self, dh, dk, r, n=100000):
-        '''
+        """
             Computes bivariate stats.normal probabilities; lowerMC calculates the probability that x < dh and y < dk
             using a Monte Carlo approximation of n samples. The function only calls upperMC(-dh, -dk, r, n).
 
@@ -515,11 +527,11 @@ class _bvnorm(stats.rv_continuous):
             @param dk 2nd lower integration limit
             @param r   correlation coefficient
             @param n   sample size
-        '''
+        """
         return self.upper_MC(-dh, -dk, r, n)
 
     def upper_MC(self, dh, dk, r, n=100000):
-        '''
+        """
             Computes bivariate normal probabilities; upperMC calculates the probability that x > dh and y > dk. 
             This function is a simple MC evaluation used to cross-check the DW approximation algorithms.
         
@@ -528,7 +540,7 @@ class _bvnorm(stats.rv_continuous):
             @param r   correlation coefficient
             @param n   sample size
         
-        '''
+        """
         p = 0
         for i in range(n):
             v1 = numpy.random.stats.normal(0, 1)

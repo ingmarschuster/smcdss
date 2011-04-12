@@ -1,28 +1,31 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Binary model with quadratic multilinear form.
+"""
 
-__version__ = "$Revision$"
+"""
+@namespace binary.qu_linear_model
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 from binary_model import *
 
 class QuLinearBinary(Binary):
-    '''
-        A multivariate Bernoulli with additive probability mass function.
-    '''
+    """ Binary model with quadratic multilinear form. """
 
     def __init__(self, a, Beta):
-        '''
+        """
             Constructor.
             @param a probability of zero vector
             @param Beta matrix of coefficients
-        '''
-        Binary.__init__(self, name='linear-binary', longname='A multivariate Bernoulli with additive probability mass function.')
+        """
+        Binary.__init__(self, name='linear-binary',
+                        longname='Binary model with quadratic multilinear form.')
 
         ## probability of zero vector
         self.f_lpmf = None
@@ -41,47 +44,49 @@ class QuLinearBinary(Binary):
 
     @classmethod
     def random(cls, d):
-        '''
+        """
             Construct a random linear model for testing.
             @param cls class
             @param d dimension
-        '''
+        """
         Beta = numpy.random.normal(scale=5.0, size=(d, d))
         Beta = numpy.dot(Beta.T, Beta)
         return cls(0.0, Beta)
 
     @classmethod
     def from_moments(cls, p, R):
-        '''
-            Constructs a linear model for given moments. Warning: This method might produce
-            parameters that are infeasible and yield an improper distribution. 
+        """
+            Constructs a linear model for given moments. Warning: This method
+            might produce parameters that are infeasible and yield an improper
+            distribution.
             @param cls class 
             @param d dimension
-        '''
+        """
         result = calc_Beta(p, R)
         return cls(result[0], result[1])
 
     @classmethod
     def from_data(cls, sample):
-        '''
-            Constructs a linear model from data. Warning: This method might produce
-            parameters that are infeasible and yield an improper distribution.
+        """
+            Constructs a linear model from data. Warning: This method might
+            produce parameters that are infeasible and yield an improper
+            distribution.
             @param cls class 
             @param d dimension
-        '''
+        """
         return cls.from_moments(sample.mean, sample.cor)
 
     def pmf(self, gamma, job_server=None):
-        ''' Probability mass function.
+        """ Probability mass function.
             @param gamma binary vector
-        '''
+        """
         return _pmf(gamma, self.param)
 
     def _rvs(self):
-        '''
+        """
             Samples from the model.
             @return random variable
-        '''
+        """
         gamma = numpy.zeros(self.d, dtype=bool)
         gamma[0] = self.p[0] > numpy.random.random()
 
@@ -112,26 +117,24 @@ class QuLinearBinary(Binary):
         return gamma
 
     def getD(self):
-        '''
+        """
             Get dimension.
             @return dimension 
-        '''
+        """
         return self.param['Beta'].shape[0]
 
     def getP(self):
-        '''
-            Get mean.
+        """ Get mean.
             @return dimension 
-        '''
+        """
         if not hasattr(self, '__p'):
             self.__p = 0.5 + self.param['Beta'].sum(axis=0) * 2 ** (self.d - 2) / self.param['c']
         return self.__p
 
     def getR(self):
-        '''
-            Get correlation matrix.
+        """ Get correlation matrix.
             @return dimension 
-        '''
+        """
         if not hasattr(self, '__R'):
             A = numpy.dot(numpy.ones(self.d)[:, numpy.newaxis], self.Beta.sum(axis=0)[numpy.newaxis, :])
             S = 0.25 + (A + A.T + self.Beta) * 2 ** (self.d - 3) / self.c
@@ -148,10 +151,10 @@ class QuLinearBinary(Binary):
 
 
 def _pmf(gamma, param):
-    '''
+    """
         Log probability mass function of the underlying log-linear model.
         @return random variable
-    '''
+    """
     Beta = param['Beta']
     a = param['a']
     c = param['c']
@@ -165,20 +168,20 @@ def _pmf(gamma, param):
     else: return L
 
 def tau(i, j):
-    '''
+    """
         Maps the indices of a symmetric matrix onto the indices of a vector.
         @param i matrix index
         @param j matrix index
         @return vector index
-    '''
+    """
     return j * (j + 1) / 2 + i
 
 def m2v(A):
-    '''
+    """
         Turns a symmetric matrix into a vector.
         @param matrix
         @return vector
-    '''
+    """
     d = A.shape[0]
     a = numpy.zeros(d * (d + 1) / 2)
     for i in range(d):
@@ -187,11 +190,11 @@ def m2v(A):
     return a
 
 def v2m(a):
-    '''
+    """
         Turns a vector into a symmetric matrix.
         @param vector
         @return matrix
-    '''
+    """
     d = a.shape[0]
     d = int((numpy.sqrt(1 + 8 * d) - 1) / 2)
     A = numpy.zeros((d, d))
@@ -202,11 +205,11 @@ def v2m(a):
     return A
 
 def generate_Z(d):
-    '''
+    """
         Generates a design matrix for the method of moments.
         @param dimension
         @return design matrix
-    '''
+    """
     dd = d * (d + 1) / 2 + 1;
     Z = numpy.ones((dd, dd))
     for i in range(d):
@@ -221,12 +224,12 @@ def generate_Z(d):
     return Z
 
 def calc_Beta(p, R):
-    '''
+    """
         Computes the coefficients that yield a linear distribution with mean p and correlation R.
         @param p mean
         @param R correlation
         @return a, Beta
-    '''
+    """
     d = p.shape[0]
 
     # generate data independent Z-matrix
@@ -250,15 +253,14 @@ def calc_Beta(p, R):
 
 
 
-
-
 def random_problem(d, eps=0.05):
-    '''
-        Creates a random mean vector and correlation matrix that are consistent with the constraints on binary data.
+    """
+        Creates a random mean vector and correlation matrix that are consistent
+        with the constraints on binary data.
         @param d dimension
         @param eps minmum distance to constraint limit
         @return p,R mean vector, correlation matrix
-    '''
+    """
     p = eps + (1.0 - 2 * eps) * numpy.random.random(d)
     R = numpy.random.random((d, d))
     R = numpy.dot(R, R.T)
@@ -275,17 +277,20 @@ def random_problem(d, eps=0.05):
     return p, R
 
 def fit_logistic_model(d=6, n=5000):
-    '''
+    """
         Constructs a linear binary model with given mean and correlations.
         Generates a (not necessarily random) weighted sample, where the weights
-        are allowed to be negative. Fits a logistic model to the weighted sample.
+        are allowed to be negative. Fits a logistic model to the weighted
+        sample.
         @param d dimension
         @param n sample size
-        @todo The fact that the weights are partially negative cause the likelihood function
-        to be not necessarily unimodal. Also, the concept of complete separation has to be
-        adapted to the case of weighted samples. There is an analytical analysis to be done
-        before trying to master the numerics.
-    '''
+        
+        @todo The fact that the weights are partially negative cause the
+        likelihood function to be not necessarily unimodal. Also, the concept of
+        complete separation has to be adapted to the case of weighted samples.
+        There is an analytical analysis to be done before trying to master the
+        numerics.
+    """
 
     # Construct random problem.
     p, R = random_problem(d)

@@ -1,10 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date$
 
-__version__ = "$Revision$"
+"""
+Package for optimization on binary spaces.
+"""
+
+"""
+@namespace obs
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import sys, os, time
 import numpy

@@ -1,14 +1,22 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date: 2011-03-07 17:03:12 +0100 (lun., 07 mars 2011) $
 
-__version__ = "$Revision: 94 $"
+"""
+Unconstrained Binary Quadratic Optimization.
+"""
+
+"""
+@namespace obs.ubqo
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import os
 import obs
 import numpy
+import scipy.stats as stats
 import utils
 import cPickle as pickle
 
@@ -22,11 +30,11 @@ class ubqo():
         self.v = v
 
 def import_beasly_lib(filename):
-    '''
+    """
         Import problems from http://people.brunel.ac.uk/~mastjjb/jeb/orlib/bqpinfo.html used in
         Heuristic algorithms for the unconstrained binary quadratic programming,
         J.E. Beasley 1998
-    '''
+    """
     path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
     file = open(os.path.join(path, 'beasly', filename + '.txt'), 'r')
     L = list()
@@ -57,11 +65,11 @@ def import_beasly_lib(filename):
     return L
 
 def import_glover_lib(filename):
-    '''
+    """
         Import problems from http://hces.bus.olemiss.edu/tools.html used in
         One-Pass Heuristics for Unconstrained Binary Quadratic Problems,
         F. Glover, B. Alidaee, C. Rego, and G. Kochenberger 2002
-    '''
+    """
     path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
     L = list()
     for k in xrange(5):
@@ -83,39 +91,37 @@ def import_glover_lib(filename):
     return L
 
 def random_cho(d):
-    c = numpy.random.normal(size=(d, d))
-    c = numpy.dot(c, c.T) + 1e-3 * numpy.eye(d)
-    v = numpy.sqrt(c.diagonal()[numpy.newaxis, :])
-    c /= numpy.dot(v.T, v)
-    return numpy.linalg.cholesky(c)
+    K = numpy.random.normal(size=(d, d))
+    K = numpy.dot(K, K.T) + 1e-3 * numpy.eye(d)
+    v = numpy.sqrt(K.diagonal()[numpy.newaxis, :])
+    K /= numpy.dot(v.T, v)
+    return numpy.linalg.cholesky(K)
 
-def uniform(d, rho=1.0, xi=0.0, c=100):
+def uniform(d, rho=1.0, xi=0.0, c=50):
     return numpy.random.randint(low=c * (xi - 1.0), high=c * xi, size=d) * (numpy.random.random(size=d) <= rho)
 
-def binomial(d, rho=1.0, xi=0.5, c=1000):
-    f = c
-    return (numpy.random.binomial(n=f, p=0.5, size=d) - 0.5 * f + 200) * (numpy.random.random(size=d) <= rho)
+def student(d, rho=1.0, xi=0.0, c=50):
+    return numpy.array([stats.t._rvs(1) for i in xrange(d)]).T * c // 1
 
-def normal(d, rho=1.0, xi=0.5, c=None):
-    if c is None: c = random_cho(d)
+def normal(d, rho=1.0, xi=0.5, c=50, K=None):
+    if K is None: K = random_cho(d)
     x = numpy.random.normal(size=d)
-    x = numpy.dot(c[:d, :d], x)
+    x = numpy.dot(K[:d, :d], x) * c // 1 - (1 - 2 * xi) * c
     return x * (numpy.random.random(size=d) <= rho)
 
-def generate_ubqo_problem(d, rho=1.0, xi=0.0, c=500, n=1, random=binomial, filename=None):
-    '''
-
-    '''
+def generate_ubqo_problem(d, rho=1.0, xi=0.0, c=50, n=1, random=student, filename=None):
+    """
+        Generates a random UBQO problem.
+    """
     path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
     L = list()
-    c = random_cho(d)
     for k in xrange(n):
         print '%s\t d=%d' % (k + 1, d)
         A = numpy.zeros((d, d))
         for i in xrange(d):
             A[i, : i + 1] = random(d=i + 1, rho=rho, xi=xi, c=c)
             A[:i, i] = A[i, :i]
-        L.append({'best_obj' :-numpy.inf, 'problem' : A})
+        L.append({'best_obj' :1e-99, 'problem' : A})
         if not filename is None:
             file = open(os.path.join(path, filename + '.pickle'), 'w')
             pickle.dump(obj=L, file=file)
@@ -123,9 +129,9 @@ def generate_ubqo_problem(d, rho=1.0, xi=0.0, c=500, n=1, random=binomial, filen
     return L
 
 def pickle_ubqo_problem(filename):
-    '''
+    """
         Reads a UQBO problem from file and save it as pickled object.
-    '''
+    """
     path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
     file = open(os.path.join(path, filename + '.pickle'), 'w')
     if filename[:3] == 'bqp':
@@ -135,18 +141,21 @@ def pickle_ubqo_problem(filename):
     file.close()
 
 def load_ubqo_problem(filename, repickle=False):
-    '''
+    """
         Loads a pickled UQBO problem.
-    '''
+    """
     path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
     path = os.path.join(path, filename + '.pickle')
     if repickle or not os.path.isfile(path): pickle_ubqo_problem(filename)
     file = open(path, 'r')
-    return pickle.load(file)
+    L = pickle.load(file)
     file.close()
+    for p in L:
+        if p['best_obj'] <= 1e-99: p['best_obj'] = -numpy.inf
+    return L
 
 def main():
-    x = generate_ubqo_problem(d=250, rho=1, random=normal, filename='binom')
+    x = generate_ubqo_problem(d=250, rho=1, xi=0.5, c=50, random=student, filename='r250t')
     print utils.format.format(x[0]['problem'])
 
 if __name__ == "__main__":

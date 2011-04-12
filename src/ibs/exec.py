@@ -1,23 +1,30 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date$
-#    $Revision$
 
-'''
+"""
+Execution of integration algorithms. 
+
+@verbatim
 USAGE:
-        exec <option> <file>
+        exec [option] [file]
 
 OPTIONS:
         -h    display help
-        -r    run integration of posterior as specified in <file>
-        -e    evaluate results obtained from running <file>
-        -c    start clean run of <file>
-        -v    view evaluation of <file>
-'''
+        -r    run integration of posterior as specified in [file]
+        -e    evaluate results obtained from running [file]
+        -c    start clean run of [file]
+        -v    view evaluation of [file]
 
-__version__ = "$Revision$"
+@endverbatim
+"""
+
+"""
+@namespace ibs.exec
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import getopt, shutil, csv, datetime, subprocess, os, sys
 import pp
@@ -25,6 +32,7 @@ import ibs
 from binary import *
 
 def main():
+    """ Main method. """
 
     # Parse command line options.
     try:
@@ -47,7 +55,7 @@ def main():
     RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
     RUN_FOLDER = os.path.join(ibs.v['RUN_PATH'], RUN_NAME)
     RUN_FILE = os.path.join(ibs.v['RUN_PATH'], RUN_NAME + '.ini')
-    if not os.path.isfile(RUN_FILE):           
+    if not os.path.isfile(RUN_FILE):
         print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
         sys.exit(0)
     ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE, 'RUN_FOLDER':RUN_FOLDER})
@@ -59,16 +67,17 @@ def main():
     if '-c' in opts:
         try: shutil.rmtree(RUN_FOLDER)
         except: pass
-    if '-r' in opts: run(v=ibs.v, verbose=True)
+    if '-r' in opts: run(v=ibs.v)
     if '-e' in opts: plot(v=ibs.v)
     if '-v' in opts:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=ibs.v)
         subprocess.Popen(['okular', os.path.join(RUN_FOLDER, 'plot.pdf')])
 
-def run(v, verbose=False):
-    ''' Run algorithm from specified file and store results.
+def run(v):
+    """ 
+        Run algorithm from specified file and store results.
         @param v parameters
-    '''
+    """
 
     v = readData(v)
 
@@ -126,9 +135,11 @@ def run(v, verbose=False):
                     print 'Failed to write to %s.' % result_file
 
 def readData(v):
-    ''' Reads the data file and adds the posterior distribution to the parameters.
+    """ 
+        Reads the data file and adds the posterior distribution to the
+        parameters.
         @param v parameters
-    '''
+    """
     DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_SET'], v['DATA_SET'] + '.csv')
     reader = csv.reader(open(DATA_FILE, 'r'), delimiter=',')
     DATA_HEADER = reader.next()
@@ -140,16 +151,16 @@ def readData(v):
     if not isinstance(v['DATA_LAST_COVARIATE'], str): X_last = min(v['DATA_LAST_COVARIATE'] - 1, d)
     else: X_last = DATA_HEADER.index(v['DATA_LAST_COVARIATE'])
     sample = numpy.array([numpy.array([eval(x) for x in [row[Y_pos]] + row[X_first:X_last]])
-                          for row in reader if len(row) > 0 and not row[Y_pos]=='NA'])
-    v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:],
-                                                 posterior_type=v['POSTERIOR_TYPE']),
-                                                 'DATA_HEADER' : DATA_HEADER[X_first:X_last]})
+                          for row in reader if len(row) > 0 and not row[Y_pos] == 'NA'])
+    v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], param=v),
+              'DATA_HEADER' : DATA_HEADER[X_first:X_last]})
     return v
 
 def plot(v, verbose=True):
-    ''' Create pdf-boxplots from run files.
+    """ 
+        Create pdf-boxplots from run files.
         @param v parameters
-    '''
+    """
 
     if not os.path.isfile(os.path.join(v['RUN_FOLDER'], 'result.csv')):
         print 'No file %s found.' % os.path.join(v['RUN_FOLDER'], 'result.csv')
@@ -214,7 +225,7 @@ def plot(v, verbose=True):
 
     # Create R-script.
 
-    R = '''#\n# This file was automatically generated.\n#\n
+    R = """#\n# This file was automatically generated.\n#\n
     # Boxplot data from repeated runs
     boxplot = t(array(c(%(EVAL_BOXPLOT)s),c(%(EVAL_DIM)s,5)))\n
     # Covariate names
@@ -223,10 +234,10 @@ def plot(v, verbose=True):
     pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
     par(oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
     barplot(boxplot, ylim=c(0, 1), names=names, las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c(%(EVAL_COLOR)s), xaxs='i', xlim=c(-1, %(EVAL_XAXS)s))
-    ''' % v
-    if v['EVAL_TITLE']: R += '''
+    """ % v
+    if v['EVAL_TITLE']: R += """
     title(main='%(EVAL_TITLE)s', line=%(EVAL_TITLE_LINE)s, family='%(EVAL_FONT_FAMILY)s', cex.main=%(EVAL_FONT_CEX)s, font.main=1)
-    ''' % v
+    """ % v
     R += 'dev.off()'
     R = R.replace('    ', '')
     R_file = open(os.path.join(v['SYS_ROOT'], v['RUN_PATH'], v['RUN_NAME'], 'plot.R'), 'w')

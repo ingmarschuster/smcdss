@@ -1,11 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Utilities.
+"""
+
+"""
+@namespace utils
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import os, sys
 import numpy as np

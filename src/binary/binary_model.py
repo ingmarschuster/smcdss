@@ -1,26 +1,29 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Binary model.
+"""
 
-__version__ = "$Revision$"
+"""
+@namespace binary.binary_model
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 from binary import *
 
 class Binary(stats.rv_discrete):
-    '''
-        A multivariate Bernoulli.
-    '''
-    def __init__(self, name='binary', longname='A multivariate Bernoulli.'):
-        '''
+    """ Binary model. """
+    
+    def __init__(self, name='binary', longname='Binary model.'):
+        """
             Constructor.
             @param name name
             @param longname longname
-        '''
+        """
         stats.rv_discrete.__init__(self, name=name, longname=longname)
         self.f_lpmf = None
         self.f_rvs = None
@@ -30,16 +33,18 @@ class Binary(stats.rv_discrete):
         self._m2v_perm = None
 
     def pmf(self, gamma, job_server=None):
-        ''' Probability mass function.
+        """ 
+            Probability mass function.
             @param gamma binary vector
-        '''
+        """
         return numpy.exp(self.lpmf(gamma, job_server=job_server))
 
     def lpmf(self, gamma, job_server=None):
-        ''' Log-probability mass function.
+        """ 
+            Log-probability mass function.
             @param gamma binary vector
             @param job_server parallel python job server
-        '''
+        """
         if len(gamma.shape) == 1: gamma = gamma[numpy.newaxis, :]
         size = gamma.shape[0]
         if self.v2m_perm is not None:
@@ -69,10 +74,11 @@ class Binary(stats.rv_discrete):
         else: return L
 
     def rvs(self, size=1, job_server=None):
-        ''' Sample random variables.
+        """ 
+            Sample random variables.
             @param size number of variables
             @return random variable
-        '''
+        """
         ncpus, job_server = _check_job_server(size, job_server)
         Y = numpy.empty((size, self.d), dtype=bool)
         U = self.rvsbase(size)
@@ -103,10 +109,11 @@ class Binary(stats.rv_discrete):
         else: return Y
 
     def rvslpmf(self, size=1, job_server=None):
-        ''' Sample random variables and computes the probabilities.
+        """ 
+            Sample random variables and computes the probabilities.
             @param size number of variables
             @return random variable
-        '''
+        """
         ncpus, job_server = _check_job_server(size, job_server)
         Y = numpy.empty((size, self.d), dtype=bool)
         U = self.rvsbase(size)
@@ -141,21 +148,21 @@ class Binary(stats.rv_discrete):
         return numpy.random.random((size, self.d))
 
     def rvstest(self, n):
-        '''
+        """
             Prints the empirical mean and correlation to stdout.
             @param n sample size
-        '''
+        """
         sample = utils.data.data()
         sample.sample(self, n)
         return utils.format.format(sample.mean, 'sample (n = %i) mean' % n) + '\n' + \
                utils.format.format(sample.cor, 'sample (n = %i) correlation' % n)
 
     def marginals(self):
-        '''
+        """
             Get string representation of the marginals. 
             @remark Evaluation of the marginals requires exponential time. Do not do it.
             @return a string representation of the marginals 
-        '''
+        """
         sample = utils.data.data()
         for dec in range(2 ** self.d):
             bin = utils.format.dec2bin(dec, self.d)
@@ -166,18 +173,18 @@ class Binary(stats.rv_discrete):
         return self.getD()
 
     def getD(self):
-        ''' Get dimension.
+        """ Get dimension.
             @return dimension 
-        '''
+        """
         return 0
 
     def _getRandom(self):
         return self.getRandom()
 
     def getRandom(self):
-        ''' Get index list of random components.
+        """ Get index list of random components.
             @return index list 
-        '''
+        """
         return []
 
     def getv2m(self):
@@ -200,9 +207,22 @@ class Binary(stats.rv_discrete):
     r = property(fget=_getRandom, doc="random components")
 
 def _parts_job_server(size, ncpus):
+    """
+        Partitions a load to pass it to multiple cpus.
+        @param size sample size
+        @param ncpus number of cpus
+        @return partition of 0,...,size
+    """
     return [[i * size // ncpus, min((i + 1) * size // ncpus + 1, size)] for i in range(ncpus)]
 
 def _check_job_server(size, job_server):
+    """
+        Checks and modifies the job_server.
+        @param size sample size
+        @param job_server
+        @return ncpus number of cpus
+        @return job_server modified job_server
+    """
     ncpus = 0
     if size == 1: job_server = None
     if not job_server is None:

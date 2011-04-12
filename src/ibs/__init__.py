@@ -1,10 +1,18 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date$
 
-__version__ = "$Revision$"
+"""
+Package for integration on binary spaces.
+"""
+
+"""
+@namespace ibs
+$Author$
+$Rev$
+$Date$
+@details The packages includes algorithms based on classic Markov chain Monte
+Carlo and novel Sequential Monte Carlo algorithms using particle methods.
+"""
 
 import os, sys
 import ConfigParser

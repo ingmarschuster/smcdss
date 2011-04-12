@@ -1,13 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Data processing and sampling.
+"""
 
-__version__ = "$Revision$"
+"""
+@namespace utils.data
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import time, sys, pickle
 from numpy import *
@@ -16,11 +20,11 @@ from utils.format import *
 
 class data(object):
     def __init__(self, X=[], w=[]):
-        '''
+        """
             Data class.
             @param X data
             @param w weights  
-        '''
+        """
 
         ## data
         self._X = list(X)
@@ -39,23 +43,23 @@ class data(object):
                     w=array(self._W)[self.order[0:int(self.size * fraction)]])
 
     def getData(self):
-        '''
+        """
             Get data.
             @return data array.
-        '''
+        """
         if isinstance(self._X, list):
             return array(self._X)
         else:
             return self._X
 
     def proc_data(self, order=False, fraction=1.0, dtype=int):
-        '''
+        """
             Get processed data.
             @param order weights in ascending order
             @param fraction upper fraction of the ordered data
             @param dtype data type
             @return data array
-        '''
+        """
         if fraction == 1.0:
             if order:
                 return array(self.X[self.order], dtype=dtype)
@@ -65,11 +69,11 @@ class data(object):
             return array(self.X[self.order[0:int(self.size * fraction)]], dtype=dtype)
 
     def getNWeights(self):
-        '''
+        """
             Get weights.
             @remark If weights are negative, the function returns the normalized exponential weights.
             @return normalized weights
-        '''
+        """
         if not self.isWeighted(): return ones(self.size) / float(self.size)
         w = array(self._W)
         if w.min() < 0:
@@ -81,12 +85,12 @@ class data(object):
         return self._W
 
     def proc_weights(self, order=False, fraction=1.0):
-        '''
+        """
             Get processed weights.
             @param order weights in ascending order
             @param fraction upper fraction of the ordered weights
             @return weights
-        '''
+        """
         if fraction == 1.0:
             if order:
                 return self.nW[self.order]
@@ -97,10 +101,10 @@ class data(object):
             return w / w.sum()
 
     def clear(self, fraction=1.0):
-        '''
+        """
             Deletes the data.
             @param fraction keep upper fraction of the ordered data
-        '''
+        """
         if fraction == 1.0:
             self.__init__()
         else:
@@ -108,120 +112,120 @@ class data(object):
                           w=array(self._W)[self.order[0:int(self.size * fraction)]])
 
     def getD(self):
-        '''
+        """
             Get dimension.
             @return dimension 
-        '''
+        """
         if size == 0: return 0
         return len(self._X[0])
 
     def getSize(self):
-        '''
+        """
             Get sample size.
             @return sample size 
-        '''
+        """
         return len(self._X)
 
     def setData(self, X):
-        '''
+        """
             Set data.
             @param X data
-        '''
+        """
         self._X = list(X)
 
     def setWeights(self, w):
-        '''
+        """
             Set weights.
             @param w weights
-        '''
+        """
         self._W = list(w)
 
     def isWeighted(self):
-        '''
+        """
             Test if weighted.
             @return True, if the sample has weights.
-        '''
+        """
         return len(self._W) > 0
 
     def getMean(self, weight=False, fraction=1.0):
-        '''
+        """
             Computes the mean.
             @param weight compute weighted mean
             @param fraction use only upper fraction of the ordered data
-        '''
+        """
         if weight:
             return calc_mean(self.proc_data(fraction=fraction, dtype=float), w=self.proc_weights(fraction=fraction))
         else:
             return calc_mean(self.proc_data(fraction=fraction, dtype=float))
 
     def getCov(self, weight=False, fraction=1.0):
-        '''
+        """
             Computes the covariance matrix.
             @param weight compute weighted covariance
             @param fraction use only upper fraction of the ordered data
-        '''
+        """
         if weight:
             return calc_cov(X=self.proc_data(fraction=fraction, dtype=float), w=self.proc_weights(fraction=fraction))
         else:
             return calc_cov(X=self.proc_data(fraction=fraction, dtype=float))
 
     def getCor(self, weight=False, fraction=1.0):
-        '''
+        """
             Computes the correlation matrix.
             @param weight compute weighted correlation
             @param fraction use only upper fraction of the ordered data
-        '''
+        """
         if weight:
             return calc_cor(X=self.proc_data(fraction=fraction, dtype=float), w=self.proc_weights(fraction=fraction))
         else:
             return calc_cor(X=self.proc_data(fraction=fraction, dtype=float))
 
     def getVar(self, weight=False, fraction=1.0):
-        '''
+        """
             Computes the variance vector.
             @param weight compute weighted variance
             @param fraction use only upper fraction of the ordered data
-        '''
+        """
         return diag(self.getCov(weight=weight, fraction=fraction))
 
     def getEss(self):
-        '''
+        """
         Return effective sample size 1/(sum_{w in weights} w^2) .
-        '''
+        """
         if not self.isWeighted(): return 0
         return 1 / (self.size * pow(self.nW, 2).sum())
 
     def getOrder(self):
-        '''
+        """
             Get order.
             @return index set for the data in ascending order according to the weights.
-        '''
+        """
         if self.__order is None: self.__sort()
         if self.__order is None: self.__order = range(size)
         return self.__order
 
     def __sort(self):
-        '''
+        """
             Sets the index for the data in ascending order according to the weights.
-        '''
+        """
         self.__order = array(self._W).argsort(axis=0).tolist()
         self.__order.reverse()
 
 
     def lexorder(self, X):
-        '''
+        """
             Gives the index for the data in lexicographical order.
             @return index set 
-        '''
+        """
         #return argsort(array([str(array(x, int)) for x in X]))
         k = array([2 ** i for i in range(len(X[0]))])
         return argsort(array([dot(k, x) for x in X]))
 
     def assign_weights(self, f, verbose=False):
-        '''
+        """
             Evaluates the value of c*exp(f(x)) for each sample x.
             @param f a real-valued function on the sampling space 
-        '''
+        """
 
         if verbose:
             t = time.clock()
@@ -279,61 +283,61 @@ class data(object):
                 count = 1
 
     def append(self, x, w=None):
-        '''
+        """
             Appends the value x with weigth w to the dataset.
             @param x value
             @param w weight
-        '''
+        """
         if not isinstance(self._X, list): self._X.tolist()
         if not isinstance(self._W, list): self._W.tolist()
         self._X.append(x)
         if not w is None: self._W.append(float(w))
 
     def shrink(self, index):
-        '''
+        """
             Removes the indicated columns from the data.
             @param index column index set 
-        '''
+        """
         self._X = self.X[:, index]
 
     def get_sub_data(self, index):
-        '''
+        """
             Returns a shrinked version of the data class.
             @param index column index set 
-        '''
+        """
         data = self.copy()
         data.shrink(index)
         return data
 
     def copy(self):
-        '''
+        """
             Creates a deep copy.
             @return deep copy
-        '''
+        """
         return copy.deepcopy(self)
 
     def sample(self, f, size, job_server=None):
-        '''
+        """
             Samples from a random generator.
             @param f random variable
             @param size sample size
             @param verbose print status line
-        '''
+        """
         self._X += list(f.rvs(size, job_server))
 
 
     def save(self, filename):
-        '''
+        """
             Saves the sample to a file using pickle.
             @param filename filename
-        '''
+        """
         pickle.dump(self, open(filename, 'wb'))
 
     def load(self, filename):
-        '''
+        """
             pickle.loads a sample from a file using pickle.
             @param filename filename
-        '''
+        """
         data = pickle.load(open(filename))
         self.__init__(data.X, data._W)
 
@@ -351,24 +355,24 @@ class data(object):
 
 
 def calc_mean(X, w=None):
-    '''
+    """
         Mean.
         @param X array
         @param w positive weights
         @return mean
-    '''
+    """
     if w is None:
         return X.sum(axis=0) / float(X.shape[0])
     else:
         return (w[:, newaxis] * X).sum(axis=0)
 
 def calc_cov(X, w=None):
-    '''
+    """
         Covariance.
         @param X array
         @param w positive weights
         @return covariance matrix
-    '''
+    """
     if w is None:
         n = float(X.shape[0])
         mean = calc_mean(X)[newaxis, :]
@@ -378,12 +382,12 @@ def calc_cov(X, w=None):
         return (dot(X.T, w[:, newaxis] * X) - dot(mean.T, mean)) / (1 - power(w, 2).sum())
 
 def calc_cor(X, w=None):
-    '''
+    """
         Correlation.
         @param X array
         @param w positive weights
         @return correlation matrix
-    '''
+    """
     d = X.shape[1]
     cov = calc_cov(X, w) + 1e-10 * eye(d)
     var = cov.diagonal()[newaxis, :]

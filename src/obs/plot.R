@@ -3,11 +3,14 @@
 ##
 
 # constants
-colors   = c('CE'='olivedrab4', 'SA'='orangered4', 'SMC'='black')
-linetype = c('CE'=1,            'SA'=2,            'SMC'=5)
+algos  = c('SA', 'CE', 'SMC')
+colors = c('SA'='firebrick4', 'CE'='lightcyan', 'SMC'='gold')
+n      = c('SA'=0, 'CE'=0, 'SMC'=0)
+bars   = 0
 
 # read data
 data=read.csv('%(resultfile)s')
+d=length(names(data)[substr(names(data), start=1, stop=1)=='S'])
 
 # construct list of computed problems
 problems=unique(data$PROBLEM)
@@ -19,7 +22,6 @@ for (problem in problems) {
 	probdata=subset(data[c('OBJ','BEST_OBJ','ALGO')], data['PROBLEM']==problem)
 	
 	# construct list of algorithms
-	algos = as.matrix(unique(probdata$ALGO))
 	best_obj = probdata$BEST_OBJ[1]
 	if (best_obj=='-Inf') best_obj=max(probdata$OBJ)
 	
@@ -27,28 +29,34 @@ for (problem in problems) {
 	min_x = min(probdata$OBJ)
 	max_x = max(best_obj)
 	
+	if (bars==0) {
+		breaks=unique(probdata$OBJ)
+		breaks=breaks[order(breaks, decreasing=TRUE)]
+	} else {
+		breaks=as.integer(seq(max_x,min_x, length.out=bars))
+	}
+	
 	# construct kernel density estimates
-	density_plot=list(); max_y=list()	
+	hist_single=list()
 	for(algo in algos) {
+		# select results generated from algo
 		algodata=subset(probdata[c('OBJ','BEST_OBJ')], probdata['ALGO'] == algo)
-		density_plot[[algo]] = density(algodata$OBJ, kernel='triangular', to=max_x)
-		max_y[algo] = max(density_plot[[algo]]$y)
+		# select number of test runs
+		n[algo]=dim(algodata)[1]
+		# select inverted counts
+		hist_single[[algo]]=hist(algodata$OBJ, plot=FALSE, breaks=breaks)$counts[(length(breaks)-1):1]
 	}
 	
-	# determine total maximum y
-	max_y = max(unlist(max_y))
-	
-	# plot
-	plot(x=c(min_x, max_x), y=c(0,max_y), type="n", family='serif', cex.axis=1, cex.lab=1, xlab='objective', ylab='')
-	for(algo in algos) {
-		lines(density_plot[[algo]]$x, density_plot[[algo]]$y, type='l', lty=linetype[algo], col=colors[algo])
-	}
-	
-	# add vertical line at best known objective value
-	abline(v = best_obj, col = 'royalblue')
+	# plot multi-histogram
+	hist_multi=rbind(hist_single[[1]], hist_single[[2]], hist_single[[3]])
+	barplot(hist_multi, names=breaks[1:(length(breaks)-1)], axis.lty=0, tck=0.01, las=2,
+			main=paste('%(title)s', d), cex.names=0.5, cex.axis=0.75, col=colors, mgp=c(3, 0.25, 0)) 
 	
 	# add legend
-	legend(x='topleft', inset=0.1, legend=c('Cross-Entropy','Simulated Annealing','Sequential Monte Carlo'), cex=1, col=colors, lty=linetype)
+	legend(x='topright', inset=0.1, cex=1, fill=colors, legend=c(
+					paste('Simulated Annealing [', n['SA'], ']', sep=''),
+					paste('Cross Entropy [', n['CE'], ']', sep=''),
+					paste('Sequential Monte Carlo [', n['SMC'], ']', sep='')))
 	
 }
 dev.off()

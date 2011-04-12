@@ -1,24 +1,28 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @Author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Binary model with logistic conditional distributions.
+"""
 
-__version__ = "$Revision$"
+"""
+@namespace binary.logistic_cond_model
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 from binary import *
 
 class LogisticBinary(ProductBinary):
-    ''' A binary model with conditionals based on logistic regressions. '''
+    """ Binary model with logistic conditional distributions. """
 
     def __init__(self, Beta, name='logistic binary',
-                             longname='A binary model with logistic conditionals.'):
-        ''' Constructor.
+                             longname='Binary model with logistic conditional distributions.'):
+        """ Constructor.
             @param Beta matrix of regression coefficients
-        '''
+        """
 
         ProductBinary.__init__(self, p=utils.inv_logit(numpy.diagonal(Beta)), \
                                              name=name, longname=longname)
@@ -36,32 +40,35 @@ class LogisticBinary(ProductBinary):
 
     @classmethod
     def independent(cls, p):
-        ''' Constructs a logistic binary model with independent components.
+        """
+            Constructs a logistic binary model with independent components.
             @param cls instance
             @param p mean
             @return logistic model
-        '''
+        """
         Beta = numpy.diag(numpy.log(p / (1 - p)))
         return cls(Beta)
 
     @classmethod
     def uniform(cls, d):
-        ''' Constructs a uniform logistic binary model.
+        """ 
+            Constructs a uniform logistic binary model.
             @param cls instance
             @param d dimension
             @return logistic model
-        '''
+        """
         Beta = numpy.zeros((d, d))
         return cls(Beta)
 
     @classmethod
     def random(cls, d, dep=3.0):
-        ''' Constructs a random logistic binary model.
+        """ 
+            Constructs a random logistic binary model.
             @param cls instance
             @param d dimension
             @param dep strength of dependencies [0,inf)
             @return logistic model
-        '''
+        """
         cls = LogisticBinary.independent(p=numpy.random.random(d))
         Beta = numpy.random.normal(scale=dep, size=(d, d))
         Beta *= numpy.dot(Beta, Beta)
@@ -71,7 +78,8 @@ class LogisticBinary(ProductBinary):
 
     @classmethod
     def from_data(cls, sample, Init=None, job_server=None, eps=0.02, delta=0.075, verbose=False):
-        ''' Construct a logistic-regression binary model from data.
+        """ 
+            Construct a logistic-regression binary model from data.
             @param cls instance
             @param sample a sample of binary data
             @param Init matrix with inital values
@@ -80,18 +88,18 @@ class LogisticBinary(ProductBinary):
             @param xi marginal probs in [xi,1-xi] > random component
             @param verbose detailed output
             @return logistic model
-        '''
+        """
         return cls(calc_Beta(sample, Init=Init, job_server=job_server, eps=eps, delta=delta, verbose=verbose))
 
     def renew_from_data(self, sample, job_server=None, eps=0.02, delta=0.075, lag=0, verbose=False):
-        ''' Construct a logistic-regression binary model from data.
+        """ Construct a logistic-regression binary model from data.
             @param sample a sample of binary data
             @param eps marginal probs in [eps,1-eps] > logistic model
             @param delta abs correlation in  [delta,1] > association
             @param xi marginal probs in [xi,1-xi] > random component
             @param verbose detailed output
             @return logistic model
-        '''
+        """
 
         # Compute new parameter from data.
         newBeta = calc_Beta(sample=sample, Init=self.param['Beta'], \
@@ -103,12 +111,13 @@ class LogisticBinary(ProductBinary):
 
     @classmethod
     def from_loglinear_model(cls, llmodel):
-        ''' Constructs a logistic model that approximates a log-linear model.
+        """ 
+            Constructs a logistic model that approximates a log-linear model.
             @param cls instance
             @param llmodel log-linear model
             @todo Instead of margining out in arbitrary order, we could use a greedy approach
             which picks the next dimension by minimizing the error made in the Taylor approximation. 
-        '''
+        """
         d = llmodel.d
         Beta = numpy.zeros((d, d))
         Beta[0, 0] = utils.logit(llmodel.p_0)
@@ -125,9 +134,9 @@ class LogisticBinary(ProductBinary):
         return self.param['Beta']
 
     def getD(self):
-        ''' Get dimension.
+        """ Get dimension.
             @return dimension 
-        '''
+        """
         return self.Beta.shape[0]
 
     def __str__(self):
@@ -136,7 +145,8 @@ class LogisticBinary(ProductBinary):
     Beta = property(fget=getBeta, doc="Beta")
 
 def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative_weights=False, verbose=True):
-    ''' Computes the logistic regression coefficients of all conditionals. 
+    """ 
+        Computes the logistic regression coefficients of all conditionals. 
         @param sample binary data
         @param eps marginal probs in [eps,1-eps] > logistic model
         @param delta abs correlation in  [delta,1] > association
@@ -144,7 +154,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
         @param job_server job server
         @param verbose print to stdout 
         @return matrix of regression coefficients
-    '''
+    """
 
     if sample.d == 0: return numpy.array([])
 
@@ -234,14 +244,16 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
 
 
 def calc_log_regr(y, X, XW, init, w=None, verbose=False):
-    '''
+    """
         Computes the logistic regression coefficients.. 
         @param y explained variable
         @param X covariables
-        @param X weighted covariables
+        @param XW weighted covariables
         @param init initial value
+        @param w weights
+        @param verbose verbose
         @return vector of regression coefficients
-    '''
+    """
 
     CONST_PRECISION = 1e-5
 

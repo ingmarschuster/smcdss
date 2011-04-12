@@ -1,20 +1,26 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Python import.
+"""
+
+"""
+@namespace utils.python
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import numpy as np
 import utils
 
 def resample(w, u):
-    '''
+    """
         Computes the particle indices by systematic resampling.
         @param w array of weights
-    '''
+    """
     n = w.shape[0]
     cnw = n * np.cumsum(w)
     j = 0
@@ -27,11 +33,11 @@ def resample(w, u):
     return i
 
 def _logistic_all(param, U=None, gamma=None):
-    ''' Generates a random variable.
+    """ Generates a random variable.
         @param U uniform variables
         @param param parameters
         @return binary variables
-    '''
+    """
     Beta = param['Beta']
     if U is not None:
         size = U.shape[0]

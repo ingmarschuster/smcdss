@@ -1,11 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Cython source.
+"""
+
+"""
+@namespace utils.cython_src
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import numpy as np
 cimport numpy as np
@@ -15,10 +21,10 @@ cdef extern from "math.h":
     double log(double)
 
 def resample(np.ndarray[dtype=np.float64_t, ndim=1] w, double u):
-   '''
+   """
        Computes the particle indices by systematic resampling.
        @param w array of weights
-   '''
+   """
    w = w * w.shape[0]
    cdef int j = 0
    cdef int k
@@ -36,11 +42,11 @@ def resample(np.ndarray[dtype=np.float64_t, ndim=1] w, double u):
 def _logistic_all(np.ndarray[dtype=np.float64_t, ndim=2] Beta,
                   np.ndarray[dtype=np.float64_t, ndim=2] U=None,
                   np.ndarray[dtype=np.int8_t, ndim=2] gamma=None):
-    ''' Generates a random variable.
+    """ Generates a random variable.
         @param U uniform variables
         @param param parameters
         @return binary variables
-    '''
+    """
     cdef int d = Beta.shape[0]
     cdef int i, size
     cdef double logp = 0.0

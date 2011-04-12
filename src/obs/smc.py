@@ -1,10 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date: 2011-04-04 15:26:12 +0200 (lun., 04 avr. 2011) $
 
-__version__ = "$Revision: 100 $"
+"""
+Sequential Monte Carlo optimization.
+"""
+
+"""
+@namespace obs.smc
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 from ibs.smc import ParticleSystem
 from obs import *

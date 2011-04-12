@@ -1,21 +1,26 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-    
-'''
+"""
+Logging stdout into log files.
+"""
+
+"""
+@namespace utils.logger
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import time, os
 import numpy
 
 class Logger:
-    '''
+    """
         Capture print statments and write them to a log file
         but still allow them to be printed on the screen.
-    '''
+    """
     def __init__(self, stdout, filename):
         for i in xrange(1, 100):
             if not os.path.isfile(filename + '%0*d.txt' % (2, i)):

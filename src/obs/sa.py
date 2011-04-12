@@ -1,10 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date: 2011-03-07 17:03:12 +0100 (lun., 07 mars 2011) $
 
-__version__ = "$Revision: 94 $"
+"""
+Simulated annealing.
+"""
+
+"""
+@namespace obs.sa
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 from obs import *
 
@@ -15,12 +22,12 @@ class sa(ubqo.ubqo):
         return solve_sa(f=binary.QuExpBinary(self.A), n=self.v['SA_MAX_ITER'], m=self.v['SA_MAX_TIME'])
 
 def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
-    ''' Run simulated annealing optimization.
+    """ Run simulated annealing optimization.
         @param f f function
         @param n number of steps
         @param m maximum time in minutes
         @param verbose verbose
-    '''
+    """
 
     print 'running simulated annealing',
     if n < numpy.inf: print 'for %.f steps' % n

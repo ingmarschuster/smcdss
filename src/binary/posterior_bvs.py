@@ -2,15 +2,16 @@
 # -*- coding: utf-8 -*-
 
 """
-Reads a dataset and construct the posterior probabilities of all linear models
-with variables regressed on the first column.
+Posterior distribution of a model selection problem.
 """
 
 """
 @namespace binary.posterior_bvs
-$Author: Christian Schäfer $
+$Author$
 $Rev$
 $Date$
+@details Reads a dataset and construct the posterior probabilities of all linear models
+with variables regressed on the first column.
 """
 
 from binary import *
@@ -21,7 +22,8 @@ class PosteriorBinary(binary_model.Binary):
         models with variables regressed on the first column.
     """
     def __init__(self, Y, X, param):
-        """ Constructor.
+        """ 
+            Constructor.
             @param Y explained variable
             @param X covariate to perform selection on
             @param param parameter dictonary
@@ -39,10 +41,11 @@ class PosteriorBinary(binary_model.Binary):
 
         ## Hierachical Bayesian (hb) or Bayesian Information Criterion (bic)
         if param['POSTERIOR_TYPE'] == 'hb': self._init_hb(n, d, XtY, XtX, YtY, param)
-
+        if param['POSTERIOR_TYPE'] == 'bic': self._init_bic(n, d, XtY, XtX, YtY, param)
 
     def _init_hb(self, n, d, XtY, XtX, YtY, param):
-        """ Setup Hierachical Bayesian posterior.
+        """ 
+            Setup Hierachical Bayesian posterior.
             @param n sample size
             @param d dimension
             @param XtY X times Y
@@ -57,8 +60,9 @@ class PosteriorBinary(binary_model.Binary):
         sigma2_full_LM = (YtY - numpy.dot(XtY, beta_full_LM)) / float(n)
 
         # prior (normal) of beta
-        v = param['PRIOR_BETA_PARAM_V2']
-        if v is None: v = 10.0 / (sigma2_full_LM + 1e-5)
+        u = param['PRIOR_BETA_PARAM_U2']
+        if u is None: u = 10.0
+        v = u / (sigma2_full_LM + 1e-5)
 
         # prior (inverse gamma) of sigma^2
         lambda_ = param['PRIOR_SIGMA_PARAM_LAMBDA']
@@ -77,7 +81,8 @@ class PosteriorBinary(binary_model.Binary):
 
 
     def _init_bic(self, n, d, XtY, XtX, YtY, param):
-        """ Setup Hierachical Bayesian posterior.
+        """ 
+            Setup Hierachical Bayesian posterior.
             @param n sample size
             @param d dimension
             @param XtY X times Y
@@ -88,10 +93,10 @@ class PosteriorBinary(binary_model.Binary):
         self.f_lpmf = _lpmf_bic
 
         # costants
-        c1, c2, c3 = YtY / float(n), self.XtY / float(n), 0.5 * numpy.log(n)
+        c1, c2, c3 = YtY / float(n), XtY / float(n), 0.5 * numpy.log(n)
 
         self.param.update(dict(c1=c1, c2=c2, c3=c3))
-        
+
 
     def getD(self):
         """ Get dimension.
@@ -122,7 +127,8 @@ class PosteriorBinary(binary_model.Binary):
 
 
 def _lpmf_hb(gamma, param):
-    """ Log-posterior probability mass function in a Hierarchical Bayes model.
+    """ 
+        Log-posterior probability mass function in a Hierarchical Bayes model.
         @param gamma binary vector
         @param param parameters
         @return log-probabilities
@@ -154,7 +160,8 @@ def _lpmf_hb(gamma, param):
 
 
 def _lpmf_bic(gamma, param):
-    """ Score of the Bayesian Information Criterion.
+    """ 
+        Score of the Bayesian Information Criterion.
         @param gamma binary vector
         @param param parameters
         @return score
@@ -169,17 +176,18 @@ def _lpmf_bic(gamma, param):
     L = numpy.empty(size, dtype=float)
 
     for k in xrange(size):
-
-        d = gamma.sum()
+        # model dimension
+        d = gamma[k].sum()
         if d == 0:
             # degenerated model
             L[k] = -numpy.inf
         else:
             # regular model
             try:
-                beta = scipy.linalg.solve(XtX[gamma, :][:, gamma], XtY[gamma, :], sym_pos=True)
+                beta = scipy.linalg.solve(XtX[gamma[k], :][:, gamma[k]], XtY[gamma[k], :], sym_pos=True)
             except scipy.linalg.LinAlgError:
                 # improve condition
-                beta = scipy.linalg.solve(XtX[gamma, :][:, gamma] + 1e-5 * numpy.eye(d), XtY[gamma, :], sym_pos=True)
-        L[k] = -0.5 * n * numpy.log(c1 - numpy.dot(c2[gamma], beta)) - c3 * d
+                beta = scipy.linalg.solve(XtX[gamma[k], :][:, gamma[k]] + 1e-5 * numpy.eye(d), XtY[gamma[k], :], sym_pos=True)
+            L[k] = -0.5 * n * numpy.log(c1 - numpy.dot(c2[gamma[k]], beta)) - c3 * d
+
     return L

@@ -1,11 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date: 2011-03-07 17:03:12 +0100 (lun., 07 mars 2011) $
-#    $Revision: 86 $
 
-'''
+"""
+Execution of optimization algorithms. 
+
+@verbatim
 USAGE:
         exec <option> <file>
 
@@ -15,9 +14,17 @@ OPTIONS:
         -e    evaluate results obtained from running <file>
         -c    start clean run of <file>
         -v    view evaluation of <file>
-'''
 
-__version__ = "$Revision: 94 $"
+@endverbatim
+"""
+
+"""
+@namespace obs.exec
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import getopt, shutil, subprocess, sys, os, time, utils
 import pp
@@ -27,7 +34,7 @@ def main():
 
     # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hrecv')
+        opts, args = getopt.getopt(sys.argv[1:], 'hrecv', ['sa', 'ce', 'smc'])
     except getopt.error, msg:
         print msg
         sys.exit(2)
@@ -43,10 +50,8 @@ def main():
 
     # Load run file.
     obs.read_config()
-    RUN_NAME = args[0].split('.')
-    if RUN_NAME[-1] == 'ini': RUN_NAME = '.'.join(RUN_NAME[:-1])
-    else: RUN_NAME = '.'.join(RUN_NAME)
-    RUN_FOLDER = os.path.join(obs.v['RUN_PATH'], RUN_NAME.split('.')[0])
+    RUN_NAME = args[0].split('.')[0]
+    RUN_FOLDER = os.path.join(obs.v['RUN_PATH'], RUN_NAME)
     RUN_FILE = os.path.join(obs.v['RUN_PATH'], RUN_NAME + '.ini')
     if not os.path.isfile(RUN_FILE):
         print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
@@ -58,20 +63,25 @@ def main():
 
     # Process options.
     if '-c' in opts:
-        for file in os.listdir(RUN_FOLDER):
-            try:
+        try:
+            for file in os.listdir(RUN_FOLDER):
                 os.remove(os.path.join(RUN_FOLDER, file))
-            except: pass
-    if '-r' in opts: run(v=obs.v, verbose=True)
+        except: pass
+    if '-r' in opts:
+        if '--sa' in opts: obs.v['RUN_ALGO'] = obs.sa
+        if '--ce' in opts: obs.v['RUN_ALGO'] = obs.ce
+        if '--smc' in opts: obs.v['RUN_ALGO'] = obs.smc
+        if obs.v['RUN_ALGO'] is None: return
+        else: run(v=obs.v, verbose=True)
     if '-e' in opts: plot(v=obs.v)
     if '-v' in opts:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=obs.v)
         subprocess.Popen([obs.v['SYS_VIEWER'], os.path.join(RUN_FOLDER, 'plot.pdf')])
 
 def run(v, verbose=False):
-    ''' Run algorithm from specified file and store results.
+    """ Run algorithm from specified file and store results.
         @param v parameters
-    '''
+    """
 
     # Setup test folder.
     if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
@@ -139,7 +149,8 @@ def plot(v):
     # Open R-template.
     f = open(os.path.join(v['SYS_ROOT'], 'src', 'obs', 'plot.R'), 'r')
     R_script = f.read() % {'resultfile':os.path.join(v['RUN_FOLDER'], 'result.csv'),
-                           'pdffile':os.path.join(v['RUN_FOLDER'], 'plot.pdf')}
+                           'pdffile':os.path.join(v['RUN_FOLDER'], 'plot.pdf'),
+                           'title':'suite: %(RUN_TESTSUITE)s %(RUN_PROBLEM)s, dim:' % v}
     f.close()
 
     # Copy plot.R to its run folder.

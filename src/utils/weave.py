@@ -1,20 +1,26 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-'''
-    @author Christian Schäfer
-    $Date$
-    $Revision$
-'''
+"""
+Weave import.
+"""
+
+"""
+@namespace utils.weave
+$Author$
+$Rev$
+$Date$
+@warning This code is no longer in use and has been replaced by cython equivalents.
+"""
 
 import scipy.weave as weave
 import numpy as np
 
 def resample(w, u):
-    ''' Computes the particle indices by systematic resampling using scypy.weave.
+    """ Computes the particle indices by systematic resampling using scypy.weave.
         @deprecated method is not used any longer
         @param w array of weights
-    '''
+    """
     code = \
     """
     int j = 0;

@@ -1,10 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-#
-#    $Author: Christian Schäfer
-#    $Date$
 
-__version__ = "$Revision$"
+"""
+Sequential Monte Carlo on binary spaces.
+"""
+
+"""
+@namespace ibs.smc
+$Author$
+$Rev$
+$Date$
+@details
+"""
 
 import time, datetime, sys, operator
 import numpy
@@ -13,6 +20,7 @@ import ibs
 import utils
 
 class smc():
+    """ Auxiliary class. """
     header = ['NO_EVALS', 'TIME']
     @staticmethod
     def run(v):
@@ -40,11 +48,11 @@ def integrate_smc(param):
 class ParticleSystem(object):
 
     def __init__(self, v):
-        '''
+        """
             Constructor.
             @param param parameters
             @param verbose verbose
-        '''
+        """
         self.verbose = v['RUN_VERBOSE']
         if self.verbose: sys.stdout.write('...\n\n')
 
@@ -116,18 +124,18 @@ class ParticleSystem(object):
         return numpy.dot(self.nW, self.X)
 
     def getId(self, x):
-        '''
+        """
             Assigns a unique id to x.
             @param x binary vector.
             @return id
-        '''
+        """
         return numpy.dot(self.__k, numpy.array(x, dtype=int))
 
     def getEss(self, alpha=None):
-        ''' Computes the effective sample size (ess).
+        """ Computes the effective sample size (ess).
             @param alpha advance of the geometric bridge
             @return ess
-        '''
+        """
         if alpha is None: w = self.log_W
         else:             w = alpha * self.log_f
         w = numpy.exp(w - w.max())
@@ -135,15 +143,15 @@ class ParticleSystem(object):
         return 1 / (self.n * pow(w, 2).sum())
 
     def getParticleDiversity(self):
-        ''' Computes the particle diversity.
+        """ Computes the particle diversity.
             @return particle diversity
-        '''
+        """
         dic = {}
         map(operator.setitem, (dic,)*self.n, self.id, [])
         return len(dic.keys()) / float(self.n)
 
     def reweight(self):
-        ''' Computes an advance of the geometric bridge such that ess = tau and updates the log weights. '''
+        """ Computes an advance of the geometric bridge such that ess = tau and updates the log weights. """
         l = 0.0; u = 1.05 - self.rho
         alpha = min(0.05, u)
 
@@ -169,9 +177,9 @@ class ParticleSystem(object):
             print '\n' + str(self) + '\n'
 
     def fit_proposal(self):
-        ''' Adjust the proposal model to the particle system.
+        """ Adjust the proposal model to the particle system.
             @todo sample.distinct could ba activated for speedup
-        '''
+        """
         if self.verbose:
             sys.stdout.write('fitting proposal...')
             t = time.time()
@@ -181,17 +189,17 @@ class ParticleSystem(object):
         if self.verbose: print '\rfitted proposal in %.2f sec' % (time.time() - t)
 
     def getNWeight(self):
-        '''
+        """
             Get the normalized weights.
             @return normalized weights
-        '''
+        """
         w = numpy.exp(self.log_W - max(self.log_W))
         return w / w.sum()
 
     def getSystemStructure(self):
-        '''
+        """
             Gather a summary of how many particles are n-fold in the particle system.
-        '''
+        """
         id_set = set(self.id)
         l = [ self.id.count(i) for i in id_set ]
         k = [ l.count(i) * i for i in xrange(1, 101) ]
@@ -202,9 +210,9 @@ class ParticleSystem(object):
         return self.log_f[index], self.X[index]
 
     def move(self):
-        ''' Moves the particle system according to an independent Metropolis-Hastings kernel
+        """ Moves the particle system according to an independent Metropolis-Hastings kernel
             to fight depletion of the particle system.
-        '''
+        """
 
         prev_pD = 0
         self.r_ac += [0]
@@ -221,10 +229,10 @@ class ParticleSystem(object):
         self.r_pd += [pD]
 
     def kernel(self):
-        '''
+        """
             Propagates the particle system via an independent Metropolis Hasting kernel.
             @todo do accept/reject step vectorized
-        '''
+        """
 
         self.n_f_evals += self.n
 
@@ -257,7 +265,7 @@ class ParticleSystem(object):
         return accept.sum()
 
     def resample(self):
-        ''' Resamples the particle system. '''
+        """ Resamples the particle system. """
 
         if self.verbose:
             t = time.time()
