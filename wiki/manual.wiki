@@ -1,0 +1,11 @@
+#summary User manual
+
+== Getting started ==
+
+The project comes with some example data sets and launch-files. We can launch a Bayesian variable selection on the covariates of the Boston Housing dataset via
+{{{
+int -r boston
+}}}
+The program looks for the config file _data/test_int/boston.ini_ and opens the indicated data file _data/bvs/boston/boston.csv_. The results of the test run are stored in _data/test_int/boston/results.csv_.
+
+Modifications are made by editing the launch files. These are copies of src/ibs/default.ini and override the default values. The default.ini is well documented and should be self-explanatory in combination with the [http://arxiv.org/pdf/1101.6037 literature].
