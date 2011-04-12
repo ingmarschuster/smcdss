@@ -4,15 +4,15 @@
 
 The Sequential Monte Carlo algorithm is written in Python 2.7 and requires several auxiliary modules that come with the project.
 
- # Download the project and unzip where ever you like.
+ * Download the project and unzip where ever you like.
  
- # Open the file _bin/int.sh_ and set
+ * Open the file _bin/int.sh_ and set
  {{{
  PROJECT_FOLDER=
  }}}
  to the root of the project folder.
 
- # Create a symbolic link
+ * Create a symbolic link
  {{{
  sudo ln -s $HOME/PROJECT_FOLDER/bin/int.sh /usr/local/sbin/int
  }}}
