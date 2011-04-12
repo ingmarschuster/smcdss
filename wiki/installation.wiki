@@ -1,8 +1,20 @@
 #summary Installation guide
 
-== Introduction ==
+== Installation ==
 
-The Sequential Monte Carlo algorithm is written in Python 2.7 and requires several auxiliary modules that come with the project. The program is started on command line, the parameters are administered using an INI-file.
+The Sequential Monte Carlo algorithm is written in Python 2.7 and requires several auxiliary modules that come with the project.
+
+# Download the project and unzip where ever you like.
+# Open the file _bin/int.sh_ and set
+{{{
+PROJECT_FOLDER=
+}}}
+to the root of the project folder.
+# Create a symbolic link
+{{{
+sudo ln -s $HOME/PROJECT_FOLDER/bin/int.sh /usr/local/sbin/int
+}}}
+where PROJECT_FOLDER should be the root of the project folder.
 
 == External packages ==
 
@@ -15,7 +27,7 @@ The project uses several external packages that need to be installed.
 
 The project comes with some example data sets and launch-files. We can launch a Bayesian variable selection on the covariates of the Boston Housing dataset via
 {{{
-python -r boston
+int -r boston
 }}}
 The program looks for the config file _data/test_int/boston.ini_ and opens the indicated data file _data/bvs/boston/boston.csv_. The results of the test run are stored in _data/test_int/boston/results.csv_.
 
