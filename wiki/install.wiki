@@ -10,7 +10,7 @@ The Sequential Monte Carlo algorithm is written in Python 2.7 and requires sever
  {{{
  PROJECT/bin/ibs.sh
  }}}
- and set the entry _PROJECT_ to the path of the project folder.
+ and set the entry PROJECT to the path of the project folder.
 
  * For convenience, create a symbolic link
  {{{
