@@ -8,7 +8,7 @@ ibs -r boston
 }}}
 The project (installed in PROJECT) looks for the config file in the run path RUN_PATH=data/test_ibs
 {{{
-PROJECT/data/test_int/boston.ini
+PROJECT/RUN_PATH/boston.ini
 }}}
 and opens the indicated data file DATA_SET=boston in the data path DATA_PATH=data/bvs
 {{{
