@@ -14,7 +14,7 @@ The Sequential Monte Carlo algorithm is written in Python 2.7 and requires sever
 
  * For convenience, create a symbolic link
  {{{
- sudo ln -s $HOME/PROJECT/bin/int.sh /usr/local/sbin/int
+ sudo ln -s $HOME/PROJECT/bin/ibs.sh /usr/local/sbin/ibs
  }}}
 
 == Windows ==
