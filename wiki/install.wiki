@@ -32,4 +32,4 @@ The Sequential Monte Carlo algorithm is written in Python 2.7 and requires sever
 The project uses several external packages that need to be installed.
   * [http://www.scipy.org/ SciPy and NumPy] for scientific computing and fast array manipulations.
   * [http://www.parallelpython.com/ Parallel Python] for parallelized computing.
-  * [http://cython.org Cython] for C-extensions to speed up some loops
+  * [http://cython.org Cython] for C-extensions to speed up some loops.
