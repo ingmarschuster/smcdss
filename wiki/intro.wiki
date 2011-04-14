@@ -6,9 +6,9 @@ The project comes with some example data sets and launch-files. We can launch a 
 {{{
 ibs -r boston
 }}}
-The program looks for the config file
+The project (installed in PROJECT) looks for the config file in the run path RUN_PATH=data/test_ibs
 {{{
-$PROJECT/data/test_int/boston.ini
+PROJECT/data/test_int/boston.ini
 }}}
 and opens the indicated data file DATA_SET=boston in the data path DATA_PATH=data/bvs
 {{{
@@ -16,11 +16,11 @@ PROJECT/DATA_PATH/DATA_SET/DATA_SET.csv
 }}}
 The results of the test run are stored in the run path RUN_PATH=data/test_ibs
 {{{
-$PROJECT/RUN_PATH/DATA_SET/results.csv
+PROJECT/RUN_PATH/DATA_SET/results.csv
 }}}
 
 Modifications are made by editing the launch files. These are copies of the standard file
 {{{
-$PROJECT/src/ibs/default.ini
+PROJECT/src/ibs/default.ini
 }}}
 and override the default values. The default.ini is well documented and should be self-explanatory in combination with the [http://arxiv.org/pdf/1101.6037 literature].
