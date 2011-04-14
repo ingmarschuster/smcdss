@@ -4,22 +4,22 @@
 
 The Sequential Monte Carlo algorithm is written in Python 2.7 and requires several auxiliary modules that come with the project.
 
- * Download the project and unzip where ever you like. Let's call the folder PROJECT.
+ * Download the project and unzip where ever you like. Let's call the path of the folder PROJECT_PATH.
  
  * Open the file
  {{{
- PROJECT/bin/ibs.sh
+ PROJECT_PATH/bin/ibs.sh
  }}}
- and set the entry PROJECT to the path of the project folder.
+ and set the entry PROJECT_PATH to the path of the project folder.
 
  * For convenience, create a symbolic link
  {{{
- sudo ln -s $HOME/PROJECT/bin/ibs.sh /usr/local/sbin/ibs
+ sudo ln -s $HOME/PROJECT_PATH/bin/ibs.sh /usr/local/sbin/ibs
  }}}
 
 == Windows ==
 
- * Download the project and unzip where ever you like. Let's call the folder PROJECT.
+ * Download the project and unzip where ever you like. Let's call the folder PROJECT_PATH.
  
  * Open the file
  {{{
