@@ -10,7 +10,7 @@ The Sequential Monte Carlo algorithm is written in Python 2.7 and requires sever
  {{{
  PROJECT/bin/ibs.sh
  }}}
- and set the entry
+  and set the entry
  {{{
  PROJECT=
  }}}
@@ -29,7 +29,7 @@ The Sequential Monte Carlo algorithm is written in Python 2.7 and requires sever
  {{{
  bin/ibs.sh
  }}}
- and set
+  and set
  {{{
  PROJECT=
  }}}
