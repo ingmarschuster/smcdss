@@ -30,7 +30,7 @@ def solve_smc(f, v, verbose=True):
     model = ps.prop
     print 'running smc using ' + model.name
     best_obj, best_soln = -numpy.inf, None
-    bf = int(numpy.log(2 * ps.n) / numpy.log(2)) + 1
+    bf = int(numpy.log(2 * ps.n) / numpy.log(2)) + 2
 
     # run sequential MC scheme
     while True:

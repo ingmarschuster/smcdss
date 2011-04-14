@@ -22,15 +22,15 @@ This project is part of my PhD thesis.
 
 @section binary_sec Binary models
 
-The package @link binary @endlink for various binary models.
+The package @link binary binary @endlink for various binary models.
 
 @section int_sec Integration
 
-The package @link int @endlink for Monte Carlo integration.
+The package @link ibs @endlink for Monte Carlo integration.
  
 @section opt_sec Optimization
 
-The package @link opt @endlink for Monte Carlo optimization.
+The package @link obs @endlink for Monte Carlo optimization.
 
 """
 

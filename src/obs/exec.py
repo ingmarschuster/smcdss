@@ -34,19 +34,33 @@ def main():
 
     # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hrecv', ['sa', 'ce', 'smc'])
+        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:', ['sa', 'ce', 'smc'])
     except getopt.error, msg:
         print msg
         sys.exit(2)
 
-    opts = [o[0] for o in opts]
-    if len(opts) == 0: sys.exit(0)
+    # Check for valid argument
     if len(args) == 0:
         if '-h' in opts:
             print __doc__
         else:
             print 'No file specified.'
         sys.exit(0)
+
+    # Start multiple processes
+    for o, a in opts:
+        if o == '-m':
+            k = int(a)
+            while k > 0:
+                if os.name == 'posix':
+                    subprocess.call('gnome-terminal -e "obs ' + ' '.join([o[0] for o in opts if not o[0] == '-m']) + ' ' + args[0] + '"', shell=True)
+                else:
+                    subprocess.call('start "Title" /MAX "W:\\Documents\\Python\\smcdss\\bin\\obs.bat" ' + ' '.join([o[0] for o in opts if not o[0] == '-m']) + ' ' + args[0], shell=True)
+                k -= 1
+            sys.exit(0)
+
+    opts = [o[0] for o in opts]
+    if len(opts) == 0: sys.exit(0)
 
     # Load run file.
     obs.read_config()

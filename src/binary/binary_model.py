@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Binary model.
+%Binary model.
 """
 
 """

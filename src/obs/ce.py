@@ -37,7 +37,7 @@ def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, job_serv
     """
 
     t = time.time()
-    bf = int(numpy.log(2 * n) / numpy.log(2)) + 1
+    bf = int(numpy.log(2 * n) / numpy.log(2)) + 2
     model = model.uniform(f.d)
     print 'running ce using ' + model.name
 
