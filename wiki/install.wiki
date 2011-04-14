@@ -8,18 +8,18 @@ The Sequential Monte Carlo algorithm is written in Python 2.7 and requires sever
  
  * Open the file
  {{{
-PROJECT/bin/ibs.sh
+ PROJECT/bin/ibs.sh
  }}}
  and set the entry
  {{{
-PROJECT=
+ PROJECT=
  }}}
  to the path of the project folder.
 
  * For convenience, create a symbolic link
-{{{
-sudo ln -s $HOME/PROJECT/bin/int.sh /usr/local/sbin/int
-}}}
+ {{{
+ sudo ln -s $HOME/PROJECT/bin/int.sh /usr/local/sbin/int
+ }}}
 
 == Windows ==
 
@@ -27,11 +27,11 @@ sudo ln -s $HOME/PROJECT/bin/int.sh /usr/local/sbin/int
  
  * Open the file
  {{{
-bin/ibs.sh
+ bin/ibs.sh
  }}}
  and set
  {{{
-PROJECT=
+ PROJECT=
  }}}
  to the path of the project folder.
 
