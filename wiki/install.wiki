@@ -7,14 +7,14 @@ The Sequential Monte Carlo algorithm is written in Python 2.7 and requires sever
  * Download the project and unzip where ever you like. Let's call the folder PROJECT.
  
  * Open the file
-{{{
-PROJECT/bin/ibs.sh
-}}}
-and set the entry
-{{{
-PROJECT=
-}}}
-to the path of the project folder.
+ {{{
+ PROJECT/bin/ibs.sh
+ }}}
+ and set the entry
+ {{{
+ PROJECT=
+ }}}
+ to the path of the project folder.
 
  * For convenience, create a symbolic link
 {{{
@@ -26,14 +26,14 @@ sudo ln -s $HOME/PROJECT/bin/int.sh /usr/local/sbin/int
  * Download the project and unzip where ever you like. Let's call the folder PROJECT.
  
  * Open the file
-{{{
-bin/ibs.sh
-}}}
-and set
-{{{
-PROJECT=
-}}}
-to the path of the project folder.
+ {{{
+ bin/ibs.sh
+ }}}
+ and set
+ {{{
+ PROJECT=
+ }}}
+ to the path of the project folder.
 
 == External packages ==
 
