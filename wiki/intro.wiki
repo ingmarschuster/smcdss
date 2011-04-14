@@ -2,25 +2,25 @@
 
 == Getting started ==
 
-The project comes with some example data sets and launch-files. We can launch a Bayesian variable selection on the covariates of the Boston Housing dataset via
+The project comes with some example data sets and launch-files. We can for instance launch a Bayesian variable selection on the covariates of the Boston Housing dataset via
 {{{
 ibs -r boston
 }}}
-The program (unzipped in a folder PROJECT) first loads the default configurations from
+The program (unzipped in a folder PROJECT_PATH) first loads the default configurations from
 {{{
-PROJECT/src/ibs/default.ini
+PROJECT_PATH/src/ibs/default.ini
 }}}
 The launch configuration file _boston.ini_ is found in the run path RUN_PATH=data/test_ibs. The values in
 {{{
-PROJECT/RUN_PATH/boston.ini
+PROJECT_PATH/RUN_PATH/boston.ini
 }}}
 override the default values. The program opens the indicated data file DATA_SET=boston in the data path DATA_PATH=data/bvs
 {{{
-PROJECT/DATA_PATH/DATA_SET/DATA_SET.csv
+PROJECT_PATH/DATA_PATH/DATA_SET/DATA_SET.csv
 }}}
 The results of the test run are stored in the run path RUN_PATH=data/test_ibs
 {{{
-PROJECT/RUN_PATH/DATA_SET/results.csv
+PROJECT_PATH/RUN_PATH/DATA_SET/results.csv
 }}}
 
 Modifications are made by editing the launch files. The _default.ini_ is well documented and should be self-explanatory in combination with the [http://arxiv.org/pdf/1101.6037 literature].
