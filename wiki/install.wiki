@@ -6,11 +6,11 @@ The Sequential Monte Carlo algorithm is written in Python 2.7 and requires sever
 
  * Download the project and unzip where ever you like. Let's call the folder PROJECT.
  
- * Open the file
+ *Open the file
  {{{
  PROJECT/bin/ibs.sh
  }}}
-  and set the entry
+ and set the entry
  {{{
  PROJECT=
  }}}
@@ -25,11 +25,11 @@ The Sequential Monte Carlo algorithm is written in Python 2.7 and requires sever
 
  * Download the project and unzip where ever you like. Let's call the folder PROJECT.
  
- * Open the file
+ *Open the file
  {{{
  bin/ibs.sh
  }}}
-  and set
+ and set
  {{{
  PROJECT=
  }}}
