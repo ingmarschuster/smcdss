@@ -1,7 +1,7 @@
 #!/bin/sh
-export PYTHONPATH=$HOME/Documents/Python/smcdss/src
-PROJECT=Documents/Python/smcdss/src
+PROJECT_FOLDER=Documents/Python/smcdss/src
+export PYTHONPATH=$HOME/$PROJECT_FOLDER
 SAVE_PWD=$PWD
-cd $HOME/$PROJECT
-python $HOME/$PROJECT/ibs/exec.py $*
+cd $HOME/$PROJECT_FOLDER
+python $HOME/$PROJECT_FOLDER/ibs/exec.py $*
 cd $SAVE_PWD
