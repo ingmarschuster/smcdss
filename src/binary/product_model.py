@@ -17,7 +17,10 @@ from binary_model import *
 
 class ProductBinary(Binary):
     """ Binary model with independent components. """
-    def __init__(self, p=None, name='product-binary',
+
+    name = 'product'
+
+    def __init__(self, p=None, name='product',
                  longname='Binary model with independent components.'):
         """ 
             Constructor.

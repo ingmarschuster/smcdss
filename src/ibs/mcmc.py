@@ -18,6 +18,7 @@ import time, sys
 import numpy
 import scipy
 import scipy.stats as stats
+import utils
 
 class mcmc():
     """ Auxiliary class. """
@@ -26,14 +27,14 @@ class mcmc():
     def run(v):
         return integrate_mcmc(v)
 
-def integrate_mcmc(v, verbose=True):
+def integrate_mcmc(v):
     """
         Compute an estimate of the expected value via MCMC.
         @param v parameters
         @param verbose verbose
     """
 
-    mc = MarkovChain(f=v['f'], kernel=v['MCMC_KERNEL'], q=v['MCMC_Q'], max_evals=v['MCMC_MAX_EVALS'])
+    mc = MarkovChain(f=v['f'], kernel=v['MCMC_KERNEL'], q=v['MCMC_Q'], max_evals=v['MCMC_MAX_EVALS'], verbose=v['RUN_VERBOSE'])
     mc.burn_in()
 
     # run for maximum time or maximum iterations
@@ -41,12 +42,13 @@ def integrate_mcmc(v, verbose=True):
         mc.do_step()
         mc.kernel.adapt(mc.mean, mc.cov)
 
+    print '\nDone.'
     return mc.getCsv()
 
 class MarkovChain():
     """ Markov chain. """
 
-    def __init__(self, f, kernel, q, max_evals=2e6, step_size=2e5, verbose=True):
+    def __init__(self, f, kernel, q, max_evals=2e6, step_size=1e5, verbose=True):
         """
             Constructor.
             @param f probability mass function 
@@ -56,7 +58,7 @@ class MarkovChain():
             @param step_size number of steps stored before updating the estimator
             @param verbose verbose
         """
-        
+
         ## time
         self.t = time.clock()
         ## verbose
@@ -102,32 +104,19 @@ class MarkovChain():
         """
 
         if n_burn_in is None: n_burn_in = int(self.max_evals / 100.0)
-
-        if self.verbose:
-            print "\n%s: %i steps burn in..." % (self.kernel.name, n_burn_in)
-            sys.stdout.write("" + 101 * " " + "]" + "\r" + "[")
-            self.n_bars = 0
-
-        for i in range(n_burn_in):
+        last_ratio = 0
+        print "\n%s: %i steps burn in..." % (self.kernel.name, n_burn_in)
+        for i in xrange(n_burn_in):
             self.x, self.log_f_x, move, eval = self.kernel.rvs(self.x, self.log_f_x)
-
-            # print progress bar
-            if self.verbose:
-                if self.n_bars < int(100.0 * i / float(n_burn_in)):
-                    sys.stdout.write("-")
-                    sys.stdout.flush()
-                    self.n_bars += 1
-
-        if not self.verbose:
-            print "\n%s: %i steps mcmc..." % (self.kernel.name, self.max_evals)
-            sys.stdout.write("" + 101 * " " + "]" + "\r" + "[")
-            self.n_bars = 0
+            last_ratio = utils.format.progress(i / float(n_burn_in), last_ratio=last_ratio)
+        if not self.verbose: print "\n%s: %i steps MCMC..." % (self.kernel.name, self.max_evals)
 
     def do_step(self):
         """ Propagate the Markov chain. """
         mean = numpy.zeros(self.d)
         cov = numpy.zeros((self.d, self.d))
         t = 1.0
+        last_ratio = self.n_evals / self.max_evals
 
         for i in xrange(self.step_size):
 
@@ -142,14 +131,7 @@ class MarkovChain():
                 t = 1.0
             else:
                 t += 1.0
-
-            # print progress bar
-            if not self.verbose:
-                if self.n_bars < int(100.0 * self.n_evals / self.max_evals):
-                    sys.stdout.write("-")
-                    sys.stdout.flush()
-                    if self.n_evals >= self.max_evals: break
-                    self.n_bars += 1
+            if not self.verbose: last_ratio = utils.format.progress(ratio=self.n_evals / self.max_evals, last_ratio=last_ratio)
 
         mean /= float(self.step_size)
         cov /= float(self.step_size)
@@ -173,8 +155,8 @@ class MarkovChain():
         return self.n_steps * self.step_size
 
     def getCsv(self):
-        mean = '\t'.join(['%.8f' % x for x in self.mean])
-        return mean , '%.3f\t%.3f\t%.3f\t%.3f\t%.3f' % \
+        mean = ','.join(['%.8f' % x for x in self.mean])
+        return mean , '%.3f,%.3f,%.3f,%.3f,%.3f' % \
             (self.length * 1e-3,
              self.n_evals * 1e-3,
              self.n_moves * 1e-3,
@@ -190,7 +172,7 @@ class MarkovChain():
 
 class Kernel(stats.rv_discrete):
     """ Wrapper class for Markov kernels. """
-    
+
     def __init__(self, f, name='Markov kernel', longname='Markov kernel.'):
         """
             Constructor.
@@ -237,7 +219,7 @@ class Kernel(stats.rv_discrete):
         perm = range(self.d)
         for i in reversed(range(1, self.d)):
             # pick an element in p[:i+1] with which to exchange p[i]
-            j = numpy.random.randint(0, i + 1)
+            j = numpy.random.randint(low=0, high=i + 1)
             perm[i], perm[j] = perm[j], perm[i]
         return perm
 
@@ -259,7 +241,7 @@ class Gibbs(Kernel):
                 @param x current state
                 @param log_f_x log probability of current state
             """
-            Y, log_f_Y = self.proposal(x, Index=[numpy.random.randint(1, self.d)])
+            Y, log_f_Y = self.proposal(x, Index=[numpy.random.randint(low=0, high=self.d)])
 
             if numpy.random.random() < 1.0 / (1.0 + numpy.exp(log_f_x - log_f_Y)):
                 return Y, log_f_Y, True, True
@@ -292,11 +274,12 @@ class SymmetricMetropolisHastings(Gibbs):
                 Draw a uniformly random subset of the index set.
                 @return subset
             """
+            if self.q == 1: return [numpy.random.randint(low=0, high=self.d)]
             k = min(stats.geom.rvs(1.0 / self.q), self.d)
             if k < 5:
                 Index = []
                 while len(Index) < k:
-                    n = numpy.random.randint(1, self.d)
+                    n = numpy.random.randint(low=0, high=self.d)
                     if not n in Index: Index.append(n)
             else:
                 Index = self.getPermutation()[:k]

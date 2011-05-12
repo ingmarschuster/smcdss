@@ -29,15 +29,19 @@ $Date$
 import getopt, shutil, subprocess, sys, os, time, utils
 import pp
 import obs
+from obs import product, gaussian, logistic
 
 def main():
 
     # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:', ['sa', 'ce', 'smc'])
+        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:', ['sa', 'ce', 'smc', 'product', 'logistic', 'gaussian'])
     except getopt.error, msg:
         print msg
         sys.exit(2)
+
+    noargs = [o[0] for o in opts]
+    if len(noargs) == 0: sys.exit(0)
 
     # Check for valid argument
     if len(args) == 0:
@@ -59,9 +63,6 @@ def main():
                 k -= 1
             sys.exit(0)
 
-    opts = [o[0] for o in opts]
-    if len(opts) == 0: sys.exit(0)
-
     # Load run file.
     obs.read_config()
     RUN_NAME = args[0].split('.')[0]
@@ -76,19 +77,37 @@ def main():
     obs.read_config(os.path.join(obs.v['RUN_PATH'], RUN_NAME))
 
     # Process options.
-    if '-c' in opts:
+
+    # clean up folder.
+    if '-c' in noargs:
         try:
             for file in os.listdir(RUN_FOLDER):
                 os.remove(os.path.join(RUN_FOLDER, file))
         except: pass
-    if '-r' in opts:
-        if '--sa' in opts: obs.v['RUN_ALGO'] = obs.sa
-        if '--ce' in opts: obs.v['RUN_ALGO'] = obs.ce
-        if '--smc' in opts: obs.v['RUN_ALGO'] = obs.smc
+
+    # change model on command line.
+    model = None
+    if '--gaussian' in noargs: model = gaussian
+    if '--logistic' in noargs: model = logistic
+    if '--product' in noargs: model = product
+
+    # change algorithm on command line.
+    if '-r' in noargs:
+        if '--sa' in noargs: obs.v['RUN_ALGO'] = obs.sa
+        if '--ce' in noargs:
+            obs.v['RUN_ALGO'] = obs.ce
+            if not model is None:obs.v['CE_BINARY_MODEL'] = model
+        if '--smc' in noargs:
+            obs.v['RUN_ALGO'] = obs.smc
+            if not model is None:obs.v['SMC_BINARY_MODEL'] = model
         if obs.v['RUN_ALGO'] is None: return
         else: run(v=obs.v, verbose=True)
-    if '-e' in opts: plot(v=obs.v)
-    if '-v' in opts:
+
+    # run evaluation.
+    if '-e' in noargs: plot(v=obs.v)
+
+    # start pdf viewer after evaluation.
+    if '-v' in noargs:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=obs.v)
         subprocess.Popen([obs.v['SYS_VIEWER'], os.path.join(RUN_FOLDER, 'plot.pdf')])
 
@@ -108,7 +127,7 @@ def run(v, verbose=False):
     v['RUN_ALGO'] = v['RUN_ALGO'](v)
     if not os.path.isfile(result_file):
         file = open(result_file, 'w')
-        file.write(','.join(['OBJ', 'ALGO', 'PROBLEM', 'BEST_OBJ'] + ['S%0*d' % (3, i + 1) for i in xrange(v['RUN_ALGO'].d)] + \
+        file.write(','.join(['OBJ', 'ALGO', 'MODEL', 'PROBLEM', 'BEST_OBJ'] + ['S%0*d' % (3, i + 1) for i in xrange(v['RUN_ALGO'].d)] + \
                             ['TIME', 'LOG_FILE', 'LOG_NO'] + v['RUN_ALGO'].header) + '\n')
         file.close()
 
@@ -142,12 +161,16 @@ def run(v, verbose=False):
             if v['RUN_N'] > 1: print '\nstarting %i/%i' % (i + 1, v['RUN_N'])
             print 'working on testsuite %s problem %d' % (v['RUN_TESTSUITE'], v['RUN_ALGO'].problem)
             result = v['RUN_ALGO'].run()
+            model = 'none'
+            if v['RUN_ALGO'].name == 'CE': model = v['CE_BINARY_MODEL'].name
+            if v['RUN_ALGO'].name == 'SMC': model = v['SMC_BINARY_MODEL'].name
+            print model
 
             # Write result to result.csv
             for j in xrange(4):
                 try:
                     file = open(result_file, 'a')
-                    file.write(','.join(['%.1f' % result['obj'], v['RUN_ALGO'].name, '%d' % v['RUN_ALGO'].problem, '%.1f' % v['RUN_ALGO'].best_obj] +
+                    file.write(','.join(['%.1f' % result['obj'], v['RUN_ALGO'].name, model, '%d' % v['RUN_ALGO'].problem, '%.1f' % v['RUN_ALGO'].best_obj] +
                                         ['%d' % x for x in result['soln']] +
                                         ['%.3f' % (result['time'] / 60.0)] + [log_id] + [str(i + 1)]) + '\n')
                     file.close()
@@ -161,10 +184,16 @@ def run(v, verbose=False):
 
 def plot(v):
     # Open R-template.
+    title = 'suite: %(RUN_TESTSUITE)s %(RUN_PROBLEM)s, dim:' % v
+    if not v['EVAL_TITLE']: title = ''
+    colors = ', '.join(["'" + str(x) + "'" for x in v['EVAL_COLOR']])
+    mar = ', '.join([str(x) for x in v['EVAL_INNER_MARGIN']])
+
+
     f = open(os.path.join(v['SYS_ROOT'], 'src', 'obs', 'plot.R'), 'r')
     R_script = f.read() % {'resultfile':os.path.join(v['RUN_FOLDER'], 'result.csv'),
                            'pdffile':os.path.join(v['RUN_FOLDER'], 'plot.pdf'),
-                           'title':'suite: %(RUN_TESTSUITE)s %(RUN_PROBLEM)s, dim:' % v}
+                           'title':title, 'colors':colors, 'mar':mar, 'type':v['EVAL_TYPE']}
     f.close()
 
     # Copy plot.R to its run folder.

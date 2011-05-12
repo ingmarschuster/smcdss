@@ -18,7 +18,7 @@ from obs import *
 
 class smc(ubqo.ubqo):
     name = 'SMC'
-    header = []
+    header = ['TYPE']
     def run(self):
         return solve_smc(f=binary.QuExpBinary(self.A), v=self.v)
 
@@ -26,9 +26,9 @@ def solve_smc(f, v, verbose=True):
 
     t = time.time()
     v.update({'f':f, 'RUN_VERBOSE':False})
+    print '\nrunning smc using %s and %s' % (v['SMC_BINARY_MODEL'].__name__, v['SMC_CONDITIONING'])
     ps = ParticleSystem(v)
     model = ps.prop
-    print 'running smc using ' + model.name
     best_obj, best_soln = -numpy.inf, None
     bf = int(numpy.log(2 * ps.n) / numpy.log(2)) + 2
 
@@ -53,8 +53,7 @@ def solve_smc(f, v, verbose=True):
             break
 
         ps.fit_proposal()
-        ps.resample()
-        ps.move()
+        ps.condition()
         ps.reweight()
 
     return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}

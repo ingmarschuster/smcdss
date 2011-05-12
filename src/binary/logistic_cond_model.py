@@ -18,7 +18,9 @@ from binary import *
 class LogisticBinary(ProductBinary):
     """ Binary model with logistic conditional distributions. """
 
-    def __init__(self, Beta, name='logistic binary',
+    name = 'logistic'
+
+    def __init__(self, Beta, name='logistic',
                              longname='Binary model with logistic conditional distributions.'):
         """ Constructor.
             @param Beta matrix of regression coefficients

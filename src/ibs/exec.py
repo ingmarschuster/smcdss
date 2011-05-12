@@ -80,7 +80,6 @@ def run(v):
     """
 
     v = readData(v)
-
     # Setup test folder.
     if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
     shutil.copyfile(v['RUN_FILE'], os.path.join(v['RUN_FOLDER'] , v['RUN_NAME']) + '.py')

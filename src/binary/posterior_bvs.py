@@ -105,7 +105,7 @@ class PosteriorBinary(binary_model.Binary):
         return self.param['XtX'].shape[0]
 
     def __explore(self):
-        """ Find the maximmum of the log-posterior.
+        """ Find the maximmum of the log-probability.
             @deprecated method is never used.
         """
         ## level of logarithm
@@ -115,15 +115,12 @@ class PosteriorBinary(binary_model.Binary):
             eval = self.lpmf(bin)
             if eval > self.loglevel: self.loglevel = eval
 
-    def __pmf(self, gamma):
+    def pmf(self, gamma):
         """ Unnormalized probability mass function.
-            @deprecated method is never used.
             @param gamma binary vector
         """
-        if not hasattr(self, 'loglevel'): self._explore()
+        if not hasattr(self, 'loglevel'): self.__explore()
         return numpy.exp(self.lpmf(gamma) - self.loglevel)
-
-    d = property(fget=getD, doc="dimension")
 
 
 def _lpmf_hb(gamma, param):

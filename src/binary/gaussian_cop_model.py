@@ -19,13 +19,15 @@ from binary import *
 class GaussianCopulaBinary(product_model.ProductBinary):
     """ Binary model obtained by dichotomizing a multivariate Gaussian. """
 
+    name = 'gaussian'
+    
     def __init__(self, p, R, verbose=False):
         """ 
             Constructor.
             @param p mean
             @param R correlation matrix
         """
-        product_model.ProductBinary.__init__(self, p, name='Gaussian-copula-binary', \
+        product_model.ProductBinary.__init__(self, p, name='gaussian', \
                                              longname='A  Gaussian copula binary distribution.')
         self.f_rvs = _rvs
 
@@ -38,6 +40,7 @@ class GaussianCopulaBinary(product_model.ProductBinary):
         localQ = calc_local_Q(self.param, verbose=verbose)
         ## correlation matrix of the Gaussian copula binary
         self.param.update(decompose_Q(localQ, mode='scaled', verbose=verbose))
+
 
     @classmethod
     def random(cls, d):
@@ -95,17 +98,18 @@ class GaussianCopulaBinary(product_model.ProductBinary):
             @param verbose verbose     
             @param param parameters
         """
-        weight = sample.ess > 0.1
-        self.param['R'] = sample.getCor(weight=weight)
-        newP = sample.getMean(weight=weight)
+        self.param['R'] = sample.getCor(weight=True)
+        newP = sample.getMean(weight=True)       
         self.param['p'] = (1 - lag) * newP + lag * self.param['p']
 
         ## mean of hidden stats.normal distribution
-        self.mu = stats.norm.ppf(self.p)
+        self.param['mu'] = stats.norm.ppf(self.p)
 
         localQ = calc_local_Q(self.param, verbose=verbose)
+
         ## correlation matrix of the hidden stats.normal distribution
-        self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
+        self.param.update(decompose_Q(localQ, mode='scaled', verbose=verbose))
+
 
     def rvsbase(self, size):
         return numpy.random.normal(size=(size, self.d))
@@ -159,7 +163,7 @@ def calc_R(Q, mu, p):
     return R
 
 
-def calc_local_Q(param, eps=0.03, delta=0.08, verbose=False):
+def calc_local_Q(param, eps=0.02, delta=0.075, verbose=False):
     """ 
         Computes the Gaussian correlation matrix Q necessary to generate
         bivariate Bernoulli samples with a certain local correlation matrix R.
@@ -181,7 +185,7 @@ def calc_local_Q(param, eps=0.03, delta=0.08, verbose=False):
             R[i, i] = 1.0
         else:
             for j in range(i):
-                if R[i, j] < delta:
+                if abs(R[i, j]) < delta:
                     R[i, j] = 0.0
         R[:i, i] = R[i, :i]
     k = 0.5 * (sum(R > 0.0) - d)
@@ -196,7 +200,6 @@ def calc_local_Q(param, eps=0.03, delta=0.08, verbose=False):
     if verbose:
         if k > 0: iter = float(iter) / k
         print 'calcLocalQ'.ljust(20) + '> time %.3f, loops %.3f' % (time.time() - t, iter)
-
     return localQ
 
 

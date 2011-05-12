@@ -98,11 +98,11 @@ def random_cho(d):
     return numpy.linalg.cholesky(K)
 
 def uniform(d, rho=1.0, xi=0.0, c=50):
-    v = numpy.random.randint(low= -c / 2, high=c / 2, size=d) * (numpy.random.random(size=d) <= rho)
+    v = numpy.random.randint(low= -c, high=c, size=d) * (numpy.random.random(size=d) <= rho)
     return v + (v.max(), -v.min())[xi > 0] * xi
 
-def student(d, rho=1.0, xi=0.0, c=50):
-    v = numpy.array([stats.t._rvs(1) for i in xrange(d)]).T * c // 1 * (numpy.random.random(size=d) <= rho)
+def cauchy(d, rho=1.0, xi=0.0, c=50):
+    v = numpy.array([stats.cauchy.rvs(1) for i in xrange(d)]).T * c // 1 * (numpy.random.random(size=d) <= rho)
     return v + (v.max(), -v.min())[xi > 0] * xi
 
 def normal(d, rho=1.0, xi=0.0, c=50):
@@ -114,7 +114,7 @@ def normal_mixture(d, rho=1.0, xi=0.0, c=50):
     v = numpy.array([numpy.random.normal()*(c, 10 * c)[numpy.random.random() < p] for i in xrange(d)]).T // 1 * (numpy.random.random(size=d) <= rho)
     return v + (v.max(), -v.min())[xi > 0] * xi
 
-def generate_ubqo_problem(d, rho=1.0, xi=0.0, c=50, n=1, random=student, filename=None):
+def generate_ubqo_problem(d, rho=1.0, xi=0.0, c=50, n=1, random=cauchy, filename=None):
     """
         Generates a random UBQO problem.
     """
@@ -160,7 +160,7 @@ def load_ubqo_problem(filename, repickle=False):
     return L
 
 def main():
-    x = generate_ubqo_problem(d=250, rho=1, xi=0, c=50, random=normal_mixture, filename='r250nm')
+    x = generate_ubqo_problem(d=250, rho=1, xi=0, c=100, random=uniform, filename='r250u')
     print utils.format.format(x[0]['problem'])
 
 if __name__ == "__main__":

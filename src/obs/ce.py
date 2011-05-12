@@ -24,7 +24,8 @@ class ce(ubqo.ubqo):
                         model=self.v['CE_BINARY_MODEL'],
                         lag=self.v['CE_LAG'],
                         elite=self.v['CE_ELITE'],
-                        job_server=self.v['JOB_SERVER'])
+                        job_server=self.v['JOB_SERVER'],
+                        verbose=self.v['RUN_VERBOSE'])
 
 def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, job_server=None, verbose=True):
     """ Finds a maximum via cross-entropy optimization.
@@ -49,6 +50,8 @@ def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, job_serv
     for step in xrange(1, 100):
 
         d.sample(model, n, job_server)
+        #print d.X
+
         best_obj, best_soln = d.dichotomize_weights(f=f, fraction=elite)
 
         model.renew_from_data(sample=d, lag=lag, verbose=False)
@@ -66,7 +69,7 @@ def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, job_serv
             if verbose: utils.format.progress(1.0, ' %02i, %03i, objective: %.1f, time %s' % (step + 1, len(model.r), best_obj, utils.format.time(time.time() - t)))
             break
         d.clear(fraction=elite)
-
+        
     if verbose: sys.stdout.write('\n')
     return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
 

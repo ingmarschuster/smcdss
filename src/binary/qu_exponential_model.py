@@ -58,11 +58,29 @@ class QuExpBinary(ProductBinary):
 
         return QuExpBinary(A)
 
+    def __explore(self):
+        """ Find the maximmum of the log-probability.
+            @deprecated method is never used.
+        """
+        ## level of logarithm
+        self.loglevel = -numpy.inf
+        for dec in range(2 ** self.d):
+            bin = utils.format.dec2bin(dec, self.d)
+            eval = self.lpmf(bin)
+            if eval > self.loglevel: self.loglevel = eval
+
+    def pmf(self, gamma):
+        """ Unnormalized probability mass function.
+            @param gamma binary vector
+        """
+        if not hasattr(self, 'loglevel'): self.__explore()
+        return numpy.exp(self.lpmf(gamma) - self.loglevel)
+
     def getD(self):
         """ Get dimension.
             @return dimension 
         """
-        return self.A.shape[0]
+        return self.param['A'].shape[0]
 
     def getA(self):
         return self.param['A']

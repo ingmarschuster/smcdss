@@ -16,14 +16,19 @@ $Date$
 __version__ = "$Revision$"
 
 import os
+import utils
+
 from numpy import *
 from data import *
 from binary import *
+from obs.ubqo import generate_ubqo_problem
+
 
 def plot4(f, path, models=None):
     """
-        Compares f to its binary model approximations. Generates a pseudo sample from f to initialize the binary models.
-        Plots the true f and histograms obtained from the models. Works only for dimensions up to 5.  
+        Compares f to its binary model approximations. Generates a pseudo sample
+        from f to initialize the binary models. Plots the true f and histograms
+        obtained from the models. Works only for dimensions up to 5.
         @param f target function
         @param outfile output file
         @param models list of binary models
@@ -32,10 +37,10 @@ def plot4(f, path, models=None):
     m = 5000 # number of pseudo samples from f
     n = 5000 # number of random draws from models
     d = f.d
-    if models is None: models = [ProductBinary, LogisticBinary]
+    if models is None: models = [ProductBinary, LogisticBinary, GaussianCopulaBinary]
 
     names = []
-    hist = array(3 * [zeros(2 ** d)])
+    hist = array((len(models) + 1) * [zeros(2 ** d)])
     z = len(models) + 1
 
     # explore posterior
@@ -63,16 +68,17 @@ def plot4(f, path, models=None):
     args = dict(hist=',\n'.join(hist_str),
                 names="', '".join(names),
                 ymax=ymax,
-                colors="', '".join(['grey75', 'black', 'blue']),
-                pdfnames="', '".join(['function', 'product', 'logregr']))
+                colors="', '".join(['skyblue', 'firebrick4', 'gold', 'seagreen3']),
+                pdfnames="', '".join(['function', 'product', 'logregr', 'gaussian']),
+                path=path + '/toy_plot/')
     R = """
     hist = list(\n%(hist)s)
     names = c('%(names)s')
     colors = c('%(colors)s')
     pdfnames = c('%(pdfnames)s')
     
-    for (index in 1:3) {
-        pdf(file=paste('pdf', paste(pdfnames[index],'pdf',sep='.'), sep='/'), height=5, width=10)
+    for (index in 1:length(pdfnames)) {
+        pdf(file=paste('%(path)s', paste(pdfnames[index],'pdf',sep='.'), sep='/'), height=5, width=10)
         par(oma=c(0, 0, 0, 0), mar=c(3.5, 2.5, 0, 0), family="serif")
         barplot(hist[[index]], ylim=c(0, %(ymax).6f), names=names, cex.names=1.5, las=3, col=colors[index], family="serif", cex.axis=1.5)
         dev.off()
@@ -86,22 +92,42 @@ def plot4(f, path, models=None):
     os.system('R --vanilla --slave  <' + os.path.join(path, 'toy.R'))
     os.chdir(cwd)
 
-class toy(object):
-    def rvs(self):
+def plot_toy_bvs():
+    size = 100
+    Y, X = empty(size), empty((size, 4))
+    for i in xrange(100):
         W = [random.normal() + mean for mean in [-10.0, +10.0]]
-        X = [x + 5 * random.normal() for x in 2 * W]
-        X.insert(0, W[0] + W[1])
-        return array(X)
+        Z = [x + 5 * random.normal() for x in 2 * W]
+        Y[i] = W[0] + W[1]
+        X[i] = array(Z)
+    param = {
+             'POSTERIOR_TYPE':'hb',
+             'PRIOR_BETA_PARAM_U2':10.0,
+             'PRIOR_SIGMA_PARAM_W':4.0,
+             'PRIOR_SIGMA_PARAM_LAMBDA':1.0,
+             'PRIOR_GAMMA_PARAM_P':0.5,
+             }
+    f = PosteriorBinary(param=param, X=X, Y=Y)
+    plot4(f=f, path='/home/cschafer/Documents/R')
 
-def plot_toy():
-    d = data()
-    t = toy()
-    d.sample(q=t, size=100)
-    f = PosteriorBinary(sample=d.X, posterior_type='hb')
-    plot4(f=f, path='../../data/r')
+def plot_toy_ubqo():
+    #A = generate_ubqo_problem(d=4, rho=1.0, xi=0.0, c=10, n=1)[0]['problem']
+    #A /= 10.0
+    vec = ''' 1,  2,  1,  0,
+              2,  1, -3, -2,
+              1, -3,  1,  2,
+              0, -2,  2, -2'''
+    A = array(eval('[' + vec + ']')).reshape((4, 4)) / 1.0
+    print A
+    print ', '.join(['%.1f' % x for x in A.reshape(16)])
+    f = QuExpBinary(A=A)
+    print f.marginals()
+    plot4(f=f, path='/home/cschafer/Documents/R')
 
-plot_toy()
+plot_toy_ubqo()
 
+
+'''
 def _color(x):
     if x == 1.0: return 'grey25'
     if x > 0: return 'red'
@@ -124,3 +150,5 @@ def plot_matrix():
     r.balloonplot(x, y, z, show_margins=False, cum_margins=False, label=False, label_lines=False,
                   xlab='', ylab='', zlab='', main='', dotcolor=colors, axes=False)
     r.dev_off()
+    
+'''

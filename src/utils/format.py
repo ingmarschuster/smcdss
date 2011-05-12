@@ -81,7 +81,8 @@ def isnumeric(s):
 def time(seconds):
     return str(datetime.timedelta(seconds=seconds)).split('.')[0]
 
-def progress(ratio, text=None, ticks=50):
+def progress(ratio, text=None, ticks=50, last_ratio=0):
+    if abs(ratio - last_ratio) * 101.0 < 0.1: return last_ratio
     progress = int(ticks * ratio)
     s = '%.1f%%' % (100.0 * ratio)
     length = len(s)
@@ -91,6 +92,7 @@ def progress(ratio, text=None, ticks=50):
     else:
         sys.stdout.write('\r[' + progress * '-' + (ticks / 2 - length - progress) * ' ' + s
                          + (ticks / 2) * ' ' + ']')
-    if not text is None: sys.stdout.write(text)
+    if not text is None: sys.stdout.write(str(text))
     sys.stdout.flush()
+    return ratio
 
