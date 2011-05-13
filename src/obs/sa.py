@@ -74,8 +74,8 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
             curr_soln = proposal
             curr_obj = proposal_obj
 
-        if a / float(k) < 1 - r: v *= 0.999
-        else:  v *= 1.001
+        if a / float(k) < (r + 1) ** -5: v *= 0.995
+        else:  v *= 1.005
 
     if verbose: sys.stdout.write('\n')
     return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}

@@ -35,7 +35,8 @@ def main():
 
     # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:', ['sa', 'ce', 'smc', 'product', 'logistic', 'gaussian'])
+        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:',
+                                   ['sa', 'ce', 'smc', 'scip', 'product', 'logistic', 'gaussian'])
     except getopt.error, msg:
         print msg
         sys.exit(2)
@@ -78,12 +79,15 @@ def main():
 
     # Process options.
 
-    # clean up folder.
+    # clean up or create folder.
     if '-c' in noargs:
-        try:
-            for file in os.listdir(RUN_FOLDER):
-                os.remove(os.path.join(RUN_FOLDER, file))
-        except: pass
+        if os.path.isdir(RUN_FOLDER):
+            try:
+                for file in os.listdir(RUN_FOLDER):
+                    os.remove(os.path.join(RUN_FOLDER, file))
+            except: pass
+        else:
+            os.mkdir(RUN_FOLDER)
 
     # change model on command line.
     model = None
@@ -93,7 +97,13 @@ def main():
 
     # change algorithm on command line.
     if '-r' in noargs:
-        if '--sa' in noargs: obs.v['RUN_ALGO'] = obs.sa
+        if '--sa' in noargs:
+            obs.v['RUN_ALGO'] = obs.sa
+            obs.v['RUN_CPUS'] = None
+        if '--scip' in noargs:
+            obs.v['RUN_ALGO'] = obs.scip
+            obs.v['RUN_CPUS'] = None
+            obs.v['RUN_N'] = 1
         if '--ce' in noargs:
             obs.v['RUN_ALGO'] = obs.ce
             if not model is None:obs.v['CE_BINARY_MODEL'] = model
@@ -164,7 +174,6 @@ def run(v, verbose=False):
             model = 'none'
             if v['RUN_ALGO'].name == 'CE': model = v['CE_BINARY_MODEL'].name
             if v['RUN_ALGO'].name == 'SMC': model = v['SMC_BINARY_MODEL'].name
-            print model
 
             # Write result to result.csv
             for j in xrange(4):
@@ -193,7 +202,8 @@ def plot(v):
     f = open(os.path.join(v['SYS_ROOT'], 'src', 'obs', 'plot.R'), 'r')
     R_script = f.read() % {'resultfile':os.path.join(v['RUN_FOLDER'], 'result.csv'),
                            'pdffile':os.path.join(v['RUN_FOLDER'], 'plot.pdf'),
-                           'title':title, 'colors':colors, 'mar':mar, 'type':v['EVAL_TYPE']}
+                           'title':title, 'colors':colors, 'mar':mar, 'type':v['EVAL_TYPE'],
+                           'bars':v['EVAL_BARS'], 'exact':v['EVAL_EXACT']}
     f.close()
 
     # Copy plot.R to its run folder.

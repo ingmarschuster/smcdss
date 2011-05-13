@@ -11,9 +11,9 @@ n      = c('SA'=0, 'CE'=0, 'SMC'=0, 'gaussian'=0, 'logistic'=0, 'product'=0)
 m      = c('SA'=0, 'CE'=0, 'SMC'=0, 'gaussian'=0, 'logistic'=0, 'product'=0)
 
 # number of exact bars
-exact=10
+exact=%(exact)s
 # number of aggregated bars
-aggre=10
+bars=%(bars)s
 
 # read data
 data=read.csv('%(resultfile)s')
@@ -41,11 +41,13 @@ for (problem in problems) {
 	if (length(breaks)<=exact) {
 		names=breaks[1:length(breaks)-1]
 	} else {
-		aggre=min(aggre,length(breaks)-exact)
+		aggre=min(bars-exact,length(breaks)-exact)
 		breaks=breaks[order(breaks, decreasing=TRUE)]
-		breaks=c(breaks[1:exact],seq(max(breaks[exact:length(breaks)]),min(breaks),length.out=aggre))
+		aggre=seq(max(breaks[exact:length(breaks)]),min(breaks),length.out=aggre)[2:aggre]
+		breaks=c(breaks[1:exact],aggre)
 		names=breaks[1:exact]
-		for (i in exact:(exact+aggre-1)) names[i]=paste(floor(breaks[i]),'<')
+		for (i in (exact+1):(exact+length(aggre)-1)) names[i]=paste(floor(breaks[i]),'<')
+		print(names)
 	}
 	
 	pdf(file='%(pdffile)s', height=4, width=2+0.175*length(breaks))
@@ -59,7 +61,7 @@ for (problem in problems) {
 			algodata=subset(probdata[c('OBJ','BEST_OBJ')], probdata['ALGO'] == algo)
 			# select number of test runs
 			n[algo]=dim(algodata)[1]
-	  m[algo]=length(unique(algodata$OBJ))
+	  		m[algo]=length(unique(algodata$OBJ))
 			# select inverted counts
 			hist_single[[algo]]=hist(algodata$OBJ, plot=FALSE, breaks=breaks)$counts[(length(breaks)-1):1]
 		}
@@ -85,9 +87,9 @@ for (problem in problems) {
 	# add legend
 	if (type=='algo') {
 		legend(x='topright', inset=0.1, cex=1, fill=colors, legend=c(
-						paste('Simulated Annealing [', n['SA'], ']', sep=''),
-						paste('Cross Entropy [', n['CE'], ']', sep=''),
-						paste('Sequential Monte Carlo [', n['SMC'], ']', sep='')))
+						paste('Simulated Annealing [', m['SA'], '/', n['SA'], ']', sep=''),
+						paste('Cross Entropy [', m['CE'], '/', n['CE'], ']', sep=''),
+						paste('Sequential Monte Carlo [', m['SMC'], '/', n['SMC'], ']', sep='')))
 	}
 	if (type=='model') {
 		legend(x='topright', inset=0.1, cex=1, fill=colors, legend=c(
