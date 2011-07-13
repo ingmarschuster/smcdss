@@ -13,6 +13,7 @@ $Date$
 @details
 """
 
+import gc
 from binary import *
 
 class LogisticBinary(ProductBinary):
@@ -164,7 +165,17 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
     n = sample.size
     d = sample.d
 
-    X = numpy.column_stack((sample.proc_data(dtype=float), numpy.ones(n, dtype=float)[:, numpy.newaxis]))
+    # avoid numpy.column_stack for it causes a MemoryError
+    #X = numpy.column_stack((sample.proc_data(dtype=float), numpy.ones(n, dtype=float)[:, numpy.newaxis]))
+
+    # try to free memory
+    gc.collect()
+
+    D = sample.proc_data(dtype=float)
+    X = numpy.empty((D.shape[0], D.shape[1] + 1))
+    X[:D.shape[0], :D.shape[1]] = D
+    X[:D.shape[0], D.shape[1]] = numpy.ones(D.shape[0], dtype=float)
+    del D
 
     # Compute weighted sample.
     if negative_weights:
@@ -213,7 +224,6 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
                 jobs.append([i, l + [i], (calc_log_regr(
                               X[:, i], X[:, l + [d]], XW[:, l + [d]], Init[i, l + [i]], w, False))
                 ])
-
         else:
             Beta[i, i] = logit[i]
 
@@ -307,8 +317,21 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
 
     return beta, i + 1
 
+def Arg2Moments(mean, correlation):
+    var = (mean * (1 - mean))[:, numpy.newaxis]
+    var = numpy.sqrt(numpy.dot(var, var.T))
+    mean=mean[:, numpy.newaxis]
+    P = (correlation * var) + numpy.dot(mean, mean.T)
+    return P
+
 def main():
-    pass
+    Sigma = numpy.array([[1.0, 0.2, 0.0],
+                        [0.2, 1.0, 0.1],
+                        [0.0, 0.1, 1.0]], dtype=float)
+    mu = numpy.array([0.3, 0.5, 0.8], dtype=float)
+    print Arg2Moments(mu, Sigma)
+    #l = LogisticBinary(Beta)
+    #print l.marginals()
 
 if __name__ == "__main__":
     main()

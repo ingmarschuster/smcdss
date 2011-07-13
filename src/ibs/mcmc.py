@@ -248,6 +248,35 @@ class Gibbs(Kernel):
             else:
                 return x, log_f_x, False, True
 
+class SwapMetropolisHastings(Gibbs):
+        """ Swap Metropolis-Hastings kernel. """
+
+        def __init__(self, f, q, name='Swap Metropolis-Hastings kernel', longname='Swap Metropolis-Hastings kernel.'):
+            """
+                Constructor.
+                @param f log probability mass function of the invariant distribution 
+            """
+            Gibbs.__init__(self, f, q, name=name, longname=longname)
+
+        def _rvs(self, x, log_f_x):
+            """
+                Draw from Swap Metropolis-Hastings kernel k(x,\cdot)
+            """
+
+            Y = x.copy()
+            if numpy.random.random() < 0.5:
+                index = numpy.random.randint(low=0, high=self.d)
+                Y[index] = Y[index] ^ True
+            else:
+                index_in = numpy.where(Y)[0]
+                index_out = numpy.where(Y ^ True)[0]
+                Y[index_in[numpy.random.randint(low=0, high=index_in.shape[0])]] = False
+                Y[index_out[numpy.random.randint(low=0, high=index_out.shape[0])]] = True
+            log_f_Y = self.f.lpmf(Y)
+            if numpy.random.random() < numpy.exp(log_f_Y - log_f_x):
+                return Y, log_f_Y, True, True
+            else:
+                return x, log_f_x, False, True
 
 class SymmetricMetropolisHastings(Gibbs):
         """ Symmetric Metropolis-Hastings kernel. """

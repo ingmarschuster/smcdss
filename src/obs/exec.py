@@ -9,6 +9,7 @@ USAGE:
         exec <option> <file>
 
 OPTIONS:
+        -m    start multiple instances
         -h    display help
         -r    run optimization as specified in <file>
         -e    evaluate results obtained from running <file>
@@ -203,7 +204,7 @@ def plot(v):
     R_script = f.read() % {'resultfile':os.path.join(v['RUN_FOLDER'], 'result.csv'),
                            'pdffile':os.path.join(v['RUN_FOLDER'], 'plot.pdf'),
                            'title':title, 'colors':colors, 'mar':mar, 'type':v['EVAL_TYPE'],
-                           'bars':v['EVAL_BARS'], 'exact':v['EVAL_EXACT']}
+                           'bars':v['EVAL_BARS'], 'exact':v['EVAL_EXACT'], 'n':v['EVAL_N']}
     f.close()
 
     # Copy plot.R to its run folder.

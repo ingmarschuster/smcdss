@@ -9,6 +9,7 @@ USAGE:
         exec [option] [file]
 
 OPTIONS:
+        -m    start multiple instances
         -h    display help
         -r    run integration of posterior as specified in [file]
         -e    evaluate results obtained from running [file]
@@ -36,12 +37,12 @@ def main():
 
     # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hrecv')
+        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:')
     except getopt.error, msg:
         print msg
         sys.exit(2)
 
-    opts = [o[0] for o in opts]
+    noargs = [o[0] for o in opts]
     if len(opts) == 0: sys.exit(0)
     if len(args) == 0:
         if '-h' in opts:
@@ -49,6 +50,18 @@ def main():
         else:
             print 'No file specified.'
         sys.exit(0)
+
+    # Start multiple processes
+    for o, a in opts:
+        if o == '-m':
+            k = int(a)
+            while k > 0:
+                if os.name == 'posix':
+                    subprocess.call('gnome-terminal -e "ibs ' + ' '.join([o[0] for o in opts if not o[0] == '-m']) + ' ' + args[0] + '"', shell=True)
+                else:
+                    subprocess.call('start "Title" /MAX "W:\\Documents\\Python\\smcdss\\bin\\ibs.bat" ' + ' '.join([o[0] for o in opts if not o[0] == '-m']) + ' ' + args[0], shell=True)
+                k -= 1
+            sys.exit(0)
 
     # Load run file.
     ibs.read_config()
@@ -63,13 +76,20 @@ def main():
     # Initialize problem
     ibs.read_config(os.path.join(ibs.v['RUN_PATH'], RUN_NAME))
 
+    # clean up or create folder.
+    if '-c' in noargs:
+        if os.path.isdir(RUN_FOLDER):
+            try:
+                for file in os.listdir(RUN_FOLDER):
+                    os.remove(os.path.join(RUN_FOLDER, file))
+            except: pass
+        else:
+            os.mkdir(RUN_FOLDER)
+
     # Process options.
-    if '-c' in opts:
-        try: shutil.rmtree(RUN_FOLDER)
-        except: pass
-    if '-r' in opts: run(v=ibs.v)
-    if '-e' in opts: plot(v=ibs.v)
-    if '-v' in opts:
+    if '-r' in noargs: run(v=ibs.v)
+    if '-e' in noargs: plot(v=ibs.v)
+    if '-v' in noargs:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=ibs.v)
         subprocess.Popen(['okular', os.path.join(RUN_FOLDER, 'plot.pdf')])
 
@@ -82,7 +102,7 @@ def run(v):
     v = readData(v)
     # Setup test folder.
     if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
-    shutil.copyfile(v['RUN_FILE'], os.path.join(v['RUN_FOLDER'] , v['RUN_NAME']) + '.py')
+    shutil.copyfile(v['RUN_FILE'], os.path.join(v['RUN_FOLDER'] , v['RUN_NAME']) + '.ini')
 
     # Setup result file.
     result_file = v['RUN_FOLDER'] + '/' + 'result.csv'
@@ -218,25 +238,50 @@ def plot(v, verbose=True):
     v.update({'EVAL_BOXPLOT':', '.join(['%.6f' % x for x in numpy.reshape(A, (5 * d,))]),
               'EVAL_DIM':str(d), 'EVAL_XAXS':A.shape[1] * 1.2 + 1,
               'EVAL_PDF':os.path.join(v['RUN_FOLDER'], 'plot.pdf'),
-              'EVAL_TITLE':title})
+              'EVAL_TITLE_TEXT':title})
     for key in ['EVAL_OUTER_MARGIN', 'EVAL_INNER_MARGIN']: v[key] = ', '.join([str(x) for x in v[key]])
     for key in ['EVAL_NAMES', 'EVAL_COLOR']: v[key] = ', '.join(["'" + str(x) + "'" for x in v[key]])
 
     # Create R-script.
-
-    R = """#\n# This file was automatically generated.\n#\n
-    # Boxplot data from repeated runs
-    boxplot = t(array(c(%(EVAL_BOXPLOT)s),c(%(EVAL_DIM)s,5)))\n
-    # Covariate names
-    names = c(%(EVAL_NAMES)s)\n
-    # Create PDF-file
-    pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
-    par(oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
-    barplot(boxplot, ylim=c(0, 1), names=names, las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c(%(EVAL_COLOR)s), xaxs='i', xlim=c(-1, %(EVAL_XAXS)s))
-    """ % v
-    if v['EVAL_TITLE']: R += """
-    title(main='%(EVAL_TITLE)s', line=%(EVAL_TITLE_LINE)s, family='%(EVAL_FONT_FAMILY)s', cex.main=%(EVAL_FONT_CEX)s, font.main=1)
-    """ % v
+    if v['EVAL_LINES'] > 1:
+        R = """#\n# This file was automatically generated.\n#\n
+        # Boxplot data from repeated runs
+        boxplot = t(array(c(%(EVAL_BOXPLOT)s),c(%(EVAL_DIM)s,5)))\n
+        # Covariate names
+        names = c(%(EVAL_NAMES)s)\n
+        k=%(EVAL_LINES)s
+        d=length(names)
+        l=ceiling(d/k)
+        # Create PDF-file
+        pdf(paper='a4', file='%(EVAL_PDF)s', height=20, width=20)
+        par(mfrow=c(k,1), oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
+        for(i in 1:k) {
+          start=(i-1)*l+1
+          end=min(i*l,d)
+          barplot(boxplot[,start:end], ylim=c(0, 1), names=names[start:end], las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c(%(EVAL_COLOR)s), xaxs='i')
+        }
+        """ % v    
+    else:
+        R = """#\n# This file was automatically generated.\n#\n
+        # Boxplot data from repeated runs
+        boxplot = t(array(c(%(EVAL_BOXPLOT)s),c(%(EVAL_DIM)s,5)))\n
+        # Covariate names
+        names = c(%(EVAL_NAMES)s)\n
+        # Create PDF-file
+        pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
+        par(oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
+        barplot(boxplot, ylim=c(0, 1), names=names, las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c(%(EVAL_COLOR)s), xaxs='i', xlim=c(-1, %(EVAL_XAXS)s))
+        """ % v
+    if v['EVAL_TITLE']:
+        if v['EVAL_LINES'] > 1:
+            R += """
+            mtext('%(EVAL_TITLE_TEXT)s', family='%(EVAL_FONT_FAMILY)s', line=-%(EVAL_TITLE_LINE)s, cex.main=%(EVAL_FONT_CEX)s, outer=TRUE)
+            """ % v
+        else:
+            R += """
+            title(main='%(EVAL_TITLE_TEXT)s', line=%(EVAL_TITLE_LINE)s, family='%(EVAL_FONT_FAMILY)s', cex.main=%(EVAL_FONT_CEX)s, font.main=1)
+            """ % v
+    
     R += 'dev.off()'
     R = R.replace('    ', '')
     R_file = open(os.path.join(v['SYS_ROOT'], v['RUN_PATH'], v['RUN_NAME'], 'plot.R'), 'w')

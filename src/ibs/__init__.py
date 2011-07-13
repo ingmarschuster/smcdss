@@ -19,7 +19,7 @@ import ConfigParser
 
 from numpy import inf
 from smc import smc
-from mcmc import mcmc, AdaptiveMetropolisHastings as adaptive, SymmetricMetropolisHastings as symmetric, Gibbs as gibbs
+from mcmc import mcmc, AdaptiveMetropolisHastings as adaptive, SymmetricMetropolisHastings as symmetric, SwapMetropolisHastings as swap, Gibbs as gibbs
 from binary import LogisticBinary as logistic, ProductBinary as product
 
 CONST_PRECISION = 1e-8

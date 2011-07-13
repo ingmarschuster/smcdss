@@ -60,9 +60,9 @@ class PosteriorBinary(binary_model.Binary):
         sigma2_full_LM = (YtY - numpy.dot(XtY, beta_full_LM)) / float(n)
 
         # prior (normal) of beta
-        u = param['PRIOR_BETA_PARAM_U2']
-        if u is None: u = 10.0
-        v = u / (sigma2_full_LM + 1e-5)
+        u2 = param['PRIOR_BETA_PARAM_U2']
+        if u2 is None: u2 = 10.0
+        v2 = u2 / (sigma2_full_LM + 1e-5)
 
         # prior (inverse gamma) of sigma^2
         lambda_ = param['PRIOR_SIGMA_PARAM_LAMBDA']
@@ -75,9 +75,9 @@ class PosteriorBinary(binary_model.Binary):
         p = param['PRIOR_GAMMA_PARAM_P']
 
         # costants
-        c1, c2, c3 = 0.5 * numpy.log(v), 0.5 * (n + w), w * lambda_ + YtY
+        c1, c2, c3 = 0.5 * numpy.log(v2), 0.5 * (n + w), w * lambda_ + YtY
 
-        self.param.update(dict(v=v, c1=c1, c2=c2, c3=c3, logit_p=utils.logit(p)))
+        self.param.update(dict(one_over_v2=1.0 / v2, c1=c1, c2=c2, c3=c3, logit_p=utils.logit(p)))
 
 
     def _init_bic(self, n, d, XtY, XtX, YtY, param):
@@ -132,7 +132,7 @@ def _lpmf_hb(gamma, param):
     """
 
     # unpack parameters
-    XtY, XtX, c1, c2, c3, logit_p = [param[k] for k in ['XtY', 'XtX', 'c1', 'c2', 'c3', 'logit_p']]
+    XtY, XtX, c1, c2, c3, logit_p, one_over_v2 = [param[k] for k in ['XtY', 'XtX', 'c1', 'c2', 'c3', 'logit_p', 'one_over_v2']]
 
     # number of models
     size = gamma.shape[0]
@@ -147,12 +147,11 @@ def _lpmf_hb(gamma, param):
             L[k] = -numpy.inf
         else:
             # regular model
-            C = scipy.linalg.cholesky(XtX[gamma[k], :][:, gamma[k]] + param['v'] * numpy.eye(d))
+            C = scipy.linalg.cholesky(XtX[gamma[k], :][:, gamma[k]] + one_over_v2 * numpy.eye(d))
             if C.shape == (1, 1): b = XtY[gamma[k], :] / float(C)
             else:                 b = scipy.linalg.solve(C.T, XtY[gamma[k], :])
             log_diag_C = numpy.log(C.diagonal()).sum()
             L[k] = -log_diag_C - c1 * d - c2 * numpy.log(c3 - numpy.dot(b, b.T)) + d * logit_p
-
     return L
 
 
