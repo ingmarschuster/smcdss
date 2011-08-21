@@ -78,6 +78,7 @@ class PosteriorBinary(binary_model.Binary):
         c1, c2, c3 = 0.5 * numpy.log(v2), 0.5 * (n + w), w * lambda_ + YtY
 
         self.param.update(dict(one_over_v2=1.0 / v2, c1=c1, c2=c2, c3=c3, logit_p=utils.logit(p)))
+        print self.param['logit_p']
 
 
     def _init_bic(self, n, d, XtY, XtX, YtY, param):

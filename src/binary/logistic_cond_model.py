@@ -317,21 +317,144 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
 
     return beta, i + 1
 
-def Arg2Moments(mean, correlation):
-    var = (mean * (1 - mean))[:, numpy.newaxis]
+
+def adjust_Beta(moments):
+    """
+        Computes the parameter Beta of a logistic conditionals model that
+        corresponds to a given cross-moment matrix.
+        
+        @param moments cross-moments matrix
+        @return Beta parameter
+        
+        @todo Augment data by one dimension instead of using a completely new sample.
+        @todo Introduce repair mode lowering the critical correlation.
+        @todo Automatic switch to MC with growing iterator i.
+    """
+
+    # dimension
+    d = moments.shape[0]
+    # number of MC samples
+    n = 20000
+
+    # Initialize Beta
+    Beta = numpy.zeros((d, d), dtype=float)
+    Beta[0, 0] = utils.logit(moments[0, 0])
+
+    # Loop over all dimensions
+    for i in xrange(1, d):
+
+        # Build lower dimensional model
+        l = LogisticBinary(Beta=Beta[:i, :i])
+
+        # Draw random states for MC estimate
+        if d > 2:
+            X = l.rvs(size=n)
+            pmf = numpy.ones(n) / float(n)
+        else:
+            sample = l.marginals()
+            X = sample.X
+            pmf = numpy.exp(sample.W)
+            n = X.shape[0]
+
+        X = numpy.column_stack((X, numpy.ones(n, dtype=float)[:, numpy.newaxis]))
+
+        # Initialize b with zero vector
+        b = numpy.zeros(i + 1)
+        b[-1] = utils.logit(moments[i, i])
+
+        # Target vector
+        tM = moments[i, :i + 1]
+
+        # Newton iteration
+        for j in xrange(CONST_ITERATIONS):
+
+            b_before = b.copy()
+
+            # Compute MC estimates for expected values
+            f = numpy.zeros(i + 1)
+            J = numpy.zeros((i + 1, i + 1))
+            for v in xrange(n):
+                # Compute marginal probability 
+                p = max(min(1.0 / (1.0 + numpy.exp(-numpy.dot(X[v], b))), 1.0 - 1e-8), 1e-8)
+                f += pmf[v] * p * X[v]
+                J += pmf[v] * (p - p * p) * numpy.dot(X[v][:, numpy.newaxis], X[v][numpy.newaxis, :])
+
+            # Subtract non-random parts            
+            f -= tM
+
+            # Newton update
+            try:
+                b = scipy.linalg.solve(J, numpy.dot(J, b) - f, sym_pos=True)
+            except numpy.linalg.linalg.LinAlgError:
+                b = scipy.linalg.solve(J + numpy.eye(i + 1) * 1e-8, numpy.dot(J, b) - f, sym_pos=False)
+            if (numpy.abs(b - b_before) < CONST_PRECISION).all(): break
+
+        if j >= CONST_ITERATIONS - 1:
+            b = numpy.zeros(i + 1)
+            b[-1] = utils.logit(moments[i, i])
+
+        Beta[i, :i + 1] = b
+    return Beta
+
+
+def random_problem(d, eps=0.05, lambda_=0.5):
+    """
+        Creates a cross-moments matrix that is consistent with the general
+        constraints on binary data.
+        
+        @param d dimension
+        @param eps minmum distance to borders of [0,1]
+        @param lambda parameter for convex combination of random off-diagonal and independence
+        @return M cross-moment matrix
+    """
+    M = numpy.diag(eps + (1.0 - 2 * eps) * numpy.random.random(d))
+    for i in range(d):
+        for j in range(i):
+            high = min(M[i, i], M[j, j])
+            low = max(M[i, i] + M[j, j] - 1.0, 0)
+            M[i, j] = (1.0 - lambda_) * (low + numpy.abs(high - low) * numpy.random.random()) + lambda_ * M[i, i] * M[j, j]
+            M[j, i] = M[i, j]
+    return M
+
+def Corr2Moments(m, C):
+    """
+        Converts a mean vector and correlation matrix to the corresponding
+        cross-moment matrix.
+        
+        @param m mean vector.
+        @param C correlation matrix
+        @return M cross-moment matrix
+    """
+    var = (m * (1 - m))[:, numpy.newaxis]
     var = numpy.sqrt(numpy.dot(var, var.T))
-    mean=mean[:, numpy.newaxis]
-    P = (correlation * var) + numpy.dot(mean, mean.T)
-    return P
+    m = m[:, numpy.newaxis]
+    M = (C * var) + numpy.dot(m, m.T)
+    return M
+
+def Moments2Corr(M):
+    """
+        Converts a cross-moment matrix to a corresponding pair of mean vector
+        and correlation matrix. .
+        
+        @param M cross-moment matrix
+        @return m mean vector.
+        @return C correlation matrix
+    """
+    m = numpy.diag(M)
+    var = (m * (1 - m))[:, numpy.newaxis]
+    var = numpy.sqrt(numpy.dot(var, var.T))
+    m = m[:, numpy.newaxis]
+    R = (M - numpy.dot(m, m.T)) / var
+    return numpy.diag(M), R
 
 def main():
-    Sigma = numpy.array([[1.0, 0.2, 0.0],
-                        [0.2, 1.0, 0.1],
-                        [0.0, 0.1, 1.0]], dtype=float)
-    mu = numpy.array([0.3, 0.5, 0.8], dtype=float)
-    print Arg2Moments(mu, Sigma)
-    #l = LogisticBinary(Beta)
-    #print l.marginals()
+    d = 6
+    m, R = Moments2Corr(random_problem(d))
+    print utils.format.format(m)
+    print utils.format.format(R)
+    Beta = adjust_Beta(Corr2Moments(m, R))
+    l = LogisticBinary(Beta)
+    print l.marginals()
 
 if __name__ == "__main__":
     main()

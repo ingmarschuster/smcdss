@@ -1,8 +1,10 @@
 :: starts the python exec file
 @echo off
-set PYTHONPATH=W:\Documents\Python\smcdss\src
-PATH=%PATH%;W:\Documents\Python\portable;W:\Documents\Python\portable\App;W:\Documents\Python\mingw\bin
+SET PYTHONDIR=W:\Documents\Python
+# SET PYTHONDIR=D:\Dropbox\Python
+SET PYTHONPATH=%PYTHONDIR%\smcdss\src
+PATH=%PYTHONDIR%\portable;%PYTHONDIR%\portable\App;%PYTHONDIR%\mingw\bin;%PATH%
 SET CURRENTDIR=%CD%
-cd W:\Documents\Python\smcdss\src
-%~dp$PATH:1W:\Documents\Python\portable\App\python.exe ibs\exec.py %*
+cd %PYTHONDIR%\smcdss\src
+%~dp$PATH:1%PYTHONDIR%\portable\App\python.exe ibs\exec.py %*
 cd %CURRENTDIR%
