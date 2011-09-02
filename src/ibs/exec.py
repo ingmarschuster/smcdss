@@ -27,10 +27,16 @@ $Date$
 @details
 """
 
-import getopt, shutil, csv, datetime, subprocess, os, sys
-import pp
-import ibs
 from binary import *
+import getopt
+import shutil
+import csv
+import datetime
+import subprocess
+import os
+import sys
+import ibs
+import pp
 
 def main():
     """ Main method. """
@@ -99,7 +105,10 @@ def run(v):
         @param v parameters
     """
 
-    v = readData(v)
+    # read data or group files
+    if v['POSTERIOR_TYPE'] == 're': v = readGroups(v)
+    else: v = readData(v)
+
     # Setup test folder.
     if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
     shutil.copyfile(v['RUN_FILE'], os.path.join(v['RUN_FOLDER'] , v['RUN_NAME']) + '.ini')
@@ -123,15 +132,15 @@ def run(v):
     if v['RUN_CPUS'] is None:
         v.update({'JOB_SERVER':None})
     else:
-        sys.stdout.write('starting jobserver...')
+        sys.stdout.write('Starting jobserver...')
         t = time.time()
         v.update({'JOB_SERVER':pp.Server(ncpus=v['RUN_CPUS'], ppservers=())})
-        print '\rjob server (%i) started in %.2f sec' % (v['JOB_SERVER'].get_ncpus(), time.time() - t)
+        print '\rJob server (%i) started in %.2f sec' % (v['JOB_SERVER'].get_ncpus(), time.time() - t)
 
-    if v['RUN_N'] > 1: print 'start test suite of %i runs...' % v['RUN_N']
+    if v['RUN_N'] > 1: print 'Start test suite of %i runs...' % v['RUN_N']
     for i in xrange(v['RUN_N']):
 
-        if v['RUN_N'] > 1: print '\nstarting %i/%i' % (i + 1, v['RUN_N'])
+        if v['RUN_N'] > 1: print '\nStarting %i/%i' % (i + 1, v['RUN_N'])
         result = v['RUN_ALGO'].run(v)
 
         for j in xrange(4):
@@ -159,21 +168,121 @@ def readData(v):
         parameters.
         @param v parameters
     """
-    DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_SET'], v['DATA_SET'] + '.csv')
-    reader = csv.reader(open(DATA_FILE, 'r'), delimiter=',')
+    DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_DATA_FILE'])
+    if not DATA_FILE[-4:].lower() == '.csv': DATA_FILE += '.csv'
+    reader = csv.reader(open(DATA_FILE, 'rU'), delimiter=',')
     DATA_HEADER = reader.next()
     d = len(DATA_HEADER)
-    if not isinstance(v['DATA_EXPLAINED'], str):Y_pos = v['DATA_EXPLAINED'] - 1
+    if not isinstance(v['DATA_EXPLAINED'], str): Y_pos = v['DATA_EXPLAINED'] - 1
     else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED'])
-    if not isinstance(v['DATA_FIRST_COVARIATE'], str):X_first = v['DATA_FIRST_COVARIATE'] - 1
-    else: X_first = DATA_HEADER.index(v['DATA_FIRST_COVARIATE'])
-    if not isinstance(v['DATA_LAST_COVARIATE'], str): X_last = min(v['DATA_LAST_COVARIATE'] - 1, d)
-    else: X_last = DATA_HEADER.index(v['DATA_LAST_COVARIATE'])
-    sample = numpy.array([numpy.array([eval(x) for x in [row[Y_pos]] + row[X_first:X_last]])
-                          for row in reader if len(row) > 0 and not row[Y_pos] == 'NA'])
+
+    # read covariate positions
+    cindex = list()
+    for covrange in str(v['DATA_COVARIATES']).split('+'):
+        covrange = covrange.split(':')
+        if len(covrange) == 1:covrange += [covrange[0]]
+        for i in xrange(2):
+            if covrange[i].isdigit(): covrange[i] = int(covrange[i]) - 1
+            elif covrange[i] == 'inf': covrange[i] = d - 1
+            else: covrange[i] = DATA_HEADER.index(covrange[i])
+        cindex += range(covrange[0], covrange[1] + 1)
+
+    # read principal components positions
+    pindex = list()
+    for covrange in str(v['DATA_PCA']).split('+'):
+        covrange = covrange.split(':')
+        if len(covrange) == 1:covrange += [covrange[0]]
+        for i in xrange(2):
+            if covrange[i].isdigit(): covrange[i] = int(covrange[i]) - 1
+            elif covrange[i] == 'inf': covrange[i] = d - 1
+            else: covrange[i] = DATA_HEADER.index(covrange[i])
+        pindex += range(covrange[0], covrange[1] + 1)
+    v['DATA_PCA'] = len(pindex) + v['DATA_CONST']
+
+    sample = list()
+    for row in reader:
+        if len(row) > 0 and not row[Y_pos] == 'NA':
+            sample += [numpy.array([
+                eval(x) for x in
+                    [row[Y_pos]] + # observation column
+                    [c for c in ['1'] if v['DATA_CONST']] + # constant column
+                    [row[i] for i in pindex] + # principal component colums
+                    [row[i] for i in cindex] # covariate columns
+                ])]
+    sample = numpy.array(sample)
+
+    # use just the first DATA_MAX_OBS observations
+    v['DATA_MAX_OBS'] = min(v['DATA_MAX_OBS'], sample.shape[0])
+    sample = sample[:v['DATA_MAX_OBS'], :]
+
     v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], param=v),
-              'DATA_HEADER' : DATA_HEADER[X_first:X_last]})
+              'DATA_HEADER' : [DATA_HEADER[i] for i in cindex],
+              'PCA_HEADER' : [DATA_HEADER[i] for i in pindex],
+              })
     return v
+
+
+def readGroups(v):
+    """ 
+        Reads the data file and a group file to set up a random effect model.
+        @param v parameters
+    """
+    # open the data file to load the marker positions
+    DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_DATA_FILE'])
+    if not DATA_FILE[-4:].lower() == '.csv': DATA_FILE += '.csv'
+    dreader = csv.reader(open(DATA_FILE, 'rU'), delimiter=',')
+    DATA_HEADER = dreader.next()
+
+    # open the group file to load all group information
+    GROUP_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_GROUP_FILE'])
+    if not GROUP_FILE[-4:].lower() == '.csv': GROUP_FILE += '.csv'
+    greader = csv.reader(open(GROUP_FILE, 'rU'), delimiter=',')
+    greader.next()
+    GROUPS_HEADER = list()
+    GROUPS_ALL = dict()
+    for g in greader:
+        if not len(g) > 0: continue
+        GROUPS_HEADER += [g[0]]
+        GROUPS_ALL.update({g[0]:{'start':g[1], 'end':g[2]}})
+
+    # pick groups from setup file
+    gindex = list()
+    for grange in v['DATA_GROUPS'].split('+'):
+        grange = grange.split(':')
+        if len(grange) == 1:grange += [grange[0]]
+        for i in xrange(2):
+            if grange[i].isdigit(): grange[i] = int(grange[i]) - 1
+            elif grange[i] == 'inf': grange[i] = len(GROUPS_HEADER) - 1
+            else: grange[i] = GROUPS_HEADER.index(grange[i])
+        gindex += range(grange[0], grange[1] + 1)
+
+    GROUPS_HEADER = [GROUPS_HEADER[i] for i in gindex]
+    GROUPS = list()
+    for group in GROUPS_HEADER:
+        try:
+            GROUPS += [{'start':DATA_HEADER.index(GROUPS_ALL[group]['start']), 'end':DATA_HEADER.index(GROUPS_ALL[group]['end'])}]
+        except:
+            print "Covariate %s in group %s was not found. Aborted." % (GROUPS_ALL[group]['start'], group)
+            sys.exit(0)
+
+    # pick data for the groups
+    cindex = list()
+    for group in GROUPS: cindex += range(group['start'], group['end'] + 1)
+    if not isinstance(v['DATA_EXPLAINED'], str): Y_pos = v['DATA_EXPLAINED'] - 1
+    else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED'])
+
+    sample = numpy.array([numpy.array([eval(x) for x in [row[Y_pos]] + [row[i] for i in cindex]])
+                          for row in dreader if len(row) > 0 and not row[Y_pos] == 'NA'])
+
+    # use just the first DATA_MAX_OBS observations
+    v['DATA_MAX_OBS'] = min(v['DATA_MAX_OBS'], sample.shape[0])
+    sample = sample[:v['DATA_MAX_OBS'], :]
+
+    # initialize posterior
+    v.update({'GROUPS':GROUPS, 'DATA_HEADER' : GROUPS_HEADER})
+    v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], param=v)})
+    return v
+
 
 def plot(v, verbose=True):
     """ 
@@ -228,7 +337,7 @@ def plot(v, verbose=True):
 
     # Format title.
     title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %s, NO_EVALS %.1f' % \
-            (v['RUN_ALGO'].__name__, v['DATA_SET'], v['POSTERIOR_TYPE'], d, n, v['TIME'], v['NO_EVALS'])
+            (v['RUN_ALGO'].__name__, v['DATA_DATA_FILE'], v['POSTERIOR_TYPE'], d, n, v['TIME'], v['NO_EVALS'])
     if eval['LENGTH'] > 0:
         title += '\nKERNEL %s, LENGTH %.1f, NO_MOVES %.1f, ACC_RATE %.3f' % \
             (v['MCMC_KERNEL'].__name__, v['LENGTH'], v['NO_MOVES'], v['ACC_RATE'])
@@ -237,10 +346,10 @@ def plot(v, verbose=True):
     # Format dictionary.
     v.update({'EVAL_BOXPLOT':', '.join(['%.6f' % x for x in numpy.reshape(A, (5 * d,))]),
               'EVAL_DIM':str(d), 'EVAL_XAXS':A.shape[1] * 1.2 + 1,
-              'EVAL_PDF':os.path.join(v['RUN_FOLDER'], 'plot.pdf'),
+              'EVAL_PDF':os.path.join(v['RUN_FOLDER'], 'plot.pdf').replace('\\', '/'),
               'EVAL_TITLE_TEXT':title})
     for key in ['EVAL_OUTER_MARGIN', 'EVAL_INNER_MARGIN']: v[key] = ', '.join([str(x) for x in v[key]])
-    for key in ['EVAL_NAMES', 'EVAL_COLOR']: v[key] = ', '.join(["'" + str(x) + "'" for x in v[key]])
+    v['EVAL_NAMES'] = ', '.join(["'" + str(x) + "'" for x in v['EVAL_NAMES']])
 
     # Create R-script.
     if v['EVAL_LINES'] > 1:
@@ -258,9 +367,9 @@ def plot(v, verbose=True):
         for(i in 1:k) {
           start=(i-1)*l+1
           end=min(i*l,d)
-          barplot(boxplot[,start:end], ylim=c(0, 1), names=names[start:end], las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c(%(EVAL_COLOR)s), xaxs='i')
+          barplot(boxplot[,start:end], ylim=c(0, 1), names=names[start:end], las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), xaxs='i')
         }
-        """ % v    
+        """ % v
     else:
         R = """#\n# This file was automatically generated.\n#\n
         # Boxplot data from repeated runs
@@ -270,7 +379,7 @@ def plot(v, verbose=True):
         # Create PDF-file
         pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
         par(oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
-        barplot(boxplot, ylim=c(0, 1), names=names, las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c(%(EVAL_COLOR)s), xaxs='i', xlim=c(-1, %(EVAL_XAXS)s))
+        barplot(boxplot, ylim=c(0, 1), names=names, las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), xaxs='i', xlim=c(-1, %(EVAL_XAXS)s))
         """ % v
     if v['EVAL_TITLE']:
         if v['EVAL_LINES'] > 1:
@@ -281,7 +390,7 @@ def plot(v, verbose=True):
             R += """
             title(main='%(EVAL_TITLE_TEXT)s', line=%(EVAL_TITLE_LINE)s, family='%(EVAL_FONT_FAMILY)s', cex.main=%(EVAL_FONT_CEX)s, font.main=1)
             """ % v
-    
+
     R += 'dev.off()'
     R = R.replace('    ', '')
     R_file = open(os.path.join(v['SYS_ROOT'], v['RUN_PATH'], v['RUN_NAME'], 'plot.R'), 'w')

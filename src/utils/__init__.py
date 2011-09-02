@@ -29,9 +29,8 @@ if os.name == 'nt':
         os.environ['CPATH'] = os.environ['CPATH'] + np.get_include()
     else:
         os.environ['CPATH'] = np.get_include()
-    
     mingw_setup_args = { 'options': { 'build_ext': { 'compiler': 'mingw32' } } }
-    pyximport.install(setup_args=mingw_setup_args)
+    pyximport.install(setup_args=mingw_setup_args, build_dir=os.path.curdir)
 else:
     pyximport.install()
         

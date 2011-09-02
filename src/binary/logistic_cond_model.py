@@ -19,16 +19,15 @@ from binary import *
 class LogisticBinary(ProductBinary):
     """ Binary model with logistic conditional distributions. """
 
-    name = 'logistic'
+    name = 'logistic conditionals family'
+    longname = 'Binary model with logistic conditional distributions.'
 
-    def __init__(self, Beta, name='logistic',
-                             longname='Binary model with logistic conditional distributions.'):
+    def __init__(self, Beta):
         """ Constructor.
             @param Beta matrix of regression coefficients
         """
 
-        ProductBinary.__init__(self, p=utils.inv_logit(numpy.diagonal(Beta)), \
-                                             name=name, longname=longname)
+        ProductBinary.__init__(self, p=utils.inv_logit(numpy.diagonal(Beta)))
 
         if 'cython' in utils.opts:
             self.f_rvslpmf = utils.cython.logistic_rvslpmf

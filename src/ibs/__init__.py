@@ -41,5 +41,15 @@ def read_config(file=os.path.join(v['SYS_ROOT'], 'src', 'ibs', 'default')):
             except:
                 pass
 
-    if not os.path.isabs(v['RUN_PATH']):
-        v['RUN_PATH'] = os.path.join(v['SYS_ROOT'], os.path.normpath(v['RUN_PATH']))
+    if os.name == 'posix': OS = 'POSIX_'
+    else: OS = 'WIN32_'
+
+    v.update({'RUN_PATH':v[OS + 'RUN_PATH'],
+              'DATA_PATH':v[OS + 'DATA_PATH'],
+              'SYS_R':v[OS + 'R'],
+              'SYS_VIEWER':v[OS + 'VIEWER']
+              })
+
+    for PATH in ['RUN_PATH','DATA_PATH']:
+        if not os.path.isabs(v[PATH]):
+            v[PATH] = os.path.join(v['SYS_ROOT'], os.path.normpath(v[PATH]))
