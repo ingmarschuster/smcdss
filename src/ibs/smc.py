@@ -30,8 +30,6 @@ class smc():
 
 def integrate_smc(param):
 
-    print '\nRunning SMC using %d particles using %s and %s...' % \
-        (param['SMC_N_PARTICLES'], param['SMC_BINARY_MODEL'].name, param['SMC_CONDITIONING'])
     ps = ParticleSystem(param)
 
     # run sequential MC scheme
@@ -41,7 +39,7 @@ def integrate_smc(param):
         ps.condition()
         ps.reweight()
 
-    sys.stdout.write('\rsmc completed in %s.\n' % (str(datetime.timedelta(seconds=time.time() - ps.start))))
+    sys.stdout.write('\rSMC completed in %s.\n' % (str(datetime.timedelta(seconds=time.time() - ps.start))))
 
     return ps.get_csv()
 
@@ -55,30 +53,45 @@ class ParticleSystem(object):
             @param verbose verbose
         """
 
+        ## target function
+        self.f = v['f']
+
+        ## dimension of target function
+        self.d = self.f.d
+        
+        ## number of particles
+        if v['SMC_N_PARTICLES'] is None:
+            v['SMC_N_PARTICLES'] = int((1.0 - numpy.exp(-self.d / 400.0)) * 25000)
+        self.n = v['SMC_N_PARTICLES']
+        
+        # write welcome message
+        if v['f'].d < v['DATA_MIN_DIM']:
+            print '\nExhaustive enumeration for problem of size %d < %d' % (v['f'].d, v['DATA_MIN_DIM'])
+        else:
+            print '\nRunning SMC using %d particles using %s and %s...' % \
+                (v['SMC_N_PARTICLES'], v['SMC_BINARY_MODEL'].name, v['SMC_CONDITIONING'])
+
+        self.verbose = v['RUN_VERBOSE']
+        if self.verbose: sys.stdout.write('...\n\n')
+
+        # measure running time
+        self.start = time.time()
+
+        # load cython modul
+        if 'cython' in utils.opts: self._resample = utils.cython.resample
+        else: self._resample = utils.python.resample
+        
+        # set system conditioning
         if v['SMC_CONDITIONING'] == 'augment-resample': self.condition = self.augment_resample
         if v['SMC_CONDITIONING'] == 'augment-resample-unique': self.condition = self.augment_resample_unique
         if v['SMC_CONDITIONING'] == 'resample-move': self.condition = self.resample_move
         self.reweight = self.reweight_ess
 
-        self.verbose = v['RUN_VERBOSE']
-        if self.verbose: sys.stdout.write('...\n\n')
-
-        self.start = time.time()
-
-        if 'cython' in utils.opts: self._resample = utils.cython.resample
-        else: self._resample = utils.python.resample
-
-        ## target function
-        self.f = v['f']
+        ## job server
         self.job_server = v['JOB_SERVER']
 
         ## proposal model
         self.prop = v['SMC_BINARY_MODEL'].uniform(self.f.d)
-
-        ## dimension of target function
-        self.d = self.f.d
-        ## number of particles
-        self.n = v['SMC_N_PARTICLES']
 
         ## array of log weights
         self.log_W = numpy.zeros(self.n, dtype=float)
@@ -115,14 +128,13 @@ class ParticleSystem(object):
         # Check for minimum problem size.
         if self.d < v['DATA_MIN_DIM']:
             self.rho = 1.0
-            self.X = list()
             self.X = numpy.array([utils.format.dec2bin(dec, self.d) for dec in xrange(2 ** self.d)])
             self.log_f = self.f.lpmf(self.X, self.job_server)
             self.log_W = self.log_f
             return
        
         self.X = self.prop.rvs(self.n, self.job_server)
-        self.log_f = self.f.lpmf(self.X, self.job_server)
+        self.log_f = self.f.lpmf(self.X, self.job_server, jobs_per_cpu=20)
         self.id = numpy.dot(numpy.array(self.X, dtype=int), self.__k)
         
         if self.verbose: print '\rinitialized in %.2f sec' % (time.time() - t)
@@ -178,15 +190,14 @@ class ParticleSystem(object):
             Computes the particle diversity.
             @return particle diversity
         """
-        if True:
+        if True:            
+            # pd via numpy
+            return numpy.unique(self.id).shape[0] / float(self.n)
+        else:
             # pd via dictionary keys
             dic = {}
             map(operator.setitem, (dic,)*self.n, self.id, [])
             return len(dic.keys()) / float(self.n)
-        else:
-            # pd via numpy
-            return numpy.unique(self.id, return_index=False).shape[0]
-
 
     def reweight_ess(self):
         """
@@ -234,13 +245,15 @@ class ParticleSystem(object):
     def fit_proposal(self):
         """
             Adjust the proposal model to the particle system.
-            @todo sample.distinct could be activated for speedup
         """
         if self.verbose:
             sys.stdout.write('fitting proposal...')
             t = time.time()
         sample = utils.data.data(self.X, self.log_W)
-        # sample.distinct()
+        
+        # condense multiple particles to reduces data size
+        sample.distinct()
+        
         self.prop.renew_from_data(sample, job_server=self.job_server, eps=self.eps, delta=self.delta, verbose=False)
         if self.verbose: print '\rfitted proposal in %.2f sec' % (time.time() - t)
 
@@ -348,7 +361,7 @@ class ParticleSystem(object):
         if self.verbose:
             sys.stdout.write('evaluating...')
             t = time.time()
-        log_f_Y = self.f.lpmf(Y, self.job_server)
+        log_f_Y = self.f.lpmf(Y, self.job_server, jobs_per_cpu=15)
         if self.verbose: print '\revaluated in %.2f sec' % (time.time() - t)
 
         # move

@@ -65,7 +65,9 @@ def main():
                 if os.name == 'posix':
                     subprocess.call('gnome-terminal -e "ibs ' + ' '.join([o[0] for o in opts if not o[0] == '-m']) + ' ' + args[0] + '"', shell=True)
                 else:
-                    subprocess.call('start "Title" /MAX "W:\\Documents\\Python\\smcdss\\bin\\ibs.bat" ' + ' '.join([o[0] for o in opts if not o[0] == '-m']) + ' ' + args[0], shell=True)
+                    path = os.path.abspath(os.path.join(os.path.join(*([os.getcwd()] + ['..']*1)), 'bin', 'ibs.bat'))
+                    subprocess.call('start "Title" /MAX "%s" ' % path + 
+                                    ' '.join([o[0] for o in opts if not o[0] == '-m']) + ' ' + args[0], shell=True)
                 k -= 1
             sys.exit(0)
 
@@ -97,7 +99,7 @@ def main():
     if '-e' in noargs: plot(v=ibs.v)
     if '-v' in noargs:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=ibs.v)
-        subprocess.Popen(['okular', os.path.join(RUN_FOLDER, 'plot.pdf')])
+        subprocess.Popen([ibs.v['SYS_VIEWER'], os.path.join(RUN_FOLDER, 'plot.pdf')])
 
 def run(v):
     """ 
@@ -174,38 +176,46 @@ def readData(v):
     DATA_HEADER = reader.next()
     d = len(DATA_HEADER)
     if not isinstance(v['DATA_EXPLAINED'], str): Y_pos = v['DATA_EXPLAINED'] - 1
-    else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED'])
-
+    else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED']) 
+    
+    # add constant to data header. add constant to the covariates if it is not in the principal components.
+    if v['DATA_CONST']:
+        DATA_HEADER = ['CONST'] + DATA_HEADER
+        if v['DATA_PCA'] is None or not 'CONST' in v['DATA_PCA']:
+            v['DATA_COVARIATES'] = 'CONST+' + v['DATA_COVARIATES']
+    
     # read covariate positions
     cindex = list()
-    for covrange in str(v['DATA_COVARIATES']).split('+'):
-        covrange = covrange.split(':')
-        if len(covrange) == 1:covrange += [covrange[0]]
-        for i in xrange(2):
-            if covrange[i].isdigit(): covrange[i] = int(covrange[i]) - 1
-            elif covrange[i] == 'inf': covrange[i] = d - 1
-            else: covrange[i] = DATA_HEADER.index(covrange[i])
-        cindex += range(covrange[0], covrange[1] + 1)
+    if not v['DATA_COVARIATES'] is None:
+        for covrange in str(v['DATA_COVARIATES']).split('+'):
+            covrange = covrange.split(':')
+            if len(covrange) == 1:covrange += [covrange[0]]
+            for i in xrange(2):
+                if covrange[i].isdigit(): covrange[i] = int(covrange[i]) - 1
+                elif covrange[i] == 'inf': covrange[i] = d - 1
+                else: covrange[i] = DATA_HEADER.index(covrange[i])
+            cindex += range(covrange[0], covrange[1] + 1)
 
     # read principal components positions
     pindex = list()
-    for covrange in str(v['DATA_PCA']).split('+'):
-        covrange = covrange.split(':')
-        if len(covrange) == 1:covrange += [covrange[0]]
-        for i in xrange(2):
-            if covrange[i].isdigit(): covrange[i] = int(covrange[i]) - 1
-            elif covrange[i] == 'inf': covrange[i] = d - 1
-            else: covrange[i] = DATA_HEADER.index(covrange[i])
-        pindex += range(covrange[0], covrange[1] + 1)
-    v['DATA_PCA'] = len(pindex) + v['DATA_CONST']
-
+    if not v['DATA_PCA'] is None:
+        for pcarange in str(v['DATA_PCA']).split('+'):
+            pcarange = pcarange.split(':')
+            if len(pcarange) == 1:pcarange += [pcarange[0]]
+            for i in xrange(2):
+                if pcarange[i].isdigit(): pcarange[i] = int(pcarange[i]) - 1
+                elif pcarange[i] == 'inf': pcarange[i] = d - 1
+                else: pcarange[i] = DATA_HEADER.index(pcarange[i])
+            pindex += range(pcarange[0], pcarange[1] + 1)
+    v['DATA_PCA'] = len(pindex)
+    
     sample = list()
     for row in reader:
         if len(row) > 0 and not row[Y_pos] == 'NA':
+            row += [c for c in ['1'] if v['DATA_CONST']] # constant column
             sample += [numpy.array([
                 eval(x) for x in
                     [row[Y_pos]] + # observation column
-                    [c for c in ['1'] if v['DATA_CONST']] + # constant column
                     [row[i] for i in pindex] + # principal component colums
                     [row[i] for i in cindex] # covariate columns
                 ])]
@@ -215,10 +225,17 @@ def readData(v):
     v['DATA_MAX_OBS'] = min(v['DATA_MAX_OBS'], sample.shape[0])
     sample = sample[:v['DATA_MAX_OBS'], :]
 
-    v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], param=v),
-              'DATA_HEADER' : [DATA_HEADER[i] for i in cindex],
-              'PCA_HEADER' : [DATA_HEADER[i] for i in pindex],
-              })
+    DATA_HEADER = [DATA_HEADER[i] for i in cindex]
+    PCA_HEADER = [DATA_HEADER[i] for i in pindex]
+    INTERACTIONS = list()
+    
+    # for each interaction column store the columns of the two main effects
+    if v['DATA_MAIN_EFFECTS']:
+        INTERACTIONS = [(DATA_HEADER.index(icol[0]), DATA_HEADER.index(icol[1]), DATA_HEADER.index(icol[2]))
+                        for icol in [[col] + col.split('.x.') for col in DATA_HEADER if '.x.' in col] if not icol[1] == icol[2]]
+
+    v.update({'DATA_HEADER' : DATA_HEADER, 'INTERACTIONS' : INTERACTIONS, 'PCA_HEADER' : PCA_HEADER})
+    v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], param=v)})
     return v
 
 

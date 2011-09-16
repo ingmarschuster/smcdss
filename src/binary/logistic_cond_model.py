@@ -167,14 +167,14 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
     # avoid numpy.column_stack for it causes a MemoryError
     #X = numpy.column_stack((sample.proc_data(dtype=float), numpy.ones(n, dtype=float)[:, numpy.newaxis]))
 
-    # try to free memory
-    gc.collect()
-
-    D = sample.proc_data(dtype=float)
-    X = numpy.empty((D.shape[0], D.shape[1] + 1))
-    X[:D.shape[0], :D.shape[1]] = D
-    X[:D.shape[0], D.shape[1]] = numpy.ones(D.shape[0], dtype=float)
-    del D
+    
+    #X = numpy.empty((D.shape[0], D.shape[1] + 1))
+    #X[:D.shape[0], :D.shape[1]] = D
+    #X[:D.shape[0], D.shape[1]] = numpy.ones(D.shape[0], dtype=float)
+    
+    X = numpy.empty((n, d + 1))
+    X[:n, :d] = sample.proc_data(dtype=float)
+    X[:n, d] = numpy.ones(n, dtype=float)
 
     # Compute weighted sample.
     if negative_weights:
@@ -184,6 +184,10 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
         w = numpy.array(sample.nW)
         XW = w[:, numpy.newaxis] * X
 
+    # free memory
+    del sample
+    gc.collect()
+
     # Compute slightly adjusted mean and real log odds.
     p = CONST_MIN_MARGINAL_PROB * 0.5 + (1.0 - CONST_MIN_MARGINAL_PROB) * XW[:, 0:d].sum(axis=0)
 
@@ -191,7 +195,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
     if negative_weights: p = numpy.array([max(min(x, 1.0 - 1e-10), 1e-10) for x in p])
 
     # Compute logits.
-    logit = utils.logit(p)
+    logit_p = utils.logit(p)
 
     # Find strong associations.
     L = abs(utils.data.calc_cor(X[:, 0:d], w=w)) > delta
@@ -203,28 +207,37 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
 
     # Initialize Beta with logits on diagonal.
     Beta = numpy.zeros((d, d))
-    if Init is None: Init = numpy.diag(logit)
+    if Init is None: Init = numpy.diag(logit_p)
 
     if verbose: stats = dict(regressions=0.0, failures=0, iterations=0, product=d, logistic=0)
 
     # Loop over all dimensions compute logistic regressions.
     jobs = list()
+    if not job_server is None: ncpus = job_server.get_ncpus()
+        
     for i in range(d):
-        l = list(numpy.where(L[i, 0:i])[0])
-        if len(l) > 0:
+        covariates = list(numpy.where(L[i, 0:i])[0])
+        if len(covariates) > 0:
             if not job_server is None:
-                jobs.append([i, l + [i],
+                jobs.append([i, covariates + [i],
                         (job_server.submit(
-                        func=calc_log_regr,
-                        args=(X[:, i], X[:, l + [d]], XW[:, l + [d]], Init[i, l + [i]], w, False),
-                        modules=('numpy', 'scipy.linalg', 'binary')))
+                         func=calc_log_regr,
+                         args=(X[:, i], X[:, covariates + [d]], XW[:, covariates + [d]], Init[i, covariates + [i]], w, False),
+                         modules=('numpy', 'scipy.linalg', 'binary')))
                 ])
+                # once jobs are assigned to all cpus let the job server
+                # wait in order to prevent memory errors on large problems
+                ncpus -= 1
+                if ncpus <= 0:
+                    job_server.wait()
+                    gc.collect()
+                    ncpus = job_server.get_ncpus()
             else:
-                jobs.append([i, l + [i], (calc_log_regr(
-                              X[:, i], X[:, l + [d]], XW[:, l + [d]], Init[i, l + [i]], w, False))
+                jobs.append([i, covariates + [i], (calc_log_regr(
+                              X[:, i], X[:, covariates + [d]], XW[:, covariates + [d]], Init[i, covariates + [i]], w, False))
                 ])
         else:
-            Beta[i, i] = logit[i]
+            Beta[i, i] = logit_p[i]
 
     # wait and retrieve results
     if not job_server is None: job_server.wait()
@@ -244,7 +257,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
             Beta[i, l] = beta
         else:
             if verbose: stats['failures'] += 1
-            Beta[i, i] = logit[i]
+            Beta[i, i] = logit_p[i]
 
     if verbose:
         stats.update({'time':time.time() - t})
@@ -253,6 +266,14 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
 
     return Beta
 
+def _parts_job_server(size, ncpus):
+    """
+        Partitions a load to pass it to multiple cpus.
+        @param size sample size
+        @param ncpus number of cpus
+        @return partition of 0,...,size
+    """
+    return [[i * size // ncpus, min((i + 1) * size // ncpus + 1, size)] for i in range(ncpus)]
 
 def calc_log_regr(y, X, XW, init, w=None, verbose=False):
     """
@@ -447,6 +468,8 @@ def Moments2Corr(M):
     return numpy.diag(M), R
 
 def main():
+    pass
+    """
     d = 6
     m, R = Moments2Corr(random_problem(d))
     print utils.format.format(m)
@@ -454,6 +477,7 @@ def main():
     Beta = adjust_Beta(Corr2Moments(m, R))
     l = LogisticBinary(Beta)
     print l.marginals()
+    """
 
 if __name__ == "__main__":
     main()

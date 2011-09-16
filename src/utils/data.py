@@ -15,7 +15,6 @@ $Date$
 
 import time, sys, pickle
 from numpy import *
-
 from utils.format import *
 
 class data(object):
@@ -211,16 +210,6 @@ class data(object):
         self.__order = array(self._W).argsort(axis=0).tolist()
         self.__order.reverse()
 
-
-    def lexorder(self, X):
-        """
-            Gives the index for the data in lexicographical order.
-            @return index set 
-        """
-        #return argsort(array([str(array(x, int)) for x in X]))
-        k = array([2 ** i for i in range(len(X[0]))])
-        return argsort(array([dot(k, x) for x in X]))
-
     def assign_weights(self, f, verbose=False):
         """
             Evaluates the value of c*exp(f(x)) for each sample x.
@@ -241,7 +230,8 @@ class data(object):
         self.nW = []
 
         # Apply in lexicographical order to avoid extra evaluation of f.
-        lexorder = self.lexorder(X)
+        # lexorder = self.lexorder(X) -- use the numpy function instead
+        lexorder = lexsort(X.T)
         weight = f.lpmf(X[lexorder[0]])
         for index in range(self.size - k):
             if not (X[lexorder[index]] == X[lexorder[index - 1]]).all():
@@ -268,16 +258,21 @@ class data(object):
     def distinct(self):
         X = self._X
         W = self.nW
-        lexorder = self.lexorder(X)
+
+        # order the data array
+        lexorder = lexsort(array(X).T)
+        
         self._X = []; self._W = []
-        x = X[lexorder[0]]
+        
+        # loop over ordered data
+        x, w = X[lexorder[0]], W[lexorder[0]]
         count = 1
-        for index in lexorder:
+        for index in append(lexorder[1:], lexorder[0]):
             if (x == X[index]).all():
                 count += 1
             else:
                 self._X += [x]
-                self._W += [W[index] * count]
+                self._W += [log(w * count)]
                 x = X[index]
                 w = W[index]
                 count = 1

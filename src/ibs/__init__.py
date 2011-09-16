@@ -50,6 +50,6 @@ def read_config(file=os.path.join(v['SYS_ROOT'], 'src', 'ibs', 'default')):
               'SYS_VIEWER':v[OS + 'VIEWER']
               })
 
-    for PATH in ['RUN_PATH','DATA_PATH']:
+    for PATH in ['RUN_PATH', 'DATA_PATH', 'SYS_R', 'SYS_VIEWER']:
         if not os.path.isabs(v[PATH]):
             v[PATH] = os.path.join(v['SYS_ROOT'], os.path.normpath(v[PATH]))

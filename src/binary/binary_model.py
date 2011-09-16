@@ -39,7 +39,7 @@ class Binary(stats.rv_discrete):
         """
         return numpy.exp(self.lpmf(gamma, job_server=job_server))
 
-    def lpmf(self, gamma, job_server=None):
+    def lpmf(self, gamma, job_server=None, jobs_per_cpu=1):
         """ 
             Log-probability mass function.
             @param gamma binary vector
@@ -54,7 +54,7 @@ class Binary(stats.rv_discrete):
 
         if not job_server is None:
             # start jobs
-            jobs = _parts_job_server(size, ncpus)
+            jobs = _parts_job_server(size, jobs_per_cpu * ncpus)
             for i, (start, end) in enumerate(jobs):
                 jobs[i].append(
                     job_server.submit(

@@ -140,9 +140,7 @@ def _rvslpmf(U, param):
     return Y, _lpmf(Y, param)
 
 def main():
-    x = ProductBinary.random(5)
-    print x.d
-    print x.r
+    pass
 
 if __name__ == "__main__":
     main()

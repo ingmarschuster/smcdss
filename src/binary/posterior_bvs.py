@@ -37,9 +37,13 @@ class PosteriorBinary(binary_model.Binary):
         XtX = numpy.dot(X.T, X)
         YtY = numpy.dot(Y.T, Y)
 
-        self.param = dict(XtX=XtX, XtY=XtY, n=n, d=d)
+        # We copy some parts of the dictionary since the complete one cannot be
+        # pickled which is necessary for parallel python to work properly
+        self.param = {'YtY':YtY, 'XtX':XtX, 'XtY':XtY, 'n':n, 'd':d, 'DATA_PCA':param['DATA_PCA'], 'INTERACTIONS':param['INTERACTIONS']}
+        
+        # detect posterior type
         self.type = param['POSTERIOR_TYPE']
-
+        
         ## Hierachical Bayesian (hb), Bayesian Information Criterion (bic) or Random Effect (re)
         if self.type == 'hb': self._init_hb(n, d, XtY, XtX, YtY, X, Y, param)
         if self.type == 'bic': self._init_bic(n, d, XtY, XtX, YtY, param)
@@ -103,23 +107,20 @@ class PosteriorBinary(binary_model.Binary):
         p = param['PRIOR_GAMMA_PARAM_P']
 
         # costants
-        c1, c2, c3 = 0.5 * numpy.log(v2), 0.5 * (n + w), w * lambda_ + YtY
-
         self.param.update({'one_over_v2':1.0 / v2,
-                           'c1':c1,
-                           'c2':c2,
-                           'c3':c3,
-                           'logit_p':utils.logit(p),
-                           'pca':param['DATA_PCA']
+                           'c1' : 0.5 * numpy.log(v2),
+                           'c2' : 0.5 * (n + w),
+                           'c3' : w * lambda_ + YtY,
+                           'LOGIT_P' : utils.logit(p)
                            })
 
         print "Problem summary:"
-        print "> sigma^2_none      : %f" % (numpy.power(Y - Y.sum() / float(n), 2).sum() / float(n))
-        print "> sigma^2_full      : %f" % sigma2_full_LM
-        print "> number of obs     : %d" % n
-        if d < param['DATA_MIN_DIM']: print "> number of markers : %d < %d " % (self.d, param['DATA_MIN_DIM'])
-        else: print "> number of markers : %d" % d
-        print "> logit(p) penalty  : %f" % self.param['logit_p']
+        print "> sigma^2_none     : %f" % (numpy.power(Y - Y.sum() / float(n), 2).sum() / float(n))
+        print "> sigma^2_full     : %f" % sigma2_full_LM
+        print "> number of obs    : %d" % n
+        print "> number of covs   : %d" % self.d
+        print "> number of pcs    : %d" % self.param['DATA_PCA']
+        print "> logit(p) penalty : %f" % self.param['LOGIT_P']
 
 
     def _init_bic(self, n, d, XtY, XtX, YtY, param):
@@ -147,7 +148,7 @@ class PosteriorBinary(binary_model.Binary):
         if self.type == 're':
             return len(self.param['GROUPS'])
         else:
-            return self.param['XtX'].shape[0] - self.param['pca']
+            return self.param['XtX'].shape[0] - self.param['DATA_PCA']
 
     def __explore(self):
         """ Find the maximmum of the log-probability.
@@ -210,8 +211,10 @@ def _lpmf_hb(gamma, param):
     """
 
     # unpack parameters
-    XtY, XtX, c1, c2, c3, logit_p, one_over_v2, pca = \
-        [param[k] for k in ['XtY', 'XtX', 'c1', 'c2', 'c3', 'logit_p', 'one_over_v2', 'pca']]
+    YtY, XtY, XtX, c1, c2, c3, logit_p, one_over_v2, pca, interactions = \
+        [param[key] for key in ['YtY', 'XtY', 'XtX', 'c1', 'c2', 'c3', 'LOGIT_P', 'one_over_v2', 'DATA_PCA', 'INTERACTIONS']]
+
+    del param
 
     # number of models
     size = gamma.shape[0]
@@ -223,16 +226,26 @@ def _lpmf_hb(gamma, param):
         # model dimension
         gamma_pca[pca:] = gamma[k]
         d = gamma_pca.sum()
-        if d == 0:
+        
+        # check main effects constraints
+        mec_violations = 0
+        for i in interactions:
+            if gamma_pca[i[0]] == 1 and gamma_pca[i[1]] * gamma_pca[i[2]] == 0:
+                mec_violations += 1
+        
+        if mec_violations:
+            L[k] = -mec_violations * YtY
+        elif d == 0:
             # degenerated model
-            L[k] = -numpy.inf
+            L[k] = -YtY
         else:
             # regular model
             C = scipy.linalg.cholesky(XtX[gamma_pca, :][:, gamma_pca] + one_over_v2 * numpy.eye(d))
             if C.shape == (1, 1): b = XtY[gamma_pca, :] / float(C)
             else:                 b = scipy.linalg.solve(C.T, XtY[gamma_pca, :])
             log_diag_C = numpy.log(C.diagonal()).sum()
-            L[k] = -log_diag_C - c1 * d - c2 * numpy.log(c3 - numpy.dot(b, b.T)) + d * logit_p
+            L[k] = -log_diag_C - c1 * d - c2 * numpy.log(c3 - numpy.dot(b, b.T)) + d * logit_p - mec_violations * YtY
+    
     return L
 
 

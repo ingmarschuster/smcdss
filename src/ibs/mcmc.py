@@ -60,7 +60,7 @@ class MarkovChain():
         """
 
         ## time
-        self.t = time.clock()
+        self.start = time.time()
         ## verbose
         self.verbose = verbose
         ## Markov kernel
@@ -161,7 +161,7 @@ class MarkovChain():
              self.n_evals * 1e-3,
              self.n_moves * 1e-3,
              self.acc_rate,
-             time.clock() - self.t)
+             time.time() - self.start)
 
     done = property(fget=getDone, doc="is done")
     acc_rate = property(fget=getAccRate, doc="acceptance rate")

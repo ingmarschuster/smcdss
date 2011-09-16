@@ -58,6 +58,9 @@ class QuExpBinary(ProductBinary):
 
         return QuExpBinary(A)
 
+    def __str__(self):
+        return utils.format.format_matrix(self.A, 'A')
+
     def __explore(self):
         """ Find the maximmum of the log-probability.
             @deprecated method is never used.
