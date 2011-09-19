@@ -1,5 +1,5 @@
 #!/bin/sh
-PROJECT=Documents/Python/smcdss/src
+PROJECT=Documents/Software/smcdss/src
 export PYTHONPATH=$HOME/$PROJECT
 SAVE_PWD=$PWD
 cd $HOME/$PROJECT
