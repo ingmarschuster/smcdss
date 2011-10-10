@@ -15,6 +15,7 @@ with variables regressed on the first column.
 """
 
 from binary import *
+import sys
 
 class PosteriorBinary(binary_model.Binary):
     """
@@ -39,9 +40,8 @@ class PosteriorBinary(binary_model.Binary):
 
         # We copy some parts of the dictionary since the complete one cannot be
         # pickled which is necessary for parallel python to work properly
-        self.param = {'YtY':YtY, 'XtX':XtX, 'XtY':XtY, 'n':n, 'd':d, 'DATA_PCA':param['DATA_PCA'], 'INTERACTIONS':param['INTERACTIONS']}
-        
-        # detect posterior type
+        self.param = {'penalty':-n * numpy.log(YtY), 'XtX':XtX, 'XtY':XtY, 'n':n, 'd':d, 'DATA_PCA':param['DATA_PCA'], 'INTERACTIONS':param['INTERACTIONS']}
+
         self.type = param['POSTERIOR_TYPE']
         
         ## Hierachical Bayesian (hb), Bayesian Information Criterion (bic) or Random Effect (re)
@@ -88,8 +88,19 @@ class PosteriorBinary(binary_model.Binary):
         self.f_lpmf = _lpmf_hb
 
         # full linear model
-        beta_full_LM = scipy.linalg.solve(XtX + 1e-5 * numpy.eye(d), XtY, sym_pos=True)
-        sigma2_full_LM = (YtY - numpy.dot(XtY, beta_full_LM)) / float(n)
+        beta_full_LM = scipy.linalg.solve(XtX + 1e-10 * numpy.eye(d), XtY, sym_pos=True)
+        sigma2_full_LM = (YtY - numpy.dot(XtY, beta_full_LM)) / float(n - 2)
+
+        # pca model
+        if param['DATA_PCA'] > 0:
+            gamma_pca = numpy.zeros(d, dtype=bool)
+            gamma_pca[:param['DATA_PCA']] = True
+            beta_pca_LM = scipy.linalg.solve(XtX[gamma_pca, :][:, gamma_pca] + 1e-10 * numpy.eye(param['DATA_PCA']), XtY[gamma_pca, :], sym_pos=True)
+            sigma2_pca_LM = (YtY - numpy.dot(XtY[gamma_pca, :], beta_pca_LM)) / float(n - 2)
+        else:
+            sigma2_pca_LM = sigma2_full_LM
+
+        sigma2_const_LM = (numpy.power(Y - Y.sum() / float(n), 2).sum() / float(n - 2))
 
         # prior (normal) of beta
         u2 = param['PRIOR_BETA_PARAM_U2']
@@ -115,12 +126,13 @@ class PosteriorBinary(binary_model.Binary):
                            })
 
         print "Problem summary:"
-        print "> sigma^2_none     : %f" % (numpy.power(Y - Y.sum() / float(n), 2).sum() / float(n))
-        print "> sigma^2_full     : %f" % sigma2_full_LM
+        print "> sigma^2_const    : %.8f" % sigma2_const_LM
+        print "> sigma^2_pca      : %.8f" % sigma2_pca_LM
+        print "> sigma^2_full     : %.8f%s" % (sigma2_full_LM, ['', ' (obs <= cov)'][n <= self.d])
         print "> number of obs    : %d" % n
-        print "> number of covs   : %d" % self.d
+        print "> number of covs   : %d (%d constraints)" % (self.d, len(param['INTERACTIONS']))
         print "> number of pcs    : %d" % self.param['DATA_PCA']
-        print "> logit(p) penalty : %f" % self.param['LOGIT_P']
+        print "> logit(p) penalty : %.8f" % self.param['LOGIT_P']
 
 
     def _init_bic(self, n, d, XtY, XtX, YtY, param):
@@ -211,8 +223,8 @@ def _lpmf_hb(gamma, param):
     """
 
     # unpack parameters
-    YtY, XtY, XtX, c1, c2, c3, logit_p, one_over_v2, pca, interactions = \
-        [param[key] for key in ['YtY', 'XtY', 'XtX', 'c1', 'c2', 'c3', 'LOGIT_P', 'one_over_v2', 'DATA_PCA', 'INTERACTIONS']]
+    penalty, XtY, XtX, c1, c2, c3, logit_p, one_over_v2, pca, interactions = \
+        [param[key] for key in ['penalty', 'XtY', 'XtX', 'c1', 'c2', 'c3', 'LOGIT_P', 'one_over_v2', 'DATA_PCA', 'INTERACTIONS']]
 
     del param
 
@@ -222,30 +234,30 @@ def _lpmf_hb(gamma, param):
     L = numpy.empty(size, dtype=float)
     gamma_pca = numpy.ones(shape=gamma.shape[1] + pca, dtype=bool)
 
+    #total_mec_violations = 0
     for k in xrange(size):
         # model dimension
         gamma_pca[pca:] = gamma[k]
         d = gamma_pca.sum()
         
         # check main effects constraints
-        mec_violations = 0
-        for i in interactions:
-            if gamma_pca[i[0]] == 1 and gamma_pca[i[1]] * gamma_pca[i[2]] == 0:
-                mec_violations += 1
+        if interactions.shape[0] > 0:
+            mec_violations = (gamma_pca[interactions[:, 0]] > gamma_pca[interactions[:, 1]] * gamma_pca[interactions[:, 2]]).sum()
+        else:
+            mec_violations = False
         
-        if mec_violations:
-            L[k] = -mec_violations * YtY
-        elif d == 0:
-            # degenerated model
-            L[k] = -YtY
+        if mec_violations > 0 or d == 0:
+            # unfeasible model
+            L[k] = mec_violations * penalty
+            #total_mec_violations += 1
         else:
             # regular model
             C = scipy.linalg.cholesky(XtX[gamma_pca, :][:, gamma_pca] + one_over_v2 * numpy.eye(d))
             if C.shape == (1, 1): b = XtY[gamma_pca, :] / float(C)
             else:                 b = scipy.linalg.solve(C.T, XtY[gamma_pca, :])
             log_diag_C = numpy.log(C.diagonal()).sum()
-            L[k] = -log_diag_C - c1 * d - c2 * numpy.log(c3 - numpy.dot(b, b.T)) + d * logit_p - mec_violations * YtY
-    
+            L[k] = -log_diag_C - c1 * d - c2 * numpy.log(c3 - numpy.dot(b, b.T)) + d * logit_p
+    #print '\nMEC VIOLATIONS', total_mec_violations / float(size)
     return L
 
 

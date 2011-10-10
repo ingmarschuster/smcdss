@@ -37,13 +37,15 @@ import os
 import sys
 import ibs
 import pp
+import smc
+import mcmc
 
 def main():
     """ Main method. """
 
     # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:')
+        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:a:')
     except getopt.error, msg:
         print msg
         sys.exit(2)
@@ -55,36 +57,33 @@ def main():
             print __doc__
         else:
             print 'No file specified.'
-        sys.exit(0)
-
-    # Start multiple processes
-    for o, a in opts:
-        if o == '-m':
-            k = int(a)
-            while k > 0:
-                if os.name == 'posix':
-                    subprocess.call('gnome-terminal -e "ibs ' + ' '.join([o[0] for o in opts if not o[0] == '-m']) + ' ' + args[0] + '"', shell=True)
-                else:
-                    path = os.path.abspath(os.path.join(os.path.join(*([os.getcwd()] + ['..']*1)), 'bin', 'ibs.bat'))
-                    subprocess.call('start "Title" /MAX "%s" ' % path + 
-                                    ' '.join([o[0] for o in opts if not o[0] == '-m']) + ' ' + args[0], shell=True)
-                k -= 1
-            sys.exit(0)
+        sys.exit(0)           
 
     # Load run file.
     ibs.read_config()
     RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
+    RUN_FILE = os.path.join(ibs.v['RUN_PATH'], RUN_NAME)
+    
+    # Check for algorithm options.
+    for o, a in opts:
+        if o == '-a':
+            if not a in ['smc', 'mcmc', 'amcmc']:
+                print 'Algorithm %s not recognized.' % a
+                sys.exit(0)
+            if a == 'smc':
+                ibs.v['RUN_ALGO'] = smc.smc
+            if a == 'mcmc':
+                ibs.v['RUN_ALGO'] = mcmc.mcmc
+                ibs.v['MCMC_KERNEL'] = mcmc.SymmetricMetropolisHastings
+            if a == 'amcmc':
+                ibs.v['RUN_ALGO'] = mcmc.mcmc
+                ibs.v['MCMC_KERNEL'] = mcmc.AdaptiveMetropolisHastings
+            RUN_NAME += '_' + a
     RUN_FOLDER = os.path.join(ibs.v['RUN_PATH'], RUN_NAME)
-    RUN_FILE = os.path.join(ibs.v['RUN_PATH'], RUN_NAME + '.ini')
-    if not os.path.isfile(RUN_FILE):
-        print "The run file '%s' does not exist in the run path %s" % (RUN_NAME, RUN_FOLDER)
-        sys.exit(0)
-    ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE, 'RUN_FOLDER':RUN_FOLDER})
-
-    # Initialize problem
-    ibs.read_config(os.path.join(ibs.v['RUN_PATH'], RUN_NAME))
-
-    # clean up or create folder.
+    EVAL_FILE = os.path.join(RUN_FOLDER, RUN_NAME)
+    ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE + '.ini', 'EVAL_FILE':EVAL_FILE + '.ini', 'RUN_FOLDER':RUN_FOLDER})    
+    
+    # Clean up or create folder.
     if '-c' in noargs:
         if os.path.isdir(RUN_FOLDER):
             try:
@@ -93,10 +92,36 @@ def main():
             except: pass
         else:
             os.mkdir(RUN_FOLDER)
-
+            
+    # Start multiple processes.
+    for o, a in opts:
+        if o == '-m':
+            k = int(a)
+            while k > 0:
+                if os.name == 'posix':
+                    subprocess.call('gnome-terminal -e "ibs ' + ' '.join([o + ' ' + a for (o, a) in opts if not o in ['-m', '-c']]) + ' ' + args[0] + '"', shell=True)
+                else:
+                    path = os.path.abspath(os.path.join(os.path.join(*([os.getcwd()] + ['..']*1)), 'bin', 'ibs.bat'))
+                    subprocess.call('start "Title" /MAX "%s" ' % path + 
+                                    ' '.join([o + ' ' + a for (o, a) in opts if not o in ['-m', '-c']]) + ' ' + args[0], shell=True)
+                k -= 1
+            sys.exit(0)
+   
     # Process options.
-    if '-r' in noargs: run(v=ibs.v)
-    if '-e' in noargs: plot(v=ibs.v)
+    if '-r' in noargs:
+        if not (os.path.isfile(RUN_FILE + '.ini')):
+            print "The run file '%s' does not exist in the path %s" % (os.path.basename(RUN_FILE), os.path.dirname(RUN_FILE))
+            sys.exit(0)
+        ibs.read_config(RUN_FILE)
+        run(v=ibs.v)
+        
+    if '-e' in noargs:
+        if not (os.path.isfile(EVAL_FILE + '.ini')):
+            print "The evaluation file '%s' does not exist in the path %s" % (os.path.basename(EVAL_FILE), os.path.dirname(EVAL_FILE))
+            sys.exit(0)
+        ibs.read_config(EVAL_FILE)
+        plot(v=ibs.v)
+    
     if '-v' in noargs:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=ibs.v)
         subprocess.Popen([ibs.v['SYS_VIEWER'], os.path.join(RUN_FOLDER, 'plot.pdf')])
@@ -113,7 +138,7 @@ def run(v):
 
     # Setup test folder.
     if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
-    shutil.copyfile(v['RUN_FILE'], os.path.join(v['RUN_FOLDER'] , v['RUN_NAME']) + '.ini')
+    if not os.path.isfile(v['EVAL_FILE']): shutil.copyfile(v['RUN_FILE'], v['EVAL_FILE'])
 
     # Setup result file.
     result_file = v['RUN_FOLDER'] + '/' + 'result.csv'
@@ -180,10 +205,10 @@ def readData(v):
     
     # add constant to data header. add constant to the covariates if it is not in the principal components.
     if v['DATA_CONST']:
-        DATA_HEADER = ['CONST'] + DATA_HEADER
+        DATA_HEADER += ['CONST']
         if v['DATA_PCA'] is None or not 'CONST' in v['DATA_PCA']:
             v['DATA_COVARIATES'] = 'CONST+' + v['DATA_COVARIATES']
-    
+
     # read covariate positions
     cindex = list()
     if not v['DATA_COVARIATES'] is None:
@@ -220,19 +245,20 @@ def readData(v):
                     [row[i] for i in cindex] # covariate columns
                 ])]
     sample = numpy.array(sample)
-
+    
     # use just the first DATA_MAX_OBS observations
     v['DATA_MAX_OBS'] = min(v['DATA_MAX_OBS'], sample.shape[0])
     sample = sample[:v['DATA_MAX_OBS'], :]
 
-    DATA_HEADER = [DATA_HEADER[i] for i in cindex]
     PCA_HEADER = [DATA_HEADER[i] for i in pindex]
-    INTERACTIONS = list()
-    
+    DATA_HEADER = [DATA_HEADER[i] for i in cindex]
+
     # for each interaction column store the columns of the two main effects
     if v['DATA_MAIN_EFFECTS']:
-        INTERACTIONS = [(DATA_HEADER.index(icol[0]), DATA_HEADER.index(icol[1]), DATA_HEADER.index(icol[2]))
-                        for icol in [[col] + col.split('.x.') for col in DATA_HEADER if '.x.' in col] if not icol[1] == icol[2]]
+        INTERACTIONS = numpy.array([[DATA_HEADER.index(icol[0]), DATA_HEADER.index(icol[1]), DATA_HEADER.index(icol[2])]
+                        for icol in [[col] + col.split('.x.') for col in DATA_HEADER if '.x.' in col] if not icol[1] == icol[2]])
+    else:
+        INTERACTIONS = numpy.array([])
 
     v.update({'DATA_HEADER' : DATA_HEADER, 'INTERACTIONS' : INTERACTIONS, 'PCA_HEADER' : PCA_HEADER})
     v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], param=v)})
@@ -352,9 +378,13 @@ def plot(v, verbose=True):
         for j, q in [(1, 1.0 - box), (2, 0.5), (3, box), (4, 1.0)]:
             A[j][i] = X[:, i][int(q * n) - 1] - A[:j + 1, i].sum()
 
-    # Format title.
+    # Determine algorithm (might have been set on command line)
+    algo = v['RUN_ALGO'].__name__
+    if v['EVAL_FILE'][-8:] == 'mcmc.ini': algo = 'mcmc'
+
+    # Format title.   
     title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %s, NO_EVALS %.1f' % \
-            (v['RUN_ALGO'].__name__, v['DATA_DATA_FILE'], v['POSTERIOR_TYPE'], d, n, v['TIME'], v['NO_EVALS'])
+            (algo, v['DATA_DATA_FILE'], v['POSTERIOR_TYPE'], d, n, v['TIME'], v['NO_EVALS'])
     if eval['LENGTH'] > 0:
         title += '\nKERNEL %s, LENGTH %.1f, NO_MOVES %.1f, ACC_RATE %.3f' % \
             (v['MCMC_KERNEL'].__name__, v['LENGTH'], v['NO_MOVES'], v['ACC_RATE'])

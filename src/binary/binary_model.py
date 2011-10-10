@@ -154,7 +154,7 @@ class Binary(stats.rv_discrete):
         """
         sample = utils.data.data()
         sample.sample(self, n)
-        return utils.format.format(sample.mean, 'sample (n = %i) mean' % n) + '\n' + \
+        return utils.format.format(sample.mean, 'sample (n = %i) mean' % n) + \
                utils.format.format(sample.cor, 'sample (n = %i) correlation' % n)
 
     def marginals(self):

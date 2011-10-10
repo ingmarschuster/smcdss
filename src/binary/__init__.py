@@ -32,11 +32,15 @@ The package @link ibs @endlink for Monte Carlo integration.
 
 The package @link obs @endlink for Monte Carlo optimization.
 
+@section cpd_sec Change-point detection
+
+The package @link cpd @endlink for change-point detection.
+
 """
 
 CONST_PRECISION = 1e-5
 CONST_ITERATIONS = 50
-CONST_MIN_MARGINAL_PROB = 1e-12
+CONST_MIN_MARGINAL_PROB = 1e-10
 
 import scipy.stats as stats
 import scipy

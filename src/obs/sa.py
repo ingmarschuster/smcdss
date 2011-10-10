@@ -13,7 +13,11 @@ $Date$
 @details
 """
 
-from obs import *
+import time
+import utils
+import numpy
+import binary
+import ubqo
 
 class sa(ubqo.ubqo):
     name = 'SA'
@@ -22,14 +26,15 @@ class sa(ubqo.ubqo):
         return solve_sa(f=binary.QuExpBinary(self.A), n=self.v['SA_MAX_ITER'], m=self.v['SA_MAX_TIME'])
 
 def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
-    """ Run simulated annealing optimization.
+    """
+        Run simulated annealing optimization.
         @param f f function
         @param n number of steps
         @param m maximum time in minutes
         @param verbose verbose
     """
 
-    print 'running simulated annealing',
+    print 'Running simulated annealing...',
     if n < numpy.inf: print 'for %.f steps' % n
     if m < numpy.inf: print 'for %.2f minutes' % m
 
@@ -77,7 +82,7 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
         if a / float(k) < (r + 1) ** -5: v *= 0.995
         else:  v *= 1.005
 
-    if verbose: sys.stdout.write('\n')
+    if verbose: print
     return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
 
 def main():

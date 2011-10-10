@@ -14,16 +14,34 @@ $Date$
 """
 
 import subprocess
-from obs import *
+import obs
+import binary
+import numpy
+import os
+import sys
+import time
+import ubqo
+import fileinput
 
 class scip(ubqo.ubqo):
     name = 'SCIP'
     header = []
     def run(self):
-        self.best_obj, solution = solve_scip(f=binary.QuExpBinary(self.A), ts=self.v['RUN_TESTSUITE'])
+               
+        primal_bound, dual_bound, solution = solve_scip(f=binary.QuExpBinary(self.A), testsuite=self.testsuite, problem=self.problem, tl=self.v['SCIP_TIME_LIMIT'])
+        
+        if primal_bound > self.primal_bound:self.primal_bound = primal_bound
+        if dual_bound < self.dual_bound:self.dual_bound = dual_bound
+        
+        # save best objective and dual bound obtained
+        for i, line in enumerate(fileinput.FileInput(os.path.join(obs.v['DATA_PATH'], self.testsuite, self.testsuite + '_%02d.dat' % self.problem), inplace=1)):
+            if i == 0: line = '%.f\n' % primal_bound
+            if i == 1: line = '%.10f\n' % dual_bound
+            print line,
+        
         return solution
 
-def solve_scip(f, ts=''):
+def solve_scip(f, testsuite, problem, tl=None):
     """
         Solve UBQO using SCIP and ZIMPL from the ZIB Optimization Suite http://zibopt.zib.de.
         @param f quadratic exponential model.
@@ -32,66 +50,78 @@ def solve_scip(f, ts=''):
     """
 
     t = time.time()
-    if not ts == '': ts = '_' + ts
-    print 'running scip 2.01 using zimpl 3.1.0'
+    print 'Running scip 2.01 using zimpl 3.1.0.\n'
 
-    # write matrix
-    file = open(os.path.normpath('obs/scip/matrix%s.dat' % ts), 'w')
-    file.write('%i\n' % f.d)
-    for j in xrange(f.d):
-        for i in xrange(j, f.d):
-            if i == j: a = f.A[i, j]
-            else: a = 2 * f.A[i, j]
-            file.write('%.16f\n' % a)
+    scip_path = os.path.join(obs.v['SYS_ROOT'], 'bin', 'scip')
+    
+    # set time limit
+    setting_path = os.path.join(scip_path, 'parameters_uqbo.set')
+    if tl is None: tl = 1e20
+    file = open(setting_path, 'w')
+    file.write("limits/time=%f\n" % (tl * 60))
+    file.write("limits/memory=2000")
     file.close()
 
-    # write zimpl file
-    file = open('obs/scip/uqbo.zpl', 'r')
-    zpl = file.read()
-    file.close()
-    file = open('obs/scip/uqbo%s.zpl' % ts, 'w')
-    file.write(zpl % {'ts':ts})
-    file.close()
+    uqbo_path = os.path.join(scip_path, 'temp', 'uqbo_%s_%02d_%06d' % (testsuite, problem, numpy.random.randint(low=0, high=1e7 - 1))) + '%s'
 
+    # create ZPL file
+    file = open(uqbo_path % '.zpl', 'w')
+    file.write(ZIMPL_QUADRATIC % {'datfile':os.path.join(obs.v['DATA_PATH'], testsuite, testsuite + '_%02d.dat' % problem)})
+    file.close()
+        
     # invoke scip
-    if os.path.exists(os.path.normpath('obs/scip/scip%s.log' % ts)):
-        os.remove(os.path.normpath('obs/scip/scip%s.log' % ts))
+    if os.path.exists(uqbo_path % '.log'): os.remove(uqbo_path % '.log')
     if os.name == 'posix':
-        subprocess.Popen(['/home/cschafer/ziboptsuite-2.0.1/scip-2.0.1/bin/scip', '-l', 'obs/scip/scip%s.log' % ts, '-f', 'obs/scip/uqbo%s.zpl' % ts, '-q']).wait()
+        subprocess.Popen([os.path.expanduser('~/ziboptsuite-2.0.1/scip-2.0.1/bin/scip'), '-l', (uqbo_path % '.log'), '-s', setting_path, '-f', (uqbo_path % '.zpl'), '-q']).wait()
     else:
-        bin_path = os.path.join('W:\\', 'Documents', 'Python', 'smcdss', 'bin')
+        # invoke zimpl separately
+        bin_path = os.path.join(obs.v['SYS_ROOT'], 'bin', 'scip')
         cwd_path = os.getcwd()
-        os.chdir(os.path.join('obs', 'scip'))
-        subprocess.Popen([os.path.join(bin_path, 'zimpl.exe'), '-O', '-v 0' , 'uqbo%s.zpl' % ts]).wait()
+        os.chdir(os.path.join(bin_path, 'temp'))
+        subprocess.Popen([os.path.join(bin_path, 'zimpl.exe'), '-t', 'pip', '-v', '0', os.path.basename(uqbo_path % '.zpl')]).wait()
         os.chdir(cwd_path)
-        subprocess.Popen([os.path.join(bin_path, 'scip.exe'), '-l', 'obs\\scip\\scip%s.log' % ts, '-f', 'obs\\scip\\uqbo%s.lp' % ts, '-q']).wait()
+        p = subprocess.Popen([os.path.join(bin_path, 'scip.exe'), '-l', (uqbo_path % '.log'), '-s', setting_path, '-f', (uqbo_path % '.pip'), '-q'])
 
+    header = " time | node  | left  |LP iter|LP it/n| mem |mdpt |frac |vars |cons |cols |rows |cuts |confs|strbr|  dualbound   | primalbound  |  gap   "
+    print header[:7] + header[-38:]
+    while True:    
+        time.sleep(1.0)
+        file = open((uqbo_path % '.log'), 'r')
+        result = file.read().split('\n')[-2]
+        file.close()
+        sys.stdout.write('\r' + result[:7] + result[-38:])
+        if p.poll() is not None: break
+    sys.stdout.write('\r\n\n')
+    
     # read log
-    file = open(os.path.normpath('obs/scip/scip%s.log' % ts), 'r')
-    s = file.read()
-    file.close
-    s = s.split('primal solution:\n================\n\n', 2)[1]
-    s = s.split('\n\nStatistics\n==========\n', 2)[0]
-    s = s.split('\n')
-
-    # retrieve best objective
-    best_obj = float(s[0][16:].strip())
+    file = open((uqbo_path % '.log'), 'r')
+    result = file.read()
+    file.close()
+    
+    result = result.split('primal solution:\n================\n\n', 2)[1]
+    result = result.split('\n\nStatistics\n==========\n', 2)
 
     # retrieve best solution
+    sol = result[0].split('\n')
     best_soln = numpy.zeros(f.d, dtype=bool)
-    for x in s[1:]:
-        x = x.split()[0].split('#')[1:]
-        if x[0] == x[1]: best_soln[int(x[0]) - 1] = True
+    for x in sol[1:]:
+        x = x.split()[0].split('#')
+        if x[0] == 'z': break
+        best_soln[int(x[1]) - 1] = True
+        
+    # retrieve bounds
+    bounds = result[1].split('Solution           :\n', 2)[1].split('\n')
+    primal_bound, dual_bound = float(bounds[2][21:45]), float(bounds[3][21:45])
+    
+    print 'objective : %.1f ' % primal_bound
+    print 'dual bound: %.1f ' % dual_bound
+    print 'opt gap   : %.3f %%' % [100.0, 100 * (dual_bound - primal_bound) / dual_bound][dual_bound <> 0]
 
-    for file in ['scip%s.log', 'matrix%s.dat', 'uqbo%s.zpl', 'uqbo%s.lp', 'uqbo%s.tbl']:
-        if os.name == 'posix':
-            path = os.path.normpath('obs/scip/%s' % file % ts)
-        else:
-            path = os.path.normpath('W:\\Documents/Python/smcdss/src/obs/scip/%s' % file % ts)
-        if os.path.exists(path): os.remove(path)
+    # clean up temp folder
+    for suffix in ['.zpl', '.pip', '.tbl', '.log']:
+        if os.path.exists(uqbo_path % suffix): os.remove(uqbo_path % suffix)
 
-    print 'objective: %.1f ' % best_obj
-    return best_obj, {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
+    return primal_bound, dual_bound, {'obj' : primal_bound, 'soln' : best_soln, 'time' : time.time() - t}
 
 def main():
     pass
@@ -99,25 +129,48 @@ def main():
 if __name__ == "__main__":
     main()
 
-"""
-# read dimension
-param d := read "matrix.dat" as "1n" use 1;
+ZIMPL_QUADRATIC = """
+# Read dimension.
+param d := read "%(datfile)s" as "1n" use 1 skip 2;
 
-# construct indices
-set I   := { 1 .. d };
+# Construct indices.
+set I := { 1 .. d };
 set T := { <i,j> in I * I with i <= j };
 set S := { <i,j> in I * I with i <  j };
 
-# read symmetric matrix
-param A[T] := read "matrix.dat" as "1n" skip 1;
+# Read symmetric matrix.
+param A[T] := read "%(datfile)s" as "1n" skip 3;
 
-# declare variables binary
+# Declare variables binary.
+var x[I] binary;
+var z integer;
+
+# Maximize target.
+maximize qb: z;
+
+# Product constraints
+subto name : z == sum <i,j> in T : A[i,j] * x[i] * x[j];
+"""
+
+ZIMPL_LINEARIZED = """
+# Read dimension.
+param d := read "%(datfile)s" as "1n" use 1 skip 2;
+
+# Construct indices.
+set I := { 1 .. d };
+set T := { <i,j> in I * I with i <= j };
+set S := { <i,j> in I * I with i <  j };
+
+# Read symmetric matrix.
+param A[T] := read "%(datfile)s" as "1n" skip 3;
+
+# Declare variables binary.
 var x[T] binary;
 
-# maximize target
+# Maximize target.
 maximize qb: sum <i,j> in T : A[i,j] * x[i,j];
 
-# product constraints
+# Product constraints.
 subto or1: forall <i,j> in S do
    x[i,j] <= x[i,i];
 subto or2: forall <i,j> in S do
@@ -125,3 +178,19 @@ subto or2: forall <i,j> in S do
 subto and1: forall <i,j> in S do
    x[i,j] >= x[i,i] + x[j,j] - 1;
 """
+
+"""
+Example on how to extract relaxation from optimization task:
+
+ read /mnt/fat32/Crest/Python/smcdss/src/obs/scip/uqbo_r250u_neu.zpl
+ presolve
+ set separating emphasis off
+ set limit node 1
+ optimize
+ write lp lp.lp
+ read lp.lp
+ read variablen.fix
+ optimize
+ write solution ergebnis.sol
+"""
+

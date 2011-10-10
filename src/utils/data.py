@@ -33,8 +33,8 @@ class data(object):
         self.__order = None
 
     def __str__(self):
-        return ('sum =\n%.3f \n\n' % sum(self._W)) + \
-               format(self.getMean(weight=True), 'mean') + '\n' + \
+        return ('sum =\n%.3f \n' % numpy.exp(self._W).sum()) + \
+               format(self.getMean(weight=True), 'mean') + \
                format(self.getCor(weight=True), 'correlation')
 
     def fraction(self, fraction=1.0):
@@ -75,9 +75,8 @@ class data(object):
         """
         if not self.isWeighted(): return ones(self.size) / float(self.size)
         w = array(self._W)
-        if w.min() < 0:
-            max = w.max()
-            w = exp(self._W - max)
+        if w.min() < 0.0: w = exp(self._W - w.max())
+        w = w / w.sum()
         return w / w.sum()
 
     def getWeights(self, normalized=False):
@@ -115,7 +114,7 @@ class data(object):
             Get dimension.
             @return dimension 
         """
-        if size == 0: return 0
+        if self.getSize() == 0: return 0
         return len(self._X[0])
 
     def getSize(self):
@@ -252,7 +251,7 @@ class data(object):
         order.reverse()
         k = int(fraction * self.size)
         v = w[order][k]
-        self._W = list((w > v) * 1.0)
+        self._W = list((w >= v) * 1.0)
         return w[order[0]], self._X[order[0]]
 
     def distinct(self):

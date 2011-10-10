@@ -13,7 +13,8 @@ $Date$
 @details
 """
 
-import os, sys
+import os
+import sys
 import numpy as np
 import pyximport
 import logger

@@ -18,7 +18,7 @@ from binary_model import *
 class ProductBinary(Binary):
     """ Binary model with independent components. """
 
-    name = 'product'
+    name = 'product family'
 
     def __init__(self, p=None, name='product',
                  longname='Binary model with independent components.'):
@@ -29,6 +29,7 @@ class ProductBinary(Binary):
             @param longname longname
         """
         Binary.__init__(self, name=name, longname=longname)
+        self.name = 'product family'
         if not p is None:
             if isinstance(p, (numpy.ndarray, list)):
                 p = numpy.array(p, dtype=float)
@@ -78,7 +79,7 @@ class ProductBinary(Binary):
             @param lag lag
             @param verbose detailed information
         """
-        p = sample.getMean(weight=(sample.ess > 0.5))
+        p = sample.getMean(weight=True)
         self.param['p'] = (1 - lag) * p + lag * self.p
 
     def getP(self):

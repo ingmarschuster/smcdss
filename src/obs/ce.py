@@ -13,7 +13,12 @@ $Date$
 @details
 """
 
-from obs import *
+import time
+import utils
+import numpy
+import binary
+import ubqo
+from bf import solve_bf
 
 class ce(ubqo.ubqo):
     header = []
@@ -40,27 +45,25 @@ def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, job_serv
     t = time.time()
     bf = int(numpy.log(2 * n) / numpy.log(2)) + 2
     model = model.uniform(f.d)
-    print 'running ce using ' + model.name
+    print 'Running CE using ' + model.name
 
     d = utils.data.data()
     best_obj = -numpy.inf
     best_soln = numpy.zeros(f.d)
 
     # run optimization scheme
-    for step in xrange(1, 100):
+    for step in xrange(1, 200):
 
         d.sample(model, n, job_server)
-        #print d.X
-
+    
         best_obj, best_soln = d.dichotomize_weights(f=f, fraction=elite)
-
         model.renew_from_data(sample=d, lag=lag, verbose=False)
 
         # progress ratio estimate
         r = (model.d - len(model.getRandom(0.05 + 0.5 / (step + 1)))) / float(model.d)
 
         # show progress bar
-        if verbose: utils.format.progress(r, ' %02i, %03i, objective: %.1f, time %s' % (step, len(model.r), best_obj, utils.format.time(time.time() - t)))
+        utils.format.progress(r, ' %02i, %03i, objective: %.1f, time %s' % (step, len(model.r), best_obj, utils.format.time(time.time() - t)))
 
         # check if dimension is sufficiently reduced
         if len(model.r) < bf:
@@ -70,7 +73,7 @@ def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, job_serv
             break
         d.clear(fraction=elite)
         
-    if verbose: sys.stdout.write('\n')
+    if verbose: print
     return {'obj' : best_obj, 'soln' : best_soln, 'time' : time.time() - t}
 
 def main():

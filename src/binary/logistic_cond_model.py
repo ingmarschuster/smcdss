@@ -28,6 +28,8 @@ class LogisticBinary(ProductBinary):
         """
 
         ProductBinary.__init__(self, p=utils.inv_logit(numpy.diagonal(Beta)))
+        self.name = 'logistic conditionals family'
+        self.longname = 'Binary model with logistic conditional distributions.'
 
         if 'cython' in utils.opts:
             self.f_rvslpmf = utils.cython.logistic_rvslpmf
@@ -158,20 +160,18 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
         @return matrix of regression coefficients
     """
 
-    if sample.d == 0: return numpy.array([])
+    if sample.d == 0: return numpy.array(Init)
 
     t = time.time()
     n = sample.size
     d = sample.d
 
-    # avoid numpy.column_stack for it causes a MemoryError
     #X = numpy.column_stack((sample.proc_data(dtype=float), numpy.ones(n, dtype=float)[:, numpy.newaxis]))
-
-    
     #X = numpy.empty((D.shape[0], D.shape[1] + 1))
     #X[:D.shape[0], :D.shape[1]] = D
     #X[:D.shape[0], D.shape[1]] = numpy.ones(D.shape[0], dtype=float)
-    
+
+    # Avoid numpy.column_stack for it causes a MemoryError    
     X = numpy.empty((n, d + 1))
     X[:n, :d] = sample.proc_data(dtype=float)
     X[:n, d] = numpy.ones(n, dtype=float)
@@ -214,7 +214,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
     # Loop over all dimensions compute logistic regressions.
     jobs = list()
     if not job_server is None: ncpus = job_server.get_ncpus()
-        
+    
     for i in range(d):
         covariates = list(numpy.where(L[i, 0:i])[0])
         if len(covariates) > 0:
@@ -243,7 +243,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
     if not job_server is None: job_server.wait()
 
     # write results to Beta matrix
-    for i, l, job in jobs:
+    for i, covariates, job in jobs:
         if isinstance(job, tuple): beta, iterations = job
         else: beta, iterations = job()
 
@@ -254,7 +254,7 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
             stats['logistic'] += 1
 
         if not beta is None:
-            Beta[i, l] = beta
+            Beta[i, covariates] = beta
         else:
             if verbose: stats['failures'] += 1
             Beta[i, i] = logit_p[i]
@@ -307,6 +307,8 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
 
         # Compute Fisher information at beta
         Xbeta = numpy.dot(X, beta)
+        Xbeta = numpy.minimum(numpy.maximum(Xbeta, -500), 500)
+        
         p = numpy.power(1 + numpy.exp(-Xbeta), -1)
         P = p * (1 - p)
         XWPX = numpy.dot(XW.T, P[:, numpy.newaxis] * X) + _lambda * numpy.eye(d)
@@ -334,7 +336,6 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
         if abs(last_llh - llh) < CONST_PRECISION:
             if verbose: print 'no change in likelihood\n'
             break
-
     return beta, i + 1
 
 

@@ -13,7 +13,11 @@ $Date$
 @details
 """
 
-from obs import *
+import time
+import utils
+import numpy
+import binary
+import ubqo
 
 class bf(ubqo.ubqo):
     header = []

@@ -27,14 +27,14 @@ class mcmc():
     def run(v):
         return integrate_mcmc(v)
 
-def integrate_mcmc(v):
+def integrate_mcmc(param):
     """
         Compute an estimate of the expected value via MCMC.
         @param v parameters
         @param verbose verbose
     """
 
-    mc = MarkovChain(f=v['f'], kernel=v['MCMC_KERNEL'], q=v['MCMC_Q'], max_evals=v['MCMC_MAX_EVALS'], verbose=v['RUN_VERBOSE'])
+    mc = MarkovChain(param)
     mc.burn_in()
 
     # run for maximum time or maximum iterations
@@ -45,10 +45,10 @@ def integrate_mcmc(v):
     print '\nDone.'
     return mc.getCsv()
 
-class MarkovChain():
+class MarkovChain(object):
     """ Markov chain. """
 
-    def __init__(self, f, kernel, q, max_evals=2e6, step_size=1e5, verbose=True):
+    def __init__(self, param):
         """
             Constructor.
             @param f probability mass function 
@@ -62,15 +62,15 @@ class MarkovChain():
         ## time
         self.start = time.time()
         ## verbose
-        self.verbose = verbose
+        self.verbose = param['RUN_VERBOSE']
         ## Markov kernel
-        self.kernel = kernel.setup(f, q)
+        self.kernel = param['MCMC_KERNEL'].setup(param['f'], float(param['MCMC_EXP_FLIPS']))
         ## dimension
-        self.d = f.d
+        self.d = self.kernel.d
         ## number of steps stored before updating the estimator
-        self.step_size = int(min(step_size, max_evals))
+        self.chunk_size = int(min(param['MCMC_CHUNK_SIZE'], param['MCMC_MAX_EVALS']))
         ## maximum number of target evaluations
-        self.max_evals = float(max_evals)
+        self.max_evals = float(param['MCMC_MAX_EVALS'])
         ## current state
         self.x = numpy.random.random(self.d) > 0.5
         ## log probability of the current state
@@ -118,7 +118,7 @@ class MarkovChain():
         t = 1.0
         last_ratio = self.n_evals / self.max_evals
 
-        for i in xrange(self.step_size):
+        for i in xrange(self.chunk_size):
 
             x, self.log_f_x, move, eval = self.kernel.rvs(self.x, self.log_f_x)
             self.n_evals += eval
@@ -131,10 +131,11 @@ class MarkovChain():
                 t = 1.0
             else:
                 t += 1.0
-            if not self.verbose: last_ratio = utils.format.progress(ratio=self.n_evals / self.max_evals, last_ratio=last_ratio)
+            if not self.verbose:
+                last_ratio = utils.format.progress(ratio=self.n_evals / self.max_evals, last_ratio=last_ratio)
 
-        mean /= float(self.step_size)
-        cov /= float(self.step_size)
+        mean /= float(self.chunk_size)
+        cov /= float(self.chunk_size)
         r = self.n_steps / float(self.n_steps + 1)
         self.mean = r * self.mean + (1 - r) * mean
         self.cov = r * self.cov + (1 - r) * cov
@@ -152,7 +153,7 @@ class MarkovChain():
         return self.n_evals / float(self.max_evals)
 
     def getLength(self):
-        return self.n_steps * self.step_size
+        return self.n_steps * self.chunk_size
 
     def getCsv(self):
         mean = ','.join(['%.8f' % x for x in self.mean])
@@ -167,7 +168,6 @@ class MarkovChain():
     acc_rate = property(fget=getAccRate, doc="acceptance rate")
     progress = property(fget=getProgress, doc="progress")
     length = property(fget=getLength, doc="length")
-
 
 
 class Kernel(stats.rv_discrete):
@@ -248,6 +248,7 @@ class Gibbs(Kernel):
             else:
                 return x, log_f_x, False, True
 
+
 class SwapMetropolisHastings(Gibbs):
         """ Swap Metropolis-Hastings kernel. """
 
@@ -277,6 +278,7 @@ class SwapMetropolisHastings(Gibbs):
                 return Y, log_f_Y, True, True
             else:
                 return x, log_f_x, False, True
+
 
 class SymmetricMetropolisHastings(Gibbs):
         """ Symmetric Metropolis-Hastings kernel. """

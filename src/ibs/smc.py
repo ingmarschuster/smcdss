@@ -30,6 +30,12 @@ class smc():
 
 def integrate_smc(param):
 
+    # write welcome message
+    if param['f'].d < param['DATA_MIN_DIM']:
+        print '\nExhaustive enumeration for problem of size %d < %d' % (param['f'].d, param['DATA_MIN_DIM'])
+    else:
+        print '\nRunning SMC using %s and %s...' % (param['SMC_BINARY_MODEL'].name, param['SMC_CONDITIONING'])
+
     ps = ParticleSystem(param)
 
     # run sequential MC scheme
@@ -62,15 +68,8 @@ class ParticleSystem(object):
         ## number of particles
         if v['SMC_N_PARTICLES'] is None:
             v['SMC_N_PARTICLES'] = int((1.0 - numpy.exp(-self.d / 400.0)) * 25000)
-        self.n = v['SMC_N_PARTICLES']
+        self.n = int(v['SMC_N_PARTICLES'])
         
-        # write welcome message
-        if v['f'].d < v['DATA_MIN_DIM']:
-            print '\nExhaustive enumeration for problem of size %d < %d' % (v['f'].d, v['DATA_MIN_DIM'])
-        else:
-            print '\nRunning SMC using %d particles using %s and %s...' % \
-                (v['SMC_N_PARTICLES'], v['SMC_BINARY_MODEL'].name, v['SMC_CONDITIONING'])
-
         self.verbose = v['RUN_VERBOSE']
         if self.verbose: sys.stdout.write('...\n\n')
 
@@ -134,7 +133,25 @@ class ParticleSystem(object):
             return
        
         self.X = self.prop.rvs(self.n, self.job_server)
-        self.log_f = self.f.lpmf(self.X, self.job_server, jobs_per_cpu=20)
+
+        if 'INTERACTIONS' in v.keys():
+            if v['INTERACTIONS'].shape[0] > 0:
+                # make the initial system feasible
+                I = v['INTERACTIONS']
+                for row in xrange(len(self.X)):
+                    # joint outcome of the main effects
+                    joint_me = self.X[row, I[:, 1]] * self.X[row, I[:, 2]]
+                    # set to zero where interactions are prohibited
+                    index_constraints = I[joint_me == False, 0]
+                    self.X[row, index_constraints] = False
+                    # draw a uniform where interactions are possible
+                    index_interaction = I[joint_me == True, 0]
+                    self.X[row, index_interaction] = numpy.random.random(size=index_interaction.shape[0]) > 0.5
+                #mec_violations = (self.X[:, I[:, 0]] > self.X[:, I[:, 1]] * self.X[:, I[:, 2]]).sum(axis=1)
+        
+        if not self.job_server is None and self.job_server.get_ncpus() >= 48: jobs_per_cpu = 3
+        else: jobs_per_cpu = 1
+        self.log_f = self.f.lpmf(self.X, self.job_server, jobs_per_cpu=jobs_per_cpu)
         self.id = numpy.dot(numpy.array(self.X, dtype=int), self.__k)
         
         if self.verbose: print '\rinitialized in %.2f sec' % (time.time() - t)
@@ -229,18 +246,6 @@ class ParticleSystem(object):
         if self.verbose:
             utils.format.progress(ratio=self.rho, text='\n')
             print '\n' + str(self) + '\n'
-
-
-    def slide_weigths(self):
-        """
-            1) shift particle components up by w_size
-            2) sample uniform entries of dim w_size at the end of the particle
-            3) compute weights according to the new particles
-            4) fit the log cond model
-            5) re-init system with log cond model 
-        """
-        pass
-
 
     def fit_proposal(self):
         """
@@ -361,14 +366,14 @@ class ParticleSystem(object):
         if self.verbose:
             sys.stdout.write('evaluating...')
             t = time.time()
-        log_f_Y = self.f.lpmf(Y, self.job_server, jobs_per_cpu=15)
+        log_f_Y = self.f.lpmf(Y, self.job_server, jobs_per_cpu=1)
         if self.verbose: print '\revaluated in %.2f sec' % (time.time() - t)
 
         # move
         log_pi_Y = self.rho * log_f_Y
         log_pi_X = self.rho * self.log_f
         log_prop_X = self.log_prop
-
+        
         accept = numpy.random.random(self.n) < numpy.exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y)
         self.X[accept] = Y[accept]
         self.log_f[accept] = log_f_Y[accept]

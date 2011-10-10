@@ -3,6 +3,20 @@
 
 """
 Unconstrained Binary Quadratic Optimization.
+
+@verbatim
+USAGE:
+        ubqo <option>
+
+OPTIONS:
+        -d    dimension (integer)
+        -t    type (text, 'uniform','cauchy','normal')
+        -f    filename
+        -c    completeness; expected ratio of non-zeros over all entries
+        -s    skewness (float on (-1,-1)); the values will come from [[-range(1+s),range(1+s)]]
+        -r    range (integer); the values will come from [[-range,range]]
+
+@endverbatim
 """
 
 """
@@ -13,89 +27,67 @@ $Date$
 @details
 """
 
+import getopt
+import sys
 import os
-import obs
 import numpy
 import scipy.stats as stats
 import utils
 import cPickle as pickle
+import obs
+from numpy import inf
 
 class ubqo():
-    def __init__(self, v, problem=None):
-        if problem is None: problem = v['RUN_PROBLEM'][0]
-        self.problem = problem
-        self.A = load_ubqo_problem(v['RUN_TESTSUITE'])[problem - 1]['problem']
-        self.best_obj = load_ubqo_problem(v['RUN_TESTSUITE'])[problem - 1]['best_obj']
-        self.d = self.A.shape[0]
-        self.v = v
+    def __init__(self, v):
+        
+        # problem number
+        self.problem = v['RUN_PROBLEM']
+        self.testsuite = v['RUN_TESTSUITE']
+        
+        # read specific problem
+        self.A, self.primal_bound, self.dual_bound = read_problem(self.testsuite, self.problem)
+        
+        # save parameters
+        self.d, self.v = self.A.shape[0], v
 
-def import_beasly_lib(filename):
+def write_problem(testsuite, problem, A, primal_bound, dual_bound):
     """
-        Import problems from http://people.brunel.ac.uk/~mastjjb/jeb/orlib/bqpinfo.html used in
-        Heuristic algorithms for the unconstrained binary quadratic programming,
-        J.E. Beasley 1998
+        Write a UQBO problem to file.
     """
-    path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
-    file = open(os.path.join(path, 'beasly', filename + '.txt'), 'r')
-    L = list()
-    n = int(file.readline())
-    line = file.readline().strip().split(' ')
-
-    best_obj = dict(bqp50=[2098, 3702, 4626, 3544, 4012, 3693, 4520, 4216, 3780, 3507],
-                    bqp100=[7970, 11036, 12723, 10368, 9083, 10210, 10125, 11435, 11435, 12565],
-                    bqp250=[45607, 44810, 49037, 41274, 47961, 41014, 46757, 35726, 48916, 40442],
-                    bqp500=[116586, 128223, 130812, 130097, 125487, 121719, 122201, 123559, 120798, 130619],
-                    bqp1000=[371438, 354932, 371226, 370560, 352736, 359452, 370999, 351836, 348732, 351415],
-                    bqp2500=[1515011, 1468850, 1413083, 1506943, 1491796, 1468427, 1478654, 1484199, 1482306, 1482354])
-
-    for k in xrange(n):
-        print '%d\t d=%s, nonzeros=%s' % (k + 1, line[0], line[1])
-        d = int(line[0])
-        A = numpy.zeros((d, d))
-        line = file.readline().strip().split(' ')
-        while len(line) == 3:
-            A[int(line[1]) - 1, int(line[0]) - 1] = float(line[2])
-            line = file.readline().strip().split(' ')
-        for i in xrange(A.shape[0]):
-            for j in xrange(i):
-                A[j, i] = A[i, j]
-        L.append({'best_obj' : float(best_obj[filename][k]), 'problem' : A})
-
+    # write matrix
+    d = A.shape[0]
+    
+    # find path
+    path = os.path.join(obs.v['DATA_PATH'], testsuite)
+    if not os.path.isdir(path): os.mkdir(path)
+    path = os.path.join(path, testsuite + '_%02d.dat' % problem)
+    
+    file = open(path, 'w')
+    file.write('%.f\n' % primal_bound)    
+    file.write('%.10f\n' % dual_bound)
+    file.write('%d\n' % d)
+    for j in xrange(d):
+        for i in xrange(j, d):
+            if i == j: a = A[i, j]
+            else: a = 2 * A[i, j]
+            file.write('%d\n' % a)
     file.close()
-    return L
-
-def import_glover_lib(filename):
+    
+def read_problem(testsuite, problem):
     """
-        Import problems from http://hces.bus.olemiss.edu/tools.html used in
-        One-Pass Heuristics for Unconstrained Binary Quadratic Problems,
-        F. Glover, B. Alidaee, C. Rego, and G. Kochenberger 2002
+        Reads a UQBO problem from file.
     """
-    path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
-    L = list()
-    for k in xrange(5):
-        file = open(os.path.join(path, 'glover', filename + chr(97 + k) + '.dat'), 'r')
-        best_obj = float(file.readline().split(' = ')[1][:-3])
-        d = int(file.readline().strip().split(' ')[0])
-        print '%s\t d=%d' % (chr(97 + k), d)
-        a = file.read()
-        a = a.split('\n')
-        while not utils.format.isnumeric(a[-1].strip().split(' ')[0]):
-            a = a[:-1]
-        a = ''.join(a)
-        a = a.replace('\n', '').replace('\r', '')
-        a = numpy.array([int(x) for x in a.split(' ') if not x == ''])
-        print a.shape
-        A = -a.reshape((d, d))
-        L.append({'best_obj' : best_obj, 'problem' : A})
-        file.close()
-    return L
+    path = os.path.join(obs.v['DATA_PATH'], testsuite, testsuite + '_%02d.dat' % problem)
 
-def random_cho(d):
-    K = numpy.random.normal(size=(d, d))
-    K = numpy.dot(K, K.T) + 1e-3 * numpy.eye(d)
-    v = numpy.sqrt(K.diagonal()[numpy.newaxis, :])
-    K /= numpy.dot(v.T, v)
-    return numpy.linalg.cholesky(K)
+    # read matrix
+    file = open(path, 'r')  
+    primal_bound, dual_bound, d = eval(file.readline()), eval(file.readline()), int(file.readline())
+    A = numpy.zeros(shape=(d, d))
+    for j in xrange(d):
+        for i in xrange(j, d):
+            A[i, j] = float(file.readline())
+    file.close()
+    return A, primal_bound, dual_bound
 
 def uniform(d, rho=1.0, xi=0.0, c=50):
     v = numpy.random.randint(low= -c, high=c, size=d) * (numpy.random.random(size=d) <= rho)
@@ -114,54 +106,115 @@ def normal_mixture(d, rho=1.0, xi=0.0, c=50):
     v = numpy.array([numpy.random.normal()*(c, 10 * c)[numpy.random.random() < p] for i in xrange(d)]).T // 1 * (numpy.random.random(size=d) <= rho)
     return v + (v.max(), -v.min())[xi > 0] * xi
 
-def generate_ubqo_problem(d, rho=1.0, xi=0.0, c=50, n=1, random=cauchy, filename=None):
+def generate_ubqo_problem(d, completeness=1.0, skewness=0.0, range=50, n=1, type=cauchy, testsuite=None):
     """
         Generates a random UBQO problem.
     """
-    path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
-    L = list()
-    for k in xrange(n):
-        print '%s\t d=%d' % (k + 1, d)
+    print "Generate %d problem(s) of dimension %d of type '%s' on the range [[-%d,%d]]." % (n, d, type.__name__, range, range)
+    for problem in xrange(1, n + 1):
         A = numpy.zeros((d, d))
         for i in xrange(d):
-            A[i, : i + 1] = random(d=i + 1, rho=rho, xi=xi, c=c)
+            A[i, : i + 1] = type(d=i + 1, rho=completeness, xi=skewness, c=range)
             A[:i, i] = A[i, :i]
-        L.append({'best_obj' :1e-99, 'problem' : A})
-        if not filename is None:
-            file = open(os.path.join(path, filename + '.pickle'), 'w')
-            pickle.dump(obj=L, file=file)
-            file.close()
-    return L
-
-def pickle_ubqo_problem(filename):
-    """
-        Reads a UQBO problem from file and save it as pickled object.
-    """
-    path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
-    file = open(os.path.join(path, filename + '.pickle'), 'w')
-    if filename[:3] == 'bqp':
-        pickle.dump(obj=import_beasly_lib(filename), file=file)
-    else:
-        pickle.dump(obj=import_glover_lib(filename), file=file)
-    file.close()
-
-def load_ubqo_problem(filename, repickle=False):
-    """
-        Loads a pickled UQBO problem.
-    """
-    path = os.path.join(obs.v['SYS_ROOT'], 'data', 'ubqp')
-    path = os.path.join(path, filename + '.pickle')
-    if repickle or not os.path.isfile(path): pickle_ubqo_problem(filename)
-    file = open(path, 'r')
-    L = pickle.load(file)
-    file.close()
-    for p in L:
-        if p['best_obj'] <= 1e-99: p['best_obj'] = -numpy.inf
-    return L
+        write_problem(testsuite, problem, A, -numpy.inf, numpy.inf)
 
 def main():
-    x = generate_ubqo_problem(d=250, rho=1, xi=0, c=100, random=uniform, filename='r250u')
-    print utils.format.format(x[0]['problem'])
+    # Parse command line options.
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], 'd:t:f:c:s:r:n:')
+    except getopt.error, msg:
+        print msg
+        sys.exit(2)
+        
+    d, type, testsuite = None, None, None
+    n, completeness, skewness, range = 1, 1.0, 0.0, 100
+    
+    for o, a in opts:
+        if o == '-d': d = int(a)
+        if o == '-n': n = int(a)
+        if o == '-t': type = eval(a)
+        if o == '-f': testsuite = a
+        if o == '-c': completeness = float(a)
+        if o == '-s': skewness = float(a)
+        if o == '-r': range = int(a)
+        if o == '-n': n = int(a)
+    
+    for var in [d, type, testsuite]:
+        if var is None:
+            print "You need to specify dimension, type and testsuite."
+            sys.exit(0)
+    
+    obs.read_config()
+    generate_ubqo_problem(d=d, completeness=completeness, skewness=skewness, n=n, range=range, type=type, testsuite=testsuite)
+    print "Test suite saved as '%s'." % testsuite
 
 if __name__ == "__main__":
     main()
+    
+
+
+    
+#------------------------------------------------------------------------------ 
+
+
+
+
+def import_beasly_lib():
+    """
+        Import problems from http://people.brunel.ac.uk/~mastjjb/jeb/orlib/bqpinfo.html used in
+        Heuristic algorithms for the unconstrained binary quadratic programming,
+        J.E. Beasley 1998
+    """
+    primal_bound = dict(bqp50=[2098, 3702, 4626, 3544, 4012, 3693, 4520, 4216, 3780, 3507],
+                    bqp100=[7970, 11036, 12723, 10368, 9083, 10210, 10125, 11435, 11435, 12565],
+                    bqp250=[45607, 44810, 49037, 41274, 47961, 41014, 46757, 35726, 48916, 40442],
+                    bqp500=[116586, 128223, 130812, 130097, 125487, 121719, 122201, 123559, 120798, 130619],
+                    bqp1000=[371438, 354932, 371226, 370560, 352736, 359452, 370999, 351836, 348732, 351415],
+                    bqp2500=[1515011, 1468850, 1413083, 1506943, 1491796, 1468427, 1478654, 1484199, 1482306, 1482354])
+
+    for filename in primal_bound.keys():
+        if filename in ['bqp1000', 'bqp2500']: continue
+    
+        file = open(os.path.join(obs.v['DATA_PATH'], 'archive', 'beasly', filename + '.txt'), 'r')
+        n = int(file.readline())
+        line = file.readline().strip().split(' ')
+    
+        for problem in xrange(n):
+            print '%d\t d=%s, nonzeros=%s' % (problem + 1, line[0], line[1])
+            d = int(line[0])
+            A = numpy.zeros((d, d))
+            line = file.readline().strip().split(' ')
+            while len(line) == 3:
+                A[int(line[1]) - 1, int(line[0]) - 1] = float(line[2])
+                line = file.readline().strip().split(' ')
+            for i in xrange(A.shape[0]):
+                for j in xrange(i):
+                    A[j, i] = A[i, j]
+            
+            write_problem(filename, problem + 1, A, float(primal_bound[filename][problem]), numpy.inf)
+    
+        file.close()
+
+def import_glover_lib():
+    """
+        Import problems from http://hces.bus.olemiss.edu/tools.html used in
+        One-Pass Heuristics for Unconstrained Binary Quadratic Problems,
+        F. Glover, B. Alidaee, C. Rego, and G. Kochenberger 2002
+    """
+    path = os.path.join(obs.v['DATA_PATH'], 'archive', 'glover')
+    for filename in ['f1', 'f2', 'g2']:
+        for problem in xrange(5):
+            file = open(os.path.join(path, filename + chr(97 + problem) + '.dat'), 'r')
+            primal_bound = float(file.readline().split(' = ')[1][:-3])
+            d = int(file.readline().strip().split(' ')[0])
+            print '%s\t d=%d' % (filename + chr(97 + problem), d)
+            a = file.read()
+            a = a.split('\n')
+            while not utils.format.isnumeric(a[-1].strip().split(' ')[0]):
+                a = a[:-1]
+            a = ''.join(a)
+            a = a.replace('\n', '').replace('\r', '')
+            a = numpy.array([int(x) for x in a.split(' ') if not x == ''])
+            A = -a.reshape((d, d))
+            write_problem(filename, problem + 1, A, primal_bound, numpy.inf)
+            file.close()
