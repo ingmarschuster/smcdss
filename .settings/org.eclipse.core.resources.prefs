@@ -1,14 +1,18 @@
-#Tue Jun 07 18:51:33 CEST 2011
+#Fri Oct 07 14:00:42 CEST 2011
 eclipse.preferences.version=1
 encoding//src/binary/__init__.py=utf-8
 encoding//src/binary/binary_model.py=utf-8
 encoding//src/binary/gaussian_cop_model.py=utf-8
 encoding//src/binary/logistic_cond_model.py=utf-8
+encoding//src/binary/pos_product_model.py=utf-8
 encoding//src/binary/posterior_bvs.py=utf-8
 encoding//src/binary/product_model.py=utf-8
 encoding//src/binary/qu_exp_model.py=utf-8
 encoding//src/binary/qu_exponential_model.py=utf-8
 encoding//src/binary/qu_linear_model.py=utf-8
+encoding//src/cpd/__init__.py=utf-8
+encoding//src/cpd/cpd_gen.py=utf-8
+encoding//src/cpd/stats.py=utf-8
 encoding//src/ibs/__init__.py=utf-8
 encoding//src/ibs/exec.py=utf-8
 encoding//src/ibs/mcmc.py=utf-8
@@ -20,9 +24,10 @@ encoding//src/obs/ce.py=utf-8
 encoding//src/obs/exec.py=utf-8
 encoding//src/obs/sa.py=utf-8
 encoding//src/obs/scip.py=utf-8
-encoding//src/obs/smc.py=utf-8
+encoding//src/obs/smca.py=utf-8
 encoding//src/obs/ubqo.py=utf-8
 encoding//src/utils/__init__.py=utf-8
+encoding//src/utils/conf_reader.py=utf-8
 encoding//src/utils/cython.py=utf-8
 encoding//src/utils/cython.pyx=utf-8
 encoding//src/utils/cython_src.pyx=utf-8
