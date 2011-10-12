@@ -102,7 +102,7 @@ def main():
                     subprocess.call('gnome-terminal -e "ibs ' + ' '.join([o + ' ' + a for (o, a) in opts if not o in ['-m', '-c']]) + ' ' + args[0] + '"', shell=True)
                 else:
                     path = os.path.abspath(os.path.join(os.path.join(*([os.getcwd()] + ['..']*1)), 'bin', 'ibs.bat'))
-                    subprocess.call('start "Title" /MAX "%s" ' % path + 
+                    subprocess.call('start "ibs" /MAX "%s" ' % path + 
                                     ' '.join([o + ' ' + a for (o, a) in opts if not o in ['-m', '-c']]) + ' ' + args[0], shell=True)
                 k -= 1
             sys.exit(0)

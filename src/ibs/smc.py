@@ -43,7 +43,7 @@ def integrate_smc(param):
 
         ps.fit_proposal()
         ps.condition()
-        ps.reweight()
+        ps.reweight_ibs()
 
     sys.stdout.write('\rSMC completed in %s.\n' % (str(datetime.timedelta(seconds=time.time() - ps.start))))
 
@@ -84,7 +84,6 @@ class ParticleSystem(object):
         if v['SMC_CONDITIONING'] == 'augment-resample': self.condition = self.augment_resample
         if v['SMC_CONDITIONING'] == 'augment-resample-unique': self.condition = self.augment_resample_unique
         if v['SMC_CONDITIONING'] == 'resample-move': self.condition = self.resample_move
-        self.reweight = self.reweight_ess
 
         ## job server
         self.job_server = v['JOB_SERVER']
@@ -157,7 +156,7 @@ class ParticleSystem(object):
         if self.verbose: print '\rinitialized in %.2f sec' % (time.time() - t)
 
         # do first step
-        self.reweight()
+        self.reweight_ibs()
 
     def __str__(self):
         """
@@ -216,21 +215,22 @@ class ParticleSystem(object):
             map(operator.setitem, (dic,)*self.n, self.id, [])
             return len(dic.keys()) / float(self.n)
 
-    def reweight_ess(self):
+    def reweight_ibs(self):
         """
-            Computes an advance of the geometric bridge such that ess = tau and
-            updates the log weights.q
+            Computes an advance of the geometric bridge such that ESS = eta and
+            updates the log weights.q. The geometric bridge ends at the target
+            distribution.
         """
 
         l = 0.0; u = 1.05 - self.rho
         alpha = min(0.05, u)
 
         ess = self.get_ess()
-        tau = self.eta * ess
+        eta = self.eta * ess
 
         # run bi-sectional search
         for iter in xrange(30):
-            if self.get_ess(alpha) < tau:
+            if self.get_ess(alpha) < eta:
                 u = alpha; alpha = 0.5 * (alpha + l)
             else:
                 l = alpha; alpha = 0.5 * (alpha + u)
@@ -246,6 +246,34 @@ class ParticleSystem(object):
         if self.verbose:
             utils.format.progress(ratio=self.rho, text='\n')
             print '\n' + str(self) + '\n'
+
+
+    def reweight_obs(self):
+        """
+            Computes an advance of the geometric bridge such that ESS = eta and
+            updates the log weights.q. The geometric bridge ends at the uniform
+            on the set of modes.
+        """
+
+        l = 0.0; u = 1.0
+        alpha = l + 0.5 * (u - l)
+
+        ess = self.get_ess()
+        eta = self.eta * ess
+
+        # run bi-sectional search
+        for iter in xrange(30):
+            if self.get_ess(alpha) < eta:
+                u = alpha; alpha = 0.5 * (alpha + l)
+            else:
+                l = alpha; alpha = 0.5 * (alpha + u)
+
+            if abs(l - u) < ibs.CONST_PRECISION: break
+
+        # update rho and and log weights
+        self.rho += alpha
+        self.log_W += alpha * self.log_f
+
 
     def fit_proposal(self):
         """
