@@ -16,12 +16,12 @@ $Date$
 import os
 import sys
 import numpy as np
-import pyximport
 import logger
 import format
 import data
 import python
 import cython
+import pyximport
 
 opts = ['python']
 

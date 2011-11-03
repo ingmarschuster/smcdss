@@ -13,7 +13,7 @@ $Date$
 @details
 """
 
-import time, sys, pickle
+import pickle
 from numpy import *
 from utils.format import *
 
@@ -260,11 +260,18 @@ class data(object):
 
         # order the data array
         lexorder = lexsort(array(X).T)
+
+        # check if all entries are equal
+        if W[lexorder[0]] == W[lexorder[-1]]:
+            self._X = [X[0]]
+            self._W = [1.0]
+            return
         
         self._X = []; self._W = []
         
         # loop over ordered data
         x, w = X[lexorder[0]], W[lexorder[0]]
+        
         count = 1
         for index in append(lexorder[1:], lexorder[0]):
             if (x == X[index]).all():

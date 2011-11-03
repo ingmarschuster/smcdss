@@ -148,7 +148,7 @@ class LogisticBinary(ProductBinary):
 
     Beta = property(fget=getBeta, doc="Beta")
 
-def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative_weights=False, verbose=True):
+def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, verbose=True):
     """ 
         Computes the logistic regression coefficients of all conditionals. 
         @param sample binary data
@@ -166,23 +166,14 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
     n = sample.size
     d = sample.d
 
-    #X = numpy.column_stack((sample.proc_data(dtype=float), numpy.ones(n, dtype=float)[:, numpy.newaxis]))
-    #X = numpy.empty((D.shape[0], D.shape[1] + 1))
-    #X[:D.shape[0], :D.shape[1]] = D
-    #X[:D.shape[0], D.shape[1]] = numpy.ones(D.shape[0], dtype=float)
-
     # Avoid numpy.column_stack for it causes a MemoryError    
     X = numpy.empty((n, d + 1))
     X[:n, :d] = sample.proc_data(dtype=float)
     X[:n, d] = numpy.ones(n, dtype=float)
 
     # Compute weighted sample.
-    if negative_weights:
-        w = numpy.array(sample._W); w /= w.sum()
-        XW = w[:, numpy.newaxis] * X
-    else:
-        w = numpy.array(sample.nW)
-        XW = w[:, numpy.newaxis] * X
+    w = numpy.array(sample.nW)
+    XW = w[:, numpy.newaxis] * X
 
     # free memory
     del sample
@@ -191,13 +182,13 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, negative
     # Compute slightly adjusted mean and real log odds.
     p = CONST_MIN_MARGINAL_PROB * 0.5 + (1.0 - CONST_MIN_MARGINAL_PROB) * XW[:, 0:d].sum(axis=0)
 
-    # Assure that p is in the unit interval.
-    if negative_weights: p = numpy.array([max(min(x, 1.0 - 1e-10), 1e-10) for x in p])
-
     # Compute logits.
     logit_p = utils.logit(p)
 
-    # Find strong associations.
+    # check whether data is sufficient to fit logistic model
+    if n == 1: return numpy.diag(logit_p)
+
+    # Find strong associations.    
     L = abs(utils.data.calc_cor(X[:, 0:d], w=w)) > delta
 
     # Remove components with extreme marginals.

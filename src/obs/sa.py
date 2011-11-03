@@ -57,11 +57,11 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
         # show progress bar
         if verbose:
             if r - s >= 0.01:
-                utils.format.progress(r, 'ar: %.3f, objective: %.1f, time %s' % (a / float(k), best_obj, utils.format.time(time.time() - t)))
+                utils.format.progress(r, 'ar: %.3f, obj: %.1f, time %s' % (a / float(k), best_obj, utils.format.time(time.time() - t)))
                 s = r
 
         if r > 1:
-            if verbose: utils.format.progress(1.0, ' objective: %.1f, time %s' % (best_obj, utils.format.time(time.time() - t)))
+            if verbose: utils.format.progress(1.0, ' obj: %.1f, time %s' % (best_obj, utils.format.time(time.time() - t)))
             break
 
         # generate proposal

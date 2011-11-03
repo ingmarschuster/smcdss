@@ -64,12 +64,12 @@ class ParticleSystem(object):
 
         ## dimension of target function
         self.d = self.f.d
-        
+
         ## number of particles
         if v['SMC_N_PARTICLES'] is None:
             v['SMC_N_PARTICLES'] = int((1.0 - numpy.exp(-self.d / 400.0)) * 25000)
         self.n = int(v['SMC_N_PARTICLES'])
-        
+
         self.verbose = v['RUN_VERBOSE']
         if self.verbose: sys.stdout.write('...\n\n')
 
@@ -79,7 +79,7 @@ class ParticleSystem(object):
         # load cython modul
         if 'cython' in utils.opts: self._resample = utils.cython.resample
         else: self._resample = utils.python.resample
-        
+
         # set system conditioning
         if v['SMC_CONDITIONING'] == 'augment-resample': self.condition = self.augment_resample
         if v['SMC_CONDITIONING'] == 'augment-resample-unique': self.condition = self.augment_resample_unique
@@ -130,13 +130,13 @@ class ParticleSystem(object):
             self.log_f = self.f.lpmf(self.X, self.job_server)
             self.log_W = self.log_f
             return
-       
+
         self.X = self.prop.rvs(self.n, self.job_server)
 
         if 'INTERACTIONS' in v.keys():
             if v['INTERACTIONS'].shape[0] > 0:
                 # make the initial system feasible
-                I = v['INTERACTIONS']
+                I, self.I = v['INTERACTIONS'], v['INTERACTIONS']
                 for row in xrange(len(self.X)):
                     # joint outcome of the main effects
                     joint_me = self.X[row, I[:, 1]] * self.X[row, I[:, 2]]
@@ -147,12 +147,12 @@ class ParticleSystem(object):
                     index_interaction = I[joint_me == True, 0]
                     self.X[row, index_interaction] = numpy.random.random(size=index_interaction.shape[0]) > 0.5
                 #mec_violations = (self.X[:, I[:, 0]] > self.X[:, I[:, 1]] * self.X[:, I[:, 2]]).sum(axis=1)
-        
+
         if not self.job_server is None and self.job_server.get_ncpus() >= 48: jobs_per_cpu = 3
         else: jobs_per_cpu = 1
         self.log_f = self.f.lpmf(self.X, self.job_server, jobs_per_cpu=jobs_per_cpu)
         self.id = numpy.dot(numpy.array(self.X, dtype=int), self.__k)
-        
+
         if self.verbose: print '\rinitialized in %.2f sec' % (time.time() - t)
 
         # do first step
@@ -206,7 +206,7 @@ class ParticleSystem(object):
             Computes the particle diversity.
             @return particle diversity
         """
-        if True:            
+        if True:
             # pd via numpy
             return numpy.unique(self.id).shape[0] / float(self.n)
         else:
@@ -255,7 +255,7 @@ class ParticleSystem(object):
             on the set of modes.
         """
 
-        l = 0.0; u = 1.0
+        l = 0.0; u = self.rho + 1.0
         alpha = l + 0.5 * (u - l)
 
         ess = self.get_ess()
@@ -283,10 +283,10 @@ class ParticleSystem(object):
             sys.stdout.write('fitting proposal...')
             t = time.time()
         sample = utils.data.data(self.X, self.log_W)
-        
+
         # condense multiple particles to reduces data size
         sample.distinct()
-        
+
         self.prop.renew_from_data(sample, job_server=self.job_server, eps=self.eps, delta=self.delta, verbose=False)
         if self.verbose: print '\rfitted proposal in %.2f sec' % (time.time() - t)
 
@@ -399,9 +399,11 @@ class ParticleSystem(object):
 
         # move
         log_pi_Y = self.rho * log_f_Y
+        #print (log_f_Y <= self.f.param['penalty']).sum()
+        #log_pi_Y[log_f_Y <= self.f.param['penalty']] = self.f.param['penalty']
         log_pi_X = self.rho * self.log_f
         log_prop_X = self.log_prop
-        
+
         accept = numpy.random.random(self.n) < numpy.exp(log_pi_Y - log_pi_X + log_prop_X - log_prop_Y)
         self.X[accept] = Y[accept]
         self.log_f[accept] = log_f_Y[accept]

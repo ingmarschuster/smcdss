@@ -33,7 +33,6 @@ import os
 import numpy
 import scipy.stats as stats
 import utils
-import cPickle as pickle
 import obs
 from numpy import inf
 

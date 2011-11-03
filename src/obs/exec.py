@@ -42,7 +42,7 @@ def main():
 
     # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:a:p:', ['product', 'logistic', 'gaussian'])
+        opts, args = getopt.getopt(sys.argv[1:], 'hreclvm:a:p:f:')
     except getopt.error, msg:
         print msg
         sys.exit(2)
@@ -93,16 +93,15 @@ def main():
     for o, a in opts:
         if o == '-m':
             subprocesses = int(a)
-            print subprocesses
             if problems is None: problems = [obs.v['RUN_PROBLEM']]
             while subprocesses > 0:
                 for p in problems:
                     if os.name == 'posix':
-                        subprocess.call('gnome-terminal -e "obs -p %d ' % p + 
+                        subprocess.call('gnome-terminal -e "obs -p %d ' % p +
                                         ' '.join([o + ' ' + a for (o, a) in opts if not o in ['-m', '-c', '-p']]) + ' ' + args[0] + '"', shell=True)
                     else:
                         path = os.path.join(obs.v['SYS_ROOT'], 'bin', 'obs.bat')
-                        subprocess.call('start "Title" /MAX "%s" ' % path + (' -p %d ' % p) + 
+                        subprocess.call('start "obs" /MAX "%s" ' % path + (' -p %d ' % p) +
                                         ' '.join([o + ' ' + a for (o, a) in opts if not o in ['-m', '-c', '-p']]) + ' ' + args[0], shell=True)
                 subprocesses -= 1
             sys.exit(0)
@@ -111,11 +110,16 @@ def main():
     obs.read_config(os.path.join(obs.v['RUN_PATH'], RUN_NAME))
     if not problems is None: obs.v['RUN_PROBLEM'] = problems[0]
 
-    # Change model on command line.
+    # Change algorithm on command line.
     model = None
-    if '--gaussian' in noargs: model = binary.GaussianCopulaBinary
-    if '--logistic' in noargs: model = binary.LogisticBinary
-    if '--product' in noargs: model = binary.ProductBinary
+    for o, a in opts:
+        if o == '-f':
+            if a == 'gaussian':
+                model = binary.GaussianCopulaBinary
+            if a == 'logistic':
+                model = binary.LogisticBinary
+            if a == 'product':
+                model = binary.ProductBinary
 
     # Change algorithm on command line.
     for o, a in opts:
@@ -133,14 +137,17 @@ def main():
             if a == 'smca':
                 obs.v['RUN_ALGO'] = obs.smca.smca
                 if not model is None:obs.v['SMC_BINARY_MODEL'] = model
-    
+        if o == '-l':
+            obs.v['EVAL_LEGEND'] = True
+
     # run optimization.
     if '-r' in noargs:
         if obs.v['RUN_ALGO'] is None: return
         else: run(v=obs.v, verbose=True)
 
     # run evaluation.
-    if '-e' in noargs: plot(v=obs.v)
+    if '-e' in noargs:
+        plot(v=obs.v)
 
     # start pdf viewer after evaluation.
     if '-v' in noargs:
@@ -154,8 +161,9 @@ def run(v, verbose=False):
     """
 
     # Setup test folder.
+    EVAL_FILE = os.path.join(v['RUN_FOLDER'], os.path.basename(v['RUN_FILE']))
     if not os.path.isdir(v['RUN_FOLDER']): os.mkdir(v['RUN_FOLDER'])
-    shutil.copyfile(v['RUN_FILE'], os.path.join(v['RUN_FOLDER'], os.path.basename(v['RUN_FILE'])))
+    if not os.path.isfile(EVAL_FILE): shutil.copyfile(v['RUN_FILE'], EVAL_FILE)
 
     # Setup result file.
     RESULT_FILE = v['RUN_FOLDER'] + '/' + 'result_p%02d.csv' % v['RUN_PROBLEM']
@@ -194,18 +202,18 @@ def run(v, verbose=False):
 
         if v['RUN_N'] > 1: print '\nStarting %i/%i' % (i + 1, v['RUN_N'])
         print 'Working on test suite %s problem %d.' % (v['RUN_TESTSUITE'], v['RUN_ALGO'].problem)
-        
+
         result = v['RUN_ALGO'].run()
-        
+
         if v['RUN_ALGO'].name in ['CE', 'SMC']: model = v[v['RUN_ALGO'].name.upper() + '_BINARY_MODEL'].name
-        else: model = 'none' 
+        else: model = 'none'
 
         # Write result to result.csv
         for j in xrange(4):
             try:
                 file = open(RESULT_FILE, 'a')
-                file.write(','.join(['%.f' % result['obj'], v['RUN_ALGO'].name, model] + 
-                                    ['%d' % x for x in result['soln']] + 
+                file.write(','.join(['%.f' % result['obj'], v['RUN_ALGO'].name, model] +
+                                    ['%d' % x for x in result['soln']] +
                                     ['%.3f' % (result['time'] / 60.0), log_id, str(i + 1) + '\n']))
                 file.close()
                 break
@@ -217,24 +225,29 @@ def run(v, verbose=False):
                     print 'Failed to write to %s.' % RESULT_FILE
 
 def plot(v):
-    
+
     # Open R-template.
-    title = 'suite: %(RUN_TESTSUITE)s %(RUN_PROBLEM)s, dim:' % v
+    title = 'suite: %(RUN_TESTSUITE)s, p: %(RUN_PROBLEM)s, dim:' % v
     if not v['EVAL_TITLE']: title = ''
+
     colors = ', '.join(["'" + str(x) + "'" for x in v['EVAL_COLOR']])
     mar = ', '.join([str(x) for x in v['EVAL_INNER_MARGIN']])
-    
+
     testsuite, problem = v['RUN_TESTSUITE'], v['RUN_PROBLEM']
 
     file = open(os.path.join(obs.v['DATA_PATH'], testsuite, testsuite + '_%02d.dat' % problem), 'r')
-    primal_bound = eval(file.readline())
+    primal_bound = file.readline().strip()
+    if primal_bound[-3:] == 'inf': primal_bound = primal_bound[:-3] + 'Inf'
     file.close()
 
     f = open(os.path.join(v['SYS_ROOT'], 'src', 'obs', 'template_plot.R'), 'r')
     R_script = f.read() % {'resultfile':os.path.join(v['RUN_FOLDER'], 'result_p%02d.csv' % problem).replace('\\', '\\\\'),
                            'pdffile':os.path.join(v['RUN_FOLDER'], 'plot_p%02d.pdf' % problem).replace('\\', '\\\\'),
                            'title':title, 'colors':colors, 'mar':mar, 'type':v['EVAL_TYPE'],
-                           'bars':v['EVAL_BARS'], 'exact':v['EVAL_EXACT'], 'n':v['EVAL_N'], 'primal_bound':primal_bound}
+                           'bars':v['EVAL_BARS'], 'exact':v['EVAL_EXACT'],
+                           'legend':('FALSE', 'TRUE')[v['EVAL_LEGEND']],
+                           'counts':('FALSE', 'TRUE')[v['EVAL_COUNTS']],
+                           'n':v['EVAL_N'], 'primal_bound':primal_bound}
     f.close()
 
     # Copy plot.R to its run folder.

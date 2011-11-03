@@ -381,6 +381,10 @@ def plot(v, verbose=True):
     # Determine algorithm (might have been set on command line)
     algo = v['RUN_ALGO'].__name__
     if v['EVAL_FILE'][-8:] == 'mcmc.ini': algo = 'mcmc'
+    if v['EVAL_FILE'][-9:] == 'amcmc.ini': algo = 'amcmc'
+
+    colors = {'smc':'gold', 'mcmc':'firebrick', 'amcmc':'skyblue'}
+    if v['EVAL_COLOR'] is None: v['EVAL_COLOR'] = colors[algo] + ['1','3'][v['DATA_MAIN_EFFECTS']]
 
     # Format title.   
     title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %s, NO_EVALS %.1f' % \
@@ -396,7 +400,11 @@ def plot(v, verbose=True):
               'EVAL_PDF':os.path.join(v['RUN_FOLDER'], 'plot.pdf').replace('\\', '/'),
               'EVAL_TITLE_TEXT':title})
     for key in ['EVAL_OUTER_MARGIN', 'EVAL_INNER_MARGIN']: v[key] = ', '.join([str(x) for x in v[key]])
-    v['EVAL_NAMES'] = ', '.join(["'" + str(x) + "'" for x in v['EVAL_NAMES']])
+
+    # Format names
+    for i, x in enumerate(v['EVAL_NAMES']):
+        if 'POW2' in x: v['EVAL_NAMES'][i] = x[:x.index('.')] + '.x.' + x[:x.index('.')]
+    v['EVAL_NAMES'] = ', '.join(["'" + str(x).upper().replace('.X.','.x.') + "'" for x in v['EVAL_NAMES']])
 
     # Create R-script.
     if v['EVAL_LINES'] > 1:

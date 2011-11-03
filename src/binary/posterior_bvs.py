@@ -43,7 +43,7 @@ class PosteriorBinary(binary_model.Binary):
         self.param = {'penalty':-n * numpy.log(YtY), 'XtX':XtX, 'XtY':XtY, 'n':n, 'd':d, 'DATA_PCA':param['DATA_PCA'], 'INTERACTIONS':param['INTERACTIONS']}
 
         self.type = param['POSTERIOR_TYPE']
-        
+
         ## Hierachical Bayesian (hb), Bayesian Information Criterion (bic) or Random Effect (re)
         if self.type == 'hb': self._init_hb(n, d, XtY, XtX, YtY, X, Y, param)
         if self.type == 'bic': self._init_bic(n, d, XtY, XtX, YtY, param)
@@ -106,6 +106,8 @@ class PosteriorBinary(binary_model.Binary):
         u2 = param['PRIOR_BETA_PARAM_U2']
         if u2 is None: u2 = 10.0
         v2 = u2 / (sigma2_full_LM + 1e-5)
+        print 'v2 : %.3f,  v2+ : %.3f' % (v2, min(v2, 3.0))
+        v2 = min(v2, 3.0)
 
         # prior (inverse gamma) of sigma^2
         lambda_ = param['PRIOR_SIGMA_PARAM_LAMBDA']
@@ -239,16 +241,16 @@ def _lpmf_hb(gamma, param):
         # model dimension
         gamma_pca[pca:] = gamma[k]
         d = gamma_pca.sum()
-        
+
         # check main effects constraints
         if interactions.shape[0] > 0:
             mec_violations = (gamma_pca[interactions[:, 0]] > gamma_pca[interactions[:, 1]] * gamma_pca[interactions[:, 2]]).sum()
         else:
             mec_violations = False
-        
+
         if mec_violations > 0 or d == 0:
             # unfeasible model
-            L[k] = mec_violations * penalty
+            L[k] = penalty - mec_violations
             #total_mec_violations += 1
         else:
             # regular model

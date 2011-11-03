@@ -24,7 +24,7 @@ import cpd
 def main():
        
     # generate test problem
-    cpd.cpd_gen.generate_cpd_problem(d=12, T=100, filename='test', shift=0.75, n=1)
+    cpd.cpd_gen.generate_cpd_problem(d=15, T=100, filename='test', shift=0.5, n=5)
     args = cpd.cpd_gen.load_cpd_problem('test')
     
     # params

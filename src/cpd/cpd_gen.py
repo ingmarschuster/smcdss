@@ -43,8 +43,8 @@ def generate_cpd_problem(d, T, filename, n=None, loc=0.0, scale=1.0, shift=0.5):
         \param filename filename of the cpd problem
     """
 
-    # draw a uniform change point between 0 and n_obs+1
-    cp_index = numpy.random.randint(low=int(0.25 * T) + 1, high=int(0.75 * T) + 1)
+    # draw a change point in the beginning of the sample
+    cp_index = numpy.random.randint(low=int(0.05 * T) + 1, high=int(0.15 * T) + 1)
     cp = cp_index + 1
     
     # draw the number of streams affected by the change
