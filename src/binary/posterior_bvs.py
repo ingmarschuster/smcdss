@@ -106,8 +106,8 @@ class PosteriorBinary(binary_model.Binary):
         u2 = param['PRIOR_BETA_PARAM_U2']
         if u2 is None: u2 = 10.0
         v2 = u2 / (sigma2_full_LM + 1e-5)
-        print 'v2 : %.3f,  v2+ : %.3f' % (v2, min(v2, 3.0))
-        v2 = min(v2, 3.0)
+        print 'v2 : %.3f,  v2+ : %.3f' % (v2, min(v2, 50.0))
+        v2 = min(v2, 50.0)
 
         # prior (inverse gamma) of sigma^2
         lambda_ = param['PRIOR_SIGMA_PARAM_LAMBDA']

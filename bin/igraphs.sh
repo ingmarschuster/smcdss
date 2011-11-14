@@ -1,10 +1,10 @@
 #!/bin/sh
-ARTICLE=$HOME/Documents/Latex/Papers/smc_on_lbs/springer
-DATA=$HOME/Documents/Python/smcdss/data
+ARTICLE=$HOME/Documents/Latex/Papers/smc_on_binary_spaces/arxiv
+DATA=$HOME/Documents/Data/test_opt
 
 TOY=$DATA/r/pdf
-ARPD=$DATA/testruns/arpd_analysis
-TRUN=$DATA/testruns
+ARPD=$DATA/test_int/arpd_analysis
+TRUN=$DATA/test_int
 
 cp $TOY/*.pdf $ARTICLE
 cp $ARPD/*.pdf $ARTICLE
