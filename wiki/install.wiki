@@ -6,9 +6,8 @@ In order to simplify the parameterization, we decided to provide a GUI that will
 
 == External packages ==
 
-The Sequential Monte Carlo algorithm is written in Python 2.6 and requires several auxiliary modules.
+The Sequential Monte Carlo algorithm is written in Python 2.6 but requires several external packages that need to be installed.
 
-The project uses several external packages that need to be installed.
   * [http://www.scipy.org/ SciPy and NumPy] for scientific computing and fast array manipulations.
   * [http://www.parallelpython.com/ Parallel Python] for parallelized computing.
   * [http://cython.org Cython] for C-extensions to speed up some loops.
