@@ -101,7 +101,7 @@ def plot_toy_bvs():
         Y[i] = W[0] + W[1]
         X[i] = array(Z)
     param = {
-             'POSTERIOR_TYPE':'hb',
+             'PRIOR_CRITERION':'bayes',
              'PRIOR_BETA_PARAM_U2':10.0,
              'PRIOR_SIGMA_PARAM_W':4.0,
              'PRIOR_SIGMA_PARAM_LAMBDA':1.0,

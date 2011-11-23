@@ -133,7 +133,7 @@ def run(v):
     """
 
     # read data or group files
-    if v['POSTERIOR_TYPE'] == 're': v = readGroups(v)
+    if v['PRIOR_CRITERION'] == 're': v = readGroups(v)
     else: v = readData(v)
 
     # Setup test folder.
@@ -204,10 +204,10 @@ def readData(v):
     else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED']) 
     
     # add constant to data header. add constant to the covariates if it is not in the principal components.
-    if v['DATA_CONST']:
-        DATA_HEADER += ['CONST']
-        if v['DATA_PCA'] is None or not 'CONST' in v['DATA_PCA']:
-            v['DATA_COVARIATES'] = 'CONST+' + v['DATA_COVARIATES']
+    #if v['DATA_CONST']:
+    #    DATA_HEADER += ['CONST']
+    #    if v['DATA_PCA'] is None or not 'CONST' in v['DATA_PCA']:
+    #        v['DATA_COVARIATES'] = 'CONST+' + v['DATA_COVARIATES']
 
     # read covariate positions
     cindex = list()
@@ -237,7 +237,7 @@ def readData(v):
     sample = list()
     for row in reader:
         if len(row) > 0 and not row[Y_pos] == 'NA':
-            row += [c for c in ['1'] if v['DATA_CONST']] # constant column
+            #row += [c for c in ['1'] if v['DATA_CONST']] # constant column
             sample += [numpy.array([
                 eval(x) for x in
                     [row[Y_pos]] + # observation column
@@ -261,7 +261,8 @@ def readData(v):
         INTERACTIONS = numpy.array([])
 
     v.update({'DATA_HEADER' : DATA_HEADER, 'INTERACTIONS' : INTERACTIONS, 'PCA_HEADER' : PCA_HEADER})
-    v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], param=v)})
+    v.update({'f': Posterior(y=sample[:, 0], Z=sample[:, 1:], param=v)})
+    print v['f']
     return v
 
 
@@ -388,7 +389,7 @@ def plot(v, verbose=True):
 
     # Format title.   
     title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %s, NO_EVALS %.1f' % \
-            (algo, v['DATA_DATA_FILE'], v['POSTERIOR_TYPE'], d, n, v['TIME'], v['NO_EVALS'])
+            (algo, v['DATA_DATA_FILE'], v['PRIOR_CRITERION'], d, n, v['TIME'], v['NO_EVALS'])
     if eval['LENGTH'] > 0:
         title += '\nKERNEL %s, LENGTH %.1f, NO_MOVES %.1f, ACC_RATE %.3f' % \
             (v['MCMC_KERNEL'].__name__, v['LENGTH'], v['NO_MOVES'], v['ACC_RATE'])

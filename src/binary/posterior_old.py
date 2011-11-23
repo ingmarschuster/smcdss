@@ -14,10 +14,12 @@ $Date$
 with variables regressed on the first column.
 """
 
-from binary import *
-import sys
+import numpy
+import scipy
+import binary.utils as utils
+import binary
 
-class PosteriorBinary(binary_model.Binary):
+class PosteriorBinary(binary.binary_model.Binary):
     """
         Reads a dataset and construct the posterior probabilities of all linear
         models with variables regressed on the first column.
@@ -30,7 +32,7 @@ class PosteriorBinary(binary_model.Binary):
             @param param parameter dictonary
         """
 
-        binary_model.Binary.__init__(self, name='posterior-binary', longname='A posterior distribution of a Bayesian variable selection problem.')
+        binary.binary_model.Binary.__init__(self, name='posterior-binary', longname='A posterior distribution of a Bayesian variable selection problem.')
 
         n = X.shape[0]
         d = X.shape[1]
@@ -42,7 +44,7 @@ class PosteriorBinary(binary_model.Binary):
         # pickled which is necessary for parallel python to work properly
         self.param = {'penalty':-n * numpy.log(YtY), 'XtX':XtX, 'XtY':XtY, 'n':n, 'd':d, 'DATA_PCA':param['DATA_PCA'], 'INTERACTIONS':param['INTERACTIONS']}
 
-        self.type = param['POSTERIOR_TYPE']
+        self.type = param['PRIOR_CRITERION']
 
         ## Hierachical Bayesian (hb), Bayesian Information Criterion (bic) or Random Effect (re)
         if self.type == 'hb': self._init_hb(n, d, XtY, XtX, YtY, X, Y, param)

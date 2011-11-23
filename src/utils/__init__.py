@@ -46,10 +46,3 @@ def inv_logit(x):
 
 def logit(p):
     return np.log(p / (1 - p))
-
-
-#    try:
-#        import weave
-#        opts += ['weave']
-#    except Exception, exception:
-#        sys.stderr.write('weave exception: ' + str(exception) + '\n') 

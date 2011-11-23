@@ -14,6 +14,7 @@ $Date$
 """
 
 import time
+import binary
 import datetime
 import sys
 import operator
@@ -25,6 +26,7 @@ import utils
 class smc():
     """ Auxiliary class. """
     header = ['TYPE', 'NO_EVALS', 'TIME']
+
     @staticmethod
     def run(v): return integrate_smc(v)
 
@@ -131,8 +133,14 @@ class ParticleSystem(object):
             self.log_W = self.log_f
             return
 
-        self.X = self.prop.rvs(self.n, self.job_server)
+        if 'PRIOR_MODEL_MAXSIZE_HP' in v.keys() and v['PRIOR_MODEL_MAXSIZE_HP'] is not None:
+            print v['PRIOR_MODEL_MAXSIZE_HP']
+            u = binary.UniformBinary(self.d, v['PRIOR_MODEL_MAXSIZE_HP'])
+            self.X = u.rvs(self.n, self.job_server)
+        else:
+            self.X = self.prop.rvs(self.n, self.job_server)
 
+        # \todo move this part into the uniform binary family class
         if 'INTERACTIONS' in v.keys():
             if v['INTERACTIONS'].shape[0] > 0:
                 # make the initial system feasible
@@ -146,10 +154,10 @@ class ParticleSystem(object):
                     # draw a uniform where interactions are possible
                     index_interaction = I[joint_me == True, 0]
                     self.X[row, index_interaction] = numpy.random.random(size=index_interaction.shape[0]) > 0.5
-                #mec_violations = (self.X[:, I[:, 0]] > self.X[:, I[:, 1]] * self.X[:, I[:, 2]]).sum(axis=1)
 
         if not self.job_server is None and self.job_server.get_ncpus() >= 48: jobs_per_cpu = 3
         else: jobs_per_cpu = 1
+
         self.log_f = self.f.lpmf(self.X, self.job_server, jobs_per_cpu=jobs_per_cpu)
         self.id = numpy.dot(numpy.array(self.X, dtype=int), self.__k)
 
@@ -212,7 +220,7 @@ class ParticleSystem(object):
         else:
             # pd via dictionary keys
             dic = {}
-            map(operator.setitem, (dic,)*self.n, self.id, [])
+            map(operator.setitem, (dic,) * self.n, self.id, [])
             return len(dic.keys()) / float(self.n)
 
     def reweight_ibs(self):
