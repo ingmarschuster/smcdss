@@ -2,20 +2,17 @@
 # -*- coding: utf-8 -*-
 
 """
-Execution of integration algorithms. 
-
+Computes or plots the posterior mean of a Bayesian variable selection problem.
 @verbatim
 USAGE:
-        exec [option] [file]
+        ibs [option] [file]
 
 OPTIONS:
-        -m    start multiple instances
-        -h    display help
-        -r    run integration of posterior as specified in [file]
-        -e    evaluate results obtained from running [file]
+        -r    run Monte Carlo algorithm as specified [file]
         -c    start clean run of [file]
-        -v    view evaluation of [file]
-
+        -e    evaluate results of [file]
+        -v    open plot of [file] with standard viewer
+        -m    start multiple processes
 @endverbatim
 """
 
@@ -24,46 +21,48 @@ OPTIONS:
 $Author$
 $Rev$
 $Date$
-@details
 """
 
-from binary import *
-import getopt
-import shutil
+import binary
 import csv
 import datetime
-import subprocess
-import os
-import sys
+import getopt
 import ibs
-import pp
-import smc
 import mcmc
+import numpy
+import os
+import pp
+import shutil
+import smc
+import subprocess
+import sys
+import time
+import utils
 
 def main():
     """ Main method. """
 
     # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hrecvm:a:')
+        opts, args = getopt.getopt(sys.argv[1:], 'recvm:a:')
     except getopt.error, msg:
         print msg
         sys.exit(2)
 
+    # Check arguments and options.
     noargs = [o[0] for o in opts]
-    if len(opts) == 0: sys.exit(0)
+    if len(opts) == 0:
+        print __doc__.replace('@verbatim', '').replace('@endverbatim', '')
+        sys.exit(0)
     if len(args) == 0:
-        if '-h' in opts:
-            print __doc__
-        else:
-            print 'No file specified.'
-        sys.exit(0)           
+        print 'No file specified.'
+        sys.exit(0)
 
     # Load run file.
     ibs.read_config()
     RUN_NAME = os.path.splitext(os.path.basename(args[0]))[0]
     RUN_FILE = os.path.join(ibs.v['RUN_PATH'], RUN_NAME)
-    
+
     # Check for algorithm options.
     for o, a in opts:
         if o == '-a':
@@ -81,18 +80,18 @@ def main():
             RUN_NAME += '_' + a
     RUN_FOLDER = os.path.join(ibs.v['RUN_PATH'], RUN_NAME)
     EVAL_FILE = os.path.join(RUN_FOLDER, RUN_NAME)
-    ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE + '.ini', 'EVAL_FILE':EVAL_FILE + '.ini', 'RUN_FOLDER':RUN_FOLDER})    
-    
+    ibs.v.update({'RUN_NAME':RUN_NAME, 'RUN_FILE':RUN_FILE + '.ini', 'EVAL_FILE':EVAL_FILE + '.ini', 'RUN_FOLDER':RUN_FOLDER})
+
     # Clean up or create folder.
     if '-c' in noargs:
         if os.path.isdir(RUN_FOLDER):
             try:
-                for file in os.listdir(RUN_FOLDER):
-                    os.remove(os.path.join(RUN_FOLDER, file))
+                for filename in os.listdir(RUN_FOLDER):
+                    os.remove(os.path.join(RUN_FOLDER, filename))
             except: pass
         else:
             os.mkdir(RUN_FOLDER)
-            
+
     # Start multiple processes.
     for o, a in opts:
         if o == '-m':
@@ -101,12 +100,12 @@ def main():
                 if os.name == 'posix':
                     subprocess.call('gnome-terminal -e "ibs ' + ' '.join([o + ' ' + a for (o, a) in opts if not o in ['-m', '-c']]) + ' ' + args[0] + '"', shell=True)
                 else:
-                    path = os.path.abspath(os.path.join(os.path.join(*([os.getcwd()] + ['..']*1)), 'bin', 'ibs.bat'))
-                    subprocess.call('start "ibs" /MAX "%s" ' % path + 
+                    path = os.path.abspath(os.path.join(os.path.join(*([os.getcwd()] + ['..'] * 1)), 'bin', 'ibs.bat'))
+                    subprocess.call('start "ibs" /MAX "%s" ' % path +
                                     ' '.join([o + ' ' + a for (o, a) in opts if not o in ['-m', '-c']]) + ' ' + args[0], shell=True)
                 k -= 1
             sys.exit(0)
-   
+
     # Process options.
     if '-r' in noargs:
         if not (os.path.isfile(RUN_FILE + '.ini')):
@@ -114,14 +113,14 @@ def main():
             sys.exit(0)
         ibs.read_config(RUN_FILE)
         run(v=ibs.v)
-        
+
     if '-e' in noargs:
         if not (os.path.isfile(EVAL_FILE + '.ini')):
             print "The evaluation file '%s' does not exist in the path %s" % (os.path.basename(EVAL_FILE), os.path.dirname(EVAL_FILE))
             sys.exit(0)
         ibs.read_config(EVAL_FILE)
         plot(v=ibs.v)
-    
+
     if '-v' in noargs:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot.pdf')): plot(v=ibs.v)
         subprocess.Popen([ibs.v['SYS_VIEWER'], os.path.join(RUN_FOLDER, 'plot.pdf')])
@@ -143,9 +142,9 @@ def run(v):
     # Setup result file.
     result_file = v['RUN_FOLDER'] + '/' + 'result.csv'
     if not os.path.isfile(result_file):
-        file = open(result_file, 'w')
-        file.write(','.join(v['DATA_HEADER'] + ['LOG_FILE', 'LOG_NO'] + v['RUN_ALGO'].header) + '\n')
-        file.close()
+        f = open(result_file, 'w')
+        f.write(','.join(v['DATA_HEADER'] + ['LOG_FILE', 'LOG_NO'] + v['RUN_ALGO'].header) + '\n')
+        f.close()
 
     # Setup logger.
     if v['RUN_VERBOSE']:
@@ -172,15 +171,15 @@ def run(v):
 
         for j in xrange(4):
             try:
-                file = open(result_file, 'a')
-                file.write(','.join([result[0], log_id, str(i + 1) , result[1]]) + '\n')
-                file.close()
+                f = open(result_file, 'a')
+                f.write(','.join([result[0], log_id, str(i + 1) , result[1]]) + '\n')
+                f.close()
 
                 if len(result) > 2:
-                    for file_name, i in [('pd', 2), ('ar', 3)]:
-                        file = open(v['RUN_FOLDER'] + '/' + '%s.csv' % file_name, 'a')
-                        file.write(result[i] + '\n')
-                        file.close()
+                    for filename, i in [('pd', 2), ('ar', 3)]:
+                        f = open(v['RUN_FOLDER'] + '/' + '%s.csv' % filename, 'a')
+                        f.write(result[i] + '\n')
+                        f.close()
                 break
             except:
                 if j < 3:
@@ -201,8 +200,8 @@ def readData(v):
     DATA_HEADER = reader.next()
     d = len(DATA_HEADER)
     if not isinstance(v['DATA_EXPLAINED'], str): Y_pos = v['DATA_EXPLAINED'] - 1
-    else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED']) 
-    
+    else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED'])
+
     # add constant to data header. add constant to the covariates if it is not in the principal components.
     #if v['DATA_CONST']:
     #    DATA_HEADER += ['CONST']
@@ -233,7 +232,7 @@ def readData(v):
                 else: pcarange[i] = DATA_HEADER.index(pcarange[i])
             pindex += range(pcarange[0], pcarange[1] + 1)
     v['DATA_PCA'] = len(pindex)
-    
+
     sample = list()
     for row in reader:
         if len(row) > 0 and not row[Y_pos] == 'NA':
@@ -245,7 +244,7 @@ def readData(v):
                     [row[i] for i in cindex] # covariate columns
                 ])]
     sample = numpy.array(sample)
-    
+
     # use just the first DATA_MAX_OBS observations
     v['DATA_MAX_OBS'] = min(v['DATA_MAX_OBS'], sample.shape[0])
     sample = sample[:v['DATA_MAX_OBS'], :]
@@ -261,7 +260,7 @@ def readData(v):
         INTERACTIONS = numpy.array([])
 
     v.update({'DATA_HEADER' : DATA_HEADER, 'INTERACTIONS' : INTERACTIONS, 'PCA_HEADER' : PCA_HEADER})
-    v.update({'f': Posterior(y=sample[:, 0], Z=sample[:, 1:], param=v)})
+    v.update({'f': binary.Posterior(y=sample[:, 0], Z=sample[:, 1:], param=v)})
     print v['f']
     return v
 
@@ -324,7 +323,7 @@ def readGroups(v):
 
     # initialize posterior
     v.update({'GROUPS':GROUPS, 'DATA_HEADER' : GROUPS_HEADER})
-    v.update({'f': PosteriorBinary(Y=sample[:, 0], X=sample[:, 1:], param=v)})
+    v.update({'f': binary.Posterior(Y=sample[:, 0], X=sample[:, 1:], param=v)})
     return v
 
 
@@ -337,8 +336,8 @@ def plot(v, verbose=True):
     if not os.path.isfile(os.path.join(v['RUN_FOLDER'], 'result.csv')):
         print 'No file %s found.' % os.path.join(v['RUN_FOLDER'], 'result.csv')
         sys.exit(2)
-    file = open(os.path.join(v['RUN_FOLDER'], 'result.csv'), 'r')
-    reader = csv.reader(file, delimiter=',')
+    result_file = open(os.path.join(v['RUN_FOLDER'], 'result.csv'), 'rU')
+    reader = csv.reader(result_file, delimiter=',')
 
     # Read header names.
     data_header = reader.next()
@@ -360,8 +359,33 @@ def plot(v, verbose=True):
         X += [numpy.array([float(x) for x in row[:d]])]
         for key in eval.keys():
             if eval[key][0] > -1: eval[key][1] += float(row[eval[key][0]])
-    file.close()
+    result_file.close()
     X = numpy.array(X)
+
+    if len(X) == 0:
+        print 'Empty file %s.' % os.path.join(v['RUN_FOLDER'], 'result.csv')
+        sys.exit(0)
+
+    # Read effects.
+    data_filename = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_DATA_FILE'])
+    if not data_filename[-4:].lower() == '.csv': data_filename += '.csv'
+    effect_filename = os.path.join(data_filename.replace('.csv', '_effects.csv'))
+    effects = list()
+    if os.path.isfile(effect_filename):
+        effect_file = open(effect_filename, 'rU')
+        reader = csv.reader(effect_file, delimiter=',')
+        reader.next() # skip header
+        for row in reader:
+            try:
+                if not float(row[1]) == 0:
+                    effects.append(numpy.array([data_header.index(row[0]) + 1, float(row[1])]))
+            except ValueError:
+                pass
+        effect_file.close()
+        # normalize effects
+        effects = numpy.array(effects)
+        effects[:, 1] /= numpy.abs(effects[:, 1]).max()
+
 
     # Compute averages.
     n = X.shape[0]
@@ -385,7 +409,7 @@ def plot(v, verbose=True):
     if v['EVAL_FILE'][-9:] == 'amcmc.ini': algo = 'amcmc'
 
     colors = {'smc':'gold', 'mcmc':'firebrick', 'amcmc':'skyblue'}
-    if v['EVAL_COLOR'] is None: v['EVAL_COLOR'] = colors[algo] + ['1','3'][v['DATA_MAIN_EFFECTS']]
+    if v['EVAL_COLOR'] is None: v['EVAL_COLOR'] = colors[algo] + ['1', '3'][v['DATA_MAIN_EFFECTS']]
 
     # Format title.   
     title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %s, NO_EVALS %.1f' % \
@@ -397,6 +421,7 @@ def plot(v, verbose=True):
 
     # Format dictionary.
     v.update({'EVAL_BOXPLOT':', '.join(['%.6f' % x for x in numpy.reshape(A, (5 * d,))]),
+              'EVAL_EFFECTS':', '.join(['%d, %.6f' % (i, x) for (i, x) in effects]),
               'EVAL_DIM':str(d), 'EVAL_XAXS':A.shape[1] * 1.2 + 1,
               'EVAL_PDF':os.path.join(v['RUN_FOLDER'], 'plot.pdf').replace('\\', '/'),
               'EVAL_TITLE_TEXT':title})
@@ -405,38 +430,15 @@ def plot(v, verbose=True):
     # Format names
     for i, x in enumerate(v['EVAL_NAMES']):
         if 'POW2' in x: v['EVAL_NAMES'][i] = x[:x.index('.')] + '.x.' + x[:x.index('.')]
-    v['EVAL_NAMES'] = ', '.join(["'" + str(x).upper().replace('.X.','.x.') + "'" for x in v['EVAL_NAMES']])
+    v['EVAL_NAMES'] = ', '.join(["'" + str(x).upper().replace('.X.', '.x.') + "'" for x in v['EVAL_NAMES']])
+
+    if v['EVAL_WIDTH'] is None: v['EVAL_WIDTH'] = d * 0.1
 
     # Create R-script.
     if v['EVAL_LINES'] > 1:
-        R = """#\n# This file was automatically generated.\n#\n
-        # Boxplot data from repeated runs
-        boxplot = t(array(c(%(EVAL_BOXPLOT)s),c(%(EVAL_DIM)s,5)))\n
-        # Covariate names
-        names = c(%(EVAL_NAMES)s)\n
-        k=%(EVAL_LINES)s
-        d=length(names)
-        l=ceiling(d/k)
-        # Create PDF-file
-        pdf(paper='a4', file='%(EVAL_PDF)s', height=20, width=20)
-        par(mfrow=c(k,1), oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
-        for(i in 1:k) {
-          start=(i-1)*l+1
-          end=min(i*l,d)
-          barplot(boxplot[,start:end], ylim=c(0, 1), names=names[start:end], las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), xaxs='i')
-        }
-        """ % v
+        R = R_TEMPLATE_A4 % v
     else:
-        R = """#\n# This file was automatically generated.\n#\n
-        # Boxplot data from repeated runs
-        boxplot = t(array(c(%(EVAL_BOXPLOT)s),c(%(EVAL_DIM)s,5)))\n
-        # Covariate names
-        names = c(%(EVAL_NAMES)s)\n
-        # Create PDF-file
-        pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
-        par(oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
-        barplot(boxplot, ylim=c(0, 1), names=names, las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), xaxs='i', xlim=c(-1, %(EVAL_XAXS)s))
-        """ % v
+        R = R_TEMPLATE % v
     if v['EVAL_TITLE']:
         if v['EVAL_LINES'] > 1:
             R += """
@@ -448,7 +450,6 @@ def plot(v, verbose=True):
             """ % v
 
     R += 'dev.off()'
-    R = R.replace('    ', '')
     R_file = open(os.path.join(v['SYS_ROOT'], v['RUN_PATH'], v['RUN_NAME'], 'plot.R'), 'w')
     R_file.write(R)
     R_file.close()
@@ -457,6 +458,64 @@ def plot(v, verbose=True):
     subprocess.Popen([v['SYS_R'], 'CMD', 'BATCH', '--vanilla',
                       os.path.join(v['RUN_FOLDER'], 'plot.R'),
                       os.path.join(v['RUN_FOLDER'], 'plot.Rout')]).wait()
+
+R_TEMPLATE = """
+#
+# This file was automatically generated.
+#
+
+# boxplot data from repeated runs
+boxplot = c(%(EVAL_BOXPLOT)s)
+boxplot = t(array(boxplot,c(length(boxplot)/5,5)))
+
+# positions of effects
+effects = c(%(EVAL_EFFECTS)s)
+if (length(effects) > 0) effects = t(array(effects,c(2,length(effects)/2)))
+
+# covariate names
+names = c(%(EVAL_NAMES)s)\n
+
+# create PDF-file
+pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
+par(oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
+
+# create empty plot
+empty=rep(0,dim(boxplot)[1])
+barplot(empty, ylim=c(0, 1), axes=FALSE, xaxs='i', xlim=c(-1, %(EVAL_XAXS)s))
+
+# plot effects
+if (length(effects) > 0) {
+    for (i in 1:dim(effects)[1]) {
+      empty[effects[i,1]] = 1.05
+      barplot(empty, col=rgb(1,1-abs(effects[i,2]),1-abs(effects[i,2])), axes=FALSE, add=TRUE)
+      barplot(empty, col='black', axes=FALSE, angle=sign(effects[i,2])*45, density=15, add=TRUE)
+      empty[effects[i,1]]=0
+    }
+}
+
+# plot results
+barplot(boxplot, ylim=c(0, 1), names=names, las=2, cex.names=0.5, cex.axis=0.75,
+        axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), add=TRUE)
+"""
+
+R_TEMPLATE_A4 = """
+#\n# This file was automatically generated.\n#\n
+# Boxplot data from repeated runs
+boxplot = t(array(c(%(EVAL_BOXPLOT)s),c(%(EVAL_DIM)s,5))\n
+# Covariate names
+names = c(%(EVAL_NAMES)s)\n
+k=%(EVAL_LINES)s
+d=length(names)
+l=ceiling(d/k)
+# Create PDF-file
+pdf(paper='a4', file='%(EVAL_PDF)s', height=20, width=20)
+par(mfrow=c(k,1), oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
+for(i in 1:k) {
+  start=(i-1)*l+1
+  end=min(i*l,d)
+  barplot(boxplot[,start:end], ylim=c(0, 1), names=names[start:end], las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), xaxs='i')
+}
+"""
 
 if __name__ == "__main__":
     main()

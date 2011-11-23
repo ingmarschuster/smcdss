@@ -134,26 +134,24 @@ class ParticleSystem(object):
             return
 
         if 'PRIOR_MODEL_MAXSIZE_HP' in v.keys() and v['PRIOR_MODEL_MAXSIZE_HP'] is not None:
-            print v['PRIOR_MODEL_MAXSIZE_HP']
             u = binary.UniformBinary(self.d, v['PRIOR_MODEL_MAXSIZE_HP'])
             self.X = u.rvs(self.n, self.job_server)
         else:
             self.X = self.prop.rvs(self.n, self.job_server)
 
         # \todo move this part into the uniform binary family class
-        if 'INTERACTIONS' in v.keys():
-            if v['INTERACTIONS'].shape[0] > 0:
-                # make the initial system feasible
-                I, self.I = v['INTERACTIONS'], v['INTERACTIONS']
-                for row in xrange(len(self.X)):
-                    # joint outcome of the main effects
-                    joint_me = self.X[row, I[:, 1]] * self.X[row, I[:, 2]]
-                    # set to zero where interactions are prohibited
-                    index_constraints = I[joint_me == False, 0]
-                    self.X[row, index_constraints] = False
-                    # draw a uniform where interactions are possible
-                    index_interaction = I[joint_me == True, 0]
-                    self.X[row, index_interaction] = numpy.random.random(size=index_interaction.shape[0]) > 0.5
+        if 'INTERACTIONS' in v.keys() and v['INTERACTIONS'].shape[0] > 0:
+            # make the initial system feasible
+            I, self.I = v['INTERACTIONS'], v['INTERACTIONS']
+            for row in xrange(len(self.X)):
+                # joint outcome of the main effects
+                joint_me = self.X[row, I[:, 1]] * self.X[row, I[:, 2]]
+                # set to zero where interactions are prohibited
+                index_constraints = I[joint_me == False, 0]
+                self.X[row, index_constraints] = False
+                # draw a uniform where interactions are possible
+                index_interaction = I[joint_me == True, 0]
+                self.X[row, index_interaction] = numpy.random.random(size=index_interaction.shape[0]) > 0.5
 
         if not self.job_server is None and self.job_server.get_ncpus() >= 48: jobs_per_cpu = 3
         else: jobs_per_cpu = 1
