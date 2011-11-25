@@ -23,6 +23,13 @@ import ibs
 import resample
 import utils
 
+class univariate():
+    """ Auxiliary class. """
+    header = ['TYPE']
+
+    @staticmethod
+    def run(v): return [','.join(['%.8f' % x for x in v['f'].univariate_bayes()]), 'univariate']
+
 class smc():
     """ Auxiliary class. """
     header = ['TYPE', 'NO_EVALS', 'TIME']

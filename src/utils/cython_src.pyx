@@ -55,7 +55,7 @@ def _uniform_all(int q,
     cdef int d = gamma.shape[1]
 
     for k in xrange(size):
-        perm = numpy.arange(d, dtype=numpy.int8)
+        perm = numpy.arange(d, dtype=numpy.int32)
         for i in xrange(d):
             # pick an element in p[:i+1] with which to exchange p[i]
             j = int(U[k, i] * (d - i))

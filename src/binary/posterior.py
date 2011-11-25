@@ -62,7 +62,6 @@ class Posterior(binary.binary_model.Binary):
 
         {'bayes':self.__init_bayes, 'bic':self.__init_bic}[param['PRIOR_CRITERION']](param)
 
-
     def __init_bayes(self, param):
         """ 
             Setup Hierarchical Bayesian posterior.
@@ -95,7 +94,6 @@ class Posterior(binary.binary_model.Binary):
                            'logit(p)' : numpy.log(p / (1.0 - p))
                            })
 
-
     def __init_bic(self, param):
         """ 
             Setup Schwarz's Criterion.
@@ -112,6 +110,32 @@ class Posterior(binary.binary_model.Binary):
                            'logit(p)':0
                            })
 
+    def univariate_bayes(self):
+        """ 
+            Setup univariate Hierarchical Bayesian posterior.
+      
+            \param parameter dictionary
+        """
+
+        d = self.Z.shape[1]
+        T = numpy.empty(d)
+
+        param = self.param.copy()
+        param.update({'d':1})
+
+        gamma = numpy.array([True])[:, numpy.newaxis]
+        log_prob_H0 = float(_lpmf_bayes(gamma - 1, param))
+
+        for i in xrange(d):
+            param.update({'Zty':numpy.dot(self.Z[:, i].T, self.y)[numpy.newaxis, numpy.newaxis],
+                           'W': numpy.dot(self.Z[:, i].T, self.Z[:, i])[numpy.newaxis, numpy.newaxis] + 1e-10})
+            log_prob_H1 = float(_lpmf_bayes(gamma, param))
+            m = max(log_prob_H0, log_prob_H1)
+            prob_H0 = numpy.exp(log_prob_H0 - m)
+            prob_H1 = numpy.exp(log_prob_H1 - m)
+            T[i] = prob_H1 / (prob_H0 + prob_H1)
+
+        return T
 
     def __str__(self):
 

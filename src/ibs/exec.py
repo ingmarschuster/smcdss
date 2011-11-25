@@ -419,35 +419,43 @@ def plot(v, verbose=True):
             (v['MCMC_KERNEL'].__name__, v['LENGTH'], v['NO_MOVES'], v['ACC_RATE'])
     if verbose: print title + '\n'
 
+    # Auto-adjust width
+    if v['EVAL_WIDTH'] is None: v['EVAL_WIDTH'] = d * 0.1
+
     # Format dictionary.
     v.update({'EVAL_BOXPLOT':', '.join(['%.6f' % x for x in numpy.reshape(A, (5 * d,))]),
               'EVAL_EFFECTS':', '.join(['%d, %.6f' % (i, x) for (i, x) in effects]),
               'EVAL_DIM':str(d), 'EVAL_XAXS':A.shape[1] * 1.2 + 1,
               'EVAL_PDF':os.path.join(v['RUN_FOLDER'], 'plot.pdf').replace('\\', '/'),
-              'EVAL_TITLE_TEXT':title})
-    for key in ['EVAL_OUTER_MARGIN', 'EVAL_INNER_MARGIN']: v[key] = ', '.join([str(x) for x in v[key]])
+              'EVAL_TITLE_TEXT': title,
+              'EVAL_TITLE_SIZE': v['EVAL_TITLE'] * [v['EVAL_WIDTH'] * 10.0 / float(len(title)), 0.75][v['EVAL_LINES'] > 1]
+              })
 
-    # Format names
+    # Format names.
+    name_length = 0
     for i, x in enumerate(v['EVAL_NAMES']):
         if 'POW2' in x: v['EVAL_NAMES'][i] = x[:x.index('.')] + '.x.' + x[:x.index('.')]
+        if name_length < len(str(x)):name_length = len(str(x))
     v['EVAL_NAMES'] = ', '.join(["'" + str(x).upper().replace('.X.', '.x.') + "'" for x in v['EVAL_NAMES']])
 
-    if v['EVAL_WIDTH'] is None: v['EVAL_WIDTH'] = d * 0.1
+    # Auto-adjust margins
+    if v['EVAL_INNER_MARGIN'] is None:
+        v['EVAL_INNER_MARGIN'] = [name_length * 0.5, 2, 0.5, 0]
+    if v['EVAL_OUTER_MARGIN'] is None:
+        v['EVAL_OUTER_MARGIN'] = [0, 0, max(0.5, 2 * v['EVAL_TITLE_SIZE']), 0]
+    for key in ['EVAL_OUTER_MARGIN', 'EVAL_INNER_MARGIN']:
+        v[key] = ', '.join([str(x) for x in v[key]])
 
     # Create R-script.
     if v['EVAL_LINES'] > 1:
-        R = R_TEMPLATE_A4 % v
+        v['EVAL_WIDTH'], v['EVAL_HEIGHT'] = 20, 20
+        R = R_TEMPLATE.replace("pdf(", "pdf(paper='a4', ") % v
     else:
         R = R_TEMPLATE % v
+
     if v['EVAL_TITLE']:
-        if v['EVAL_LINES'] > 1:
-            R += """
-            mtext('%(EVAL_TITLE_TEXT)s', family='%(EVAL_FONT_FAMILY)s', line=-%(EVAL_TITLE_LINE)s, cex.main=%(EVAL_FONT_CEX)s, outer=TRUE)
-            """ % v
-        else:
-            R += """
-            title(main='%(EVAL_TITLE_TEXT)s', line=%(EVAL_TITLE_LINE)s, family='%(EVAL_FONT_FAMILY)s', cex.main=%(EVAL_FONT_CEX)s, font.main=1)
-            """ % v
+        R += ("mtext('%(EVAL_TITLE_TEXT)s', family='%(EVAL_FONT_FAMILY)s', " +
+                  "line=0.5, cex=%(EVAL_TITLE_SIZE)s, outer=TRUE)\n") % v
 
     R += 'dev.off()'
     R_file = open(os.path.join(v['SYS_ROOT'], v['RUN_PATH'], v['RUN_NAME'], 'plot.R'), 'w')
@@ -473,7 +481,63 @@ effects = c(%(EVAL_EFFECTS)s)
 if (length(effects) > 0) effects = t(array(effects,c(2,length(effects)/2)))
 
 # covariate names
-names = c(%(EVAL_NAMES)s)\n
+names = c(%(EVAL_NAMES)s)
+
+no_lines=%(EVAL_LINES)s
+no_bars=ceiling(length(names)/no_lines)
+
+# create PDF-file
+pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
+par(mfrow=c(no_lines,1), oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
+
+# create empty vector
+empty=rep(0,length(names))
+
+for(i in 1:no_lines) {
+  start= (i-1)*no_bars + 1
+  end  = min(i*no_bars, length(names))
+
+  # create empty plot
+  barplot(empty[start:end], ylim=c(0, 1), axes=FALSE, xaxs='i', xlim=c(-1, %(EVAL_XAXS)s/no_lines))
+  
+  # plot effects
+  if (length(effects) > 0) {
+      for (i in 1:dim(effects)[1]) {
+        if (start <= effects[i,1] && effects[i,1] <= end) {
+          empty[effects[i,1]] = 1.05
+          barplot(empty[start:end], col=rgb(1,1-abs(effects[i,2]),1-abs(effects[i,2])), axes=FALSE, add=TRUE)
+          barplot(empty[start:end], col='black', axes=FALSE, angle=sign(effects[i,2])*45, density=15, add=TRUE)
+          empty[effects[i,1]]=0
+        }
+      }
+  }
+  
+  # plot results
+  barplot(boxplot[,start:end], ylim=c(0, 1), names=names[start:end], las=2, cex.names=0.5, cex.axis=0.75,
+          axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), add=TRUE)
+}
+"""
+
+if __name__ == "__main__":
+    main()
+
+
+
+R_TEMPLATE_SINGLE = """
+#
+# This file was automatically generated.
+#
+
+# boxplot data from repeated runs
+boxplot = c(%(EVAL_BOXPLOT)s)
+boxplot = t(array(boxplot,c(length(boxplot)/5,5)))
+
+# positions of effects
+effects = c(%(EVAL_EFFECTS)s)
+if (length(effects) > 0) effects = t(array(effects,c(2,length(effects)/2)))
+
+# covariate names
+names = c(%(EVAL_NAMES)s)
 
 # create PDF-file
 pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
@@ -497,25 +561,3 @@ if (length(effects) > 0) {
 barplot(boxplot, ylim=c(0, 1), names=names, las=2, cex.names=0.5, cex.axis=0.75,
         axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), add=TRUE)
 """
-
-R_TEMPLATE_A4 = """
-#\n# This file was automatically generated.\n#\n
-# Boxplot data from repeated runs
-boxplot = t(array(c(%(EVAL_BOXPLOT)s),c(%(EVAL_DIM)s,5))\n
-# Covariate names
-names = c(%(EVAL_NAMES)s)\n
-k=%(EVAL_LINES)s
-d=length(names)
-l=ceiling(d/k)
-# Create PDF-file
-pdf(paper='a4', file='%(EVAL_PDF)s', height=20, width=20)
-par(mfrow=c(k,1), oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
-for(i in 1:k) {
-  start=(i-1)*l+1
-  end=min(i*l,d)
-  barplot(boxplot[,start:end], ylim=c(0, 1), names=names[start:end], las=2, cex.names=0.5, cex.axis=0.75, axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), xaxs='i')
-}
-"""
-
-if __name__ == "__main__":
-    main()

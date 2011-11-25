@@ -22,22 +22,25 @@ from numpy import inf
 from binary import LogisticBinary as logistic, ProductBinary as product, GaussianCopulaBinary as gaussian
 
 # integration algorithms
-from ibs.smc import smc
+from ibs.smc import smc, univariate
 from ibs.mcmc import mcmc, AdaptiveMetropolisHastings as adaptive, SymmetricMetropolisHastings as symmetric, SwapMetropolisHastings as swap, Gibbs as gibbs
 
 # optimization algorithms
-from obs.bf import solve_bf, bf
-from obs.ce import solve_ce, ce
-from obs.sa import solve_sa, sa
-from obs.smca import solve_smca, smca
-from obs.scip import solve_scip, scip
+try:
+    from obs.bf import solve_bf, bf
+    from obs.ce import solve_ce, ce
+    from obs.sa import solve_sa, sa
+    from obs.smca import solve_smca, smca
+    from obs.scip import solve_scip, scip
+except:
+    pass
 
 def read_config(file, v):
     """
         Reads a configuration file and overwrite the default values.
         \param file valid INI-file
     """
-    
+
     # locate project root folder
     path = os.getcwd()
     while not os.path.basename(path) == 'smcdss':
@@ -46,9 +49,9 @@ def read_config(file, v):
 
     # load default config files
     if file in ['ibs', 'obs', 'cpd']:
-        file = os.path.join(path, 'src', file, file + '_default')
+        file = os.path.join(path, 'src', file + '_default')
     if not file[-4:] == '.ini':file += '.ini'
-    
+
     config = ConfigParser.SafeConfigParser()
     config.read(file)
 

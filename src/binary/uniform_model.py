@@ -87,6 +87,7 @@ def _rvs(U, param):
     """
     Y = numpy.zeros((U.shape[0], U.shape[1]), dtype=bool)
     d, q = param['d'], param['q']
+    
     for k in xrange(U.shape[0]):
         perm = numpy.arange(d)
         for i in xrange(d):
@@ -109,7 +110,10 @@ def _rvslpmf(U, param):
     return Y, _lpmf(Y, param)
 
 def main():
-    pass
+    n, d, max_size = 5000, 400, 50
+    u = binary.UniformBinary(d, max_size)
+    X = u.rvs(n)
+    print X.sum(axis=0) / float(n)
 
 if __name__ == "__main__":
     main()
