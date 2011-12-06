@@ -5,8 +5,6 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
-#exit(0)
-
 import os
 import shutil
 import numpy
@@ -15,7 +13,11 @@ import numpy
 if os.name == 'nt':
     if os.environ.has_key('CPATH'): os.environ['CPATH'] = os.environ['CPATH'] + numpy.get_include()
     else: os.environ['CPATH'] = numpy.get_include()
-    #mingw_setup_args = { 'options': { 'build_ext': { 'compiler': 'mingw32' } } }
+    
+    '''
+    mingw_setup_args = { 'options': { 'build_ext': { 'compiler': 'mingw32' } } }
+    pyximport.install(setup_args=mingw_setup_args, build_dir=os.path.curdir)
+    '''
 
 # extensions
 ext_modules = [Extension('binary.%s' % pyx_name, ['binary/%s.pyx' % pyx_name])
