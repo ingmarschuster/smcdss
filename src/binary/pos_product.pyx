@@ -10,54 +10,12 @@ $Rev: 152 $
 $Date: 2011-10-10 10:51:51 +0200 (Mo, 10 Okt 2011) $
 """
 
-import cython
 import numpy
 cimport numpy
 
 import utils
 import binary.product
 import binary.wrapper
-
-def _posproduct_all(param, U=None, gamma=None):
-    """ 
-        All-purpose routine for sampling and point-wise evaluation.
-        \param U uniform variables
-        \param param parameters
-        \return binary variables
-    """
-    cdef int size, d, k, i
-    logp, logq, logc = param['logp'], param['logq'], param['logc']
-    if U is not None:
-        size = U.shape[0]
-        d = U.shape[1]
-        gamma = numpy.empty((size, U.shape[1]), dtype=bool)
-        logU = numpy.log(U)
-
-    if gamma is not None:
-        size = gamma.shape[0]
-        d = gamma.shape[1]
-
-    L = numpy.zeros(size, dtype=float)
-
-    for k in xrange(size):
-
-        for i in xrange(d):
-            # Compute log conditional probability that gamma(i) is one
-            logcprob = logp[i]
-            if not gamma[k, :i].any(): logcprob -= logc[i]
-
-            # Generate the ith entry
-            if U is not None: gamma[k, i] = logU[k, i] < logcprob
-
-            # Add to log conditional probability
-            if gamma[k, i]:
-                L[k] += logcprob
-            else:
-                L[k] += logq[i]
-                if not gamma[k, :i].any(): L[k] += logc[i + 1] - logc[i]
-
-    return gamma, L
-
 
 class PosProductBinary(binary.product.ProductBinary):
     """ Binary parametric family with independent components and positive support."""
@@ -69,9 +27,6 @@ class PosProductBinary(binary.product.ProductBinary):
             \param name name
             \param long_name long name
         """
-
-        if cython.compiled: print "Yep, I'm compiled."
-        else: print "Just a lowly interpreted script."
 
         # link to python wrapper
         if py_wrapper is None: py_wrapper = binary.wrapper.pos_product()
@@ -97,7 +52,58 @@ class PosProductBinary(binary.product.ProductBinary):
         self.param.update(dict(logp=numpy.log(p), logq=numpy.log(1 - p), logc=logc))
 
     def __str__(self):
-        return utils.format.format_vector(self.p, 'p') + utils.format.format_vector(self.mean, 'mean')
+        return 'p:\n' + repr(self.p) + 'mean:\n' + repr(self.mean)
+
+    @classmethod
+    def _posproduct_all(cls,
+                        param, U=None, gamma=None):
+        """ 
+            All-purpose routine for sampling and point-wise evaluation.
+            \param U uniform variables
+            \param param parameters
+            \return binary variables
+        """
+        cdef int size, d, k, i
+        logp, logq, logc = param['logp'], param['logq'], param['logc']
+        if U is not None:
+            size = U.shape[0]
+            d = U.shape[1]
+            gamma = numpy.empty((size, U.shape[1]), dtype=bool)
+            logU = numpy.log(U)
+    
+        if gamma is not None:
+            size = gamma.shape[0]
+            d = gamma.shape[1]
+    
+        L = numpy.zeros(size, dtype=float)
+    
+        for k in xrange(size):
+    
+            for i in xrange(d):
+                # Compute log conditional probability that gamma(i) is one
+                logcprob = logp[i]
+                if not gamma[k, :i].any(): logcprob -= logc[i]
+    
+                # Generate the ith entry
+                if U is not None: gamma[k, i] = logU[k, i] < logcprob
+    
+                # Add to log conditional probability
+                if gamma[k, i]:
+                    L[k] += logcprob
+                else:
+                    L[k] += logq[i]
+                    if not gamma[k, :i].any(): L[k] += logc[i + 1] - logc[i]
+    
+        return gamma, L
+
+    @classmethod
+    def random(cls, d):
+        """ 
+            Construct a random product model for testing.
+            \param cls class
+            \param d dimension
+        """
+        return cls(0.01 + numpy.random.random(d) * 0.1)
 
     def _getP(self):
         """ Get p-vector of instance. \return p-vector """

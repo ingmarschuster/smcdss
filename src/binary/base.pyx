@@ -15,6 +15,7 @@ $Date: 2011-10-10 10:51:51 +0200 (Mo, 10 Okt 2011) $
 import sys
 import numpy
 import utils
+from utils.data import calc_cov
 
 try: import pp
 except: print "error loading parallel python: ", sys.exc_info()[0]
@@ -43,6 +44,9 @@ class BaseBinary(object):
 
         #self._v2m_perm = None
         #self._m2v_perm = None
+
+    def __str__(self):
+        return 'base class'
 
     def pmf(self, gamma, job_server=None):
         """ 
@@ -81,7 +85,7 @@ class BaseBinary(object):
                 L[start:end] = job()
         else:
             # no job server
-            L = self.pp_depfuncs['lpmf'](gamma, param=self.param)
+            L = self.py_wrapper.lpmf(gamma, param=self.param)
 
         if size == 1: return L[0]
         else: return L
@@ -113,7 +117,7 @@ class BaseBinary(object):
                 Y[start:end] = job()
         else:
             # no job server
-            Y = self.pp_depfuncs['rvs'](U, param=self.param)
+            Y = self.py_wrapper.rvs(U, param=self.param)
 
         #if self.m2v_perm is not None:
         #    Y = Y[:, self.m2v_perm]
@@ -169,14 +173,18 @@ class BaseBinary(object):
         """
         if self.hasPP:
             job_server = pp.Server(ncpus='autodetect', ppservers=())
-            print 'running %d cpus' % job_server.get_ncpus()
+            print 'rvstest running on %d cpus...\n' % job_server.get_ncpus()
         else:
             job_server = None
-        X, w = self.rvslpmf(n, job_server)
-        #assert (w == self.lpmf(X)).all()
-        sample = utils.data.data(X=X, w=w)
-        return utils.format.format(sample.mean, 'sample (n = %i) mean' % n) + \
-               utils.format.format(sample.cor, 'sample (n = %i) correlation' % n)
+
+        X = self.rvs(n, job_server)
+
+        info = {'mean':repr(numpy.average(X, axis=0)),
+                'corr':repr(numpy.corrcoef(X, rowvar=0)), 'n':n}
+
+        return ("sample (n = %(n)d) mean:\n%(mean)s\n" +
+                "sample (n = %(n)d) correlation:\n%(corr)s") % info
+
 
     def marginals(self):
         """
@@ -184,11 +192,31 @@ class BaseBinary(object):
             \remark Evaluation of the marginals requires exponential time. Do not do it.
             \return a string representation of the marginals 
         """
-        sample = utils.data.data()
+
+        # enumerate state space
+        X = list()
         for dec_vector in range(2 ** self.d):
-            bin_vector = utils.format.dec2bin(dec_vector, self.d)
-            sample.append(bin_vector, self.lpmf(bin_vector))
-        return sample
+            bin_vector = dec2bin(dec_vector, self.d)
+            X.append(bin_vector)
+        X = numpy.array(X)
+
+        if self.hasPP: job_server = pp.Server(ncpus='autodetect', ppservers=())
+        else: job_server = None
+
+        lpmf = self.lpmf(X, job_server=job_server)
+
+        # compute weighted mean and correlation
+        weights = numpy.exp(lpmf - lpmf.max()); weights /= weights.sum()
+        mean = numpy.average(X, axis=0, weights=weights)
+
+        cov = (numpy.dot(X.T, weights[:, numpy.newaxis] * X) - numpy.outer(mean, mean)) / (1 - numpy.inner(weights, weights).sum())
+        var = cov.diagonal()
+        cor = cov / numpy.sqrt(numpy.outer(var, var))
+
+        info = {'mean': repr(mean), 'corr': repr(cor)}
+
+        return  ("exact mean:\n%(mean)s\n" +
+                 "exact correlation:\n%(corr)s") % info
 
     """
     def getv2m(self):
@@ -225,7 +253,6 @@ class BaseBinary(object):
     mean = property(fget=getMean, doc="mathematical mean")
     r = property(fget=getRandom, doc="random components")
 
-
 def _parts_job_server(size, ncpus):
     """
         Partitions a load to pass it to multiple cpus.
@@ -249,3 +276,32 @@ def _check_job_server(size, job_server):
         ncpus = job_server.get_ncpus()
         if ncpus == 0: job_server = None
     return ncpus, job_server
+
+def bin2str(bin):
+    """
+        Converts a boolean array to a string representation.
+        \param bin boolean array 
+    """
+    return ''.join([str(i) for i in numpy.array(bin, dtype=int)])
+
+def bin2dec(bin):
+    """
+        Converts a boolean array into an integer.
+        \param bin boolean array 
+    """
+    return long(bin2str(bin), 2)
+
+def dec2bin(n, d=0):
+    """
+        Converts an integer into a boolean array containing its binary representation.
+        \param n integer
+        \param d dimension of boolean vector
+    """
+    bin_vector = []
+    while n > 0:
+        if n % 2: bin_vector.append(True)
+        else: bin_vector.append(False)
+        n = n >> 1
+    while len(bin_vector) < d: bin_vector.append(False)
+    bin_vector.reverse()
+    return numpy.array(bin_vector)

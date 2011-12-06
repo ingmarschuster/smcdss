@@ -135,7 +135,7 @@ class ParticleSystem(object):
         # Check for minimum problem size.
         if self.d < v['DATA_MIN_DIM']:
             self.rho = 1.0
-            self.X = numpy.array([utils.format.dec2bin(dec, self.d) for dec in xrange(2 ** self.d)])
+            self.X = numpy.array([utils.aux.dec2bin(dec, self.d) for dec in xrange(2 ** self.d)])
             self.log_f = self.f.lpmf(self.X, self.job_server)
             self.log_W = self.log_f
             return
@@ -252,12 +252,12 @@ class ParticleSystem(object):
 
         # update rho and and log weights
         if self.rho + alpha > 1.0: alpha = 1.0 - self.rho
-        utils.format.progress(ratio=self.rho + alpha, last_ratio=self.rho)
+        utils.aux.progress(ratio=self.rho + alpha, last_ratio=self.rho)
         self.rho += alpha
         self.log_W += alpha * self.log_f
 
         if self.verbose:
-            utils.format.progress(ratio=self.rho, text='\n')
+            utils.aux.progress(ratio=self.rho, text='\n')
             print '\n' + str(self) + '\n'
 
 

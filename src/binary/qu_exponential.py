@@ -70,7 +70,7 @@ class QuExpBinary(product.ProductBinary):
         return QuExpBinary(A)
 
     def __str__(self):
-        return utils.format.format_matrix(self.A, 'A')
+        return 'A:\n' + sutils.auxelf.A
 
     def _getD(self):
         """ Get dimension of instance. \return dimension """

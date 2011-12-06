@@ -20,7 +20,7 @@ import time
 
 class GaussianCopulaBinary(product.ProductBinary):
     """ Binary parametric family obtained via dichotomizing a multivariate Gaussian. """
-   
+
     def __init__(self, p, R, verbose=False):
         """ 
             Constructor.
@@ -59,7 +59,7 @@ class GaussianCopulaBinary(product.ProductBinary):
         return cls(p, R)
 
     def __str__(self):
-        return utils.format.format(self.p, 'p') + '\n' + utils.format.format(self.R, 'R')
+        return 'p:\n' + self.p + '\nR:\n' + self.R
 
     @classmethod
     def independent(cls, p):
@@ -98,7 +98,7 @@ class GaussianCopulaBinary(product.ProductBinary):
             \param param parameters
         """
         self.param['R'] = sample.getCor(weight=True)
-        newP = sample.getMean(weight=True)       
+        newP = sample.getMean(weight=True)
         self.param['p'] = (1 - lag) * newP + lag * self.param['p']
 
         ## mean of hidden stats.normal distribution

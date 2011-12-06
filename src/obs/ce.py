@@ -63,13 +63,13 @@ def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, job_serv
         r = (model.d - len(model.getRandom(0.05 + 0.5 / (step + 1)))) / float(model.d)
 
         # show progress bar
-        utils.format.progress(r, ' %02i, %03i, obj: %.1f, time %s' % (step, len(model.r), best_obj, utils.format.time(time.time() - t)))
+        utils.aux.progress(r, ' %02i, %03i, obj: %.1f, time %s' % (step, len(model.r), best_obj, utils.aux.time(time.time() - t)))
 
         # check if dimension is sufficiently reduced
         if len(model.r) < bf:
             v = solve_bf(f=f, best_obj=best_obj, gamma=best_soln, index=model.r)
             best_obj, best_soln = v['obj'], v['soln']
-            if verbose: utils.format.progress(1.0, ' %02i, %03i, obj: %.1f, time %s' % (step + 1, len(model.r), best_obj, utils.format.time(time.time() - t)))
+            if verbose: utils.aux.progress(1.0, ' %02i, %03i, obj: %.1f, time %s' % (step + 1, len(model.r), best_obj, utils.aux.time(time.time() - t)))
             break
         d.clear(fraction=elite)
         

@@ -232,7 +232,7 @@ class Stat(object):
             \return system of all non-empty subsets.
         """
         B = numpy.empty(shape=(2 ** d - 1, d), dtype=bool)
-        for dec in xrange(2 ** d - 1): B[dec, :] = (utils.format.dec2bin(dec + 1, d))
+        for dec in xrange(2 ** d - 1): B[dec, :] = (utils.aux.dec2bin(dec + 1, d))
         return B
 
 
@@ -568,12 +568,12 @@ def G_max(s, log_ratio):
     """
     n_streams = log_ratio.shape[0]
     # initialize with non-empty subset
-    gamma_argmax = utils.format.dec2bin(1, n_streams)
+    gamma_argmax = utils.aux.dec2bin(1, n_streams)
     G_time_argmax, G_max_value = W_max(s, gamma_argmax, log_ratio)
     
     # loop over all non-empty subsets
     for dec in xrange(2, 2 ** n_streams):
-        gamma = utils.format.dec2bin(dec, n_streams)
+        gamma = utils.aux.dec2bin(dec, n_streams)
         W_time_argmax, W_max_value = W_max(s, gamma, log_ratio)
         # check for larger value
         if W_max_value > G_max_value:
@@ -602,11 +602,11 @@ def V_max(s, log_ratio):
     n_streams = log_ratio.shape[0]
     
     # initialize with non-empty subset
-    likelihood = V_all(s, utils.format.dec2bin(1, n_streams), log_ratio)
+    likelihood = V_all(s, utils.aux.dec2bin(1, n_streams), log_ratio)
     
     # loop over all non-empty subsets
     for dec in xrange(2, 2 ** n_streams):
-        gamma = utils.format.dec2bin(dec, n_streams)
+        gamma = utils.aux.dec2bin(dec, n_streams)
         likelihood = numpy.maximum(V_all(s, gamma, log_ratio), likelihood)
     return likelihood
 
@@ -634,7 +634,7 @@ class ChangePointMonitor(object):
         # non-empty subsets
         self.B = list()
         for dec in xrange(1, 2 ** self.d):
-            self.B.append(utils.format.dec2bin(dec, self.d))
+            self.B.append(utils.aux.dec2bin(dec, self.d))
         self.B = numpy.array(self.B)
         
         # current time
@@ -675,8 +675,8 @@ class ChangePointMonitor(object):
         g = stats.norm.pdf(data, loc=self.loc + self.shift, scale=self.scale)
         f = stats.norm.pdf(data, loc=self.loc, scale=self.scale)
         if self.verbose:
-            print utils.format.format(g, 'g')
-            print utils.format.format(f, 'f')
+            print utils.aux.format(g, 'g')
+            print utils.aux.format(f, 'f')
         
         # append log likelihood ratios
         log_ratio = numpy.log(g + 1e-50) - numpy.log(f + 1e-50)
@@ -705,9 +705,9 @@ class ChangePointMonitor(object):
         self.V_max_subset = exp_normalize(self.V_max_subset)
         
         if self.verbose:
-            print utils.format.format(self.V_per_subset, 'V per subset')
-            print utils.format.format(self.V_max_stream, 'max streams V')
-            print utils.format.format(self.V_max_subset, 'normalized max subset V')
+            print utils.aux.format(self.V_per_subset, 'V per subset')
+            print utils.aux.format(self.V_max_stream, 'max streams V')
+            print utils.aux.format(self.V_max_subset, 'normalized max subset V')
 
         # maximum over changepoints (most likely affected subset)
         W_index = numpy.argmax(self.V_max_subset) # argmax over time
@@ -743,8 +743,8 @@ class ChangePointMonitor(object):
         else: self.G_max_stream = self.t + 1
         
         if self.verbose:
-            print utils.format.format(V_per_stream, 'v per streams')            
-            print utils.format.format(self.V_max_stream, 'normalized max streams V')
+            print utils.aux.format(V_per_stream, 'v per streams')            
+            print utils.aux.format(self.V_max_stream, 'normalized max streams V')
         
         # maximum over changepoints (most likely affected subset)
         W_index = numpy.argmax(self.V_max_stream) # argmax over time
@@ -771,8 +771,8 @@ class ChangePointMonitor(object):
         self.S_bayes = numpy.dot(self.B.T, self.bayes_all_subsets[:, :-1]).sum(axis=1)
         
         if self.verbose:
-            print utils.format.format(self.V_bayes, 'marginal time')
-            print utils.format.format(self.S_bayes, 'marginals subsets')
+            print utils.aux.format(self.V_bayes, 'marginal time')
+            print utils.aux.format(self.S_bayes, 'marginals subsets')
 
         # compute Bayes estimator
         if  numpy.argmax(self.V_bayes) < self.t:

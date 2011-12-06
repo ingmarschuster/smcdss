@@ -6,7 +6,6 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
 import os
-import shutil
 import numpy
 
 # set C path for windows
@@ -34,9 +33,3 @@ setup(
   cmdclass={'build_ext': build_ext},
   ext_modules=ext_modules
 )
-
-# move C files
-for filename in os.listdir('binary'):
-    if filename[-2:] == '.c':
-        shutil.move(os.path.join('binary', filename),
-                    os.path.join(build_temp, 'binary', filename))

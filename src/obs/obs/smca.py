@@ -50,13 +50,13 @@ def solve_smca(f, v, verbose=True):
         if best_obj < current_obj:
             best_soln = current_soln
             best_obj = current_obj
-        if verbose: utils.format.progress(r, ' %03i, objective: %.1f, time %s' % (len(model.r), best_obj, utils.format.time(time.time() - t)))
+        if verbose: utils.aux.progress(r, ' %03i, objective: %.1f, time %s' % (len(model.r), best_obj, utils.aux.time(time.time() - t)))
 
         # check if dimension is sufficiently reduced
         if len(model.r) < bf:
             v = solve_bf(f=f, best_obj=best_obj, gamma=numpy.array([x > 0.5 for x in model.p]), index=model.r)
             best_obj, best_soln = v['obj'], v['soln']
-            if verbose: utils.format.progress(1.0, ' %03i, objective: %.1f, time %s' % (len(model.r), best_obj, utils.format.time(time.time() - t)))
+            if verbose: utils.aux.progress(1.0, ' %03i, objective: %.1f, time %s' % (len(model.r), best_obj, utils.aux.time(time.time() - t)))
             break
 
         ps.fit_proposal()

@@ -210,7 +210,7 @@ def import_glover_lib():
             print '%s\t d=%d' % (filename + chr(97 + problem), d)
             a = file.read()
             a = a.split('\n')
-            while not utils.format.isnumeric(a[-1].strip().split(' ')[0]):
+            while not utils.aux.isnumeric(a[-1].strip().split(' ')[0]):
                 a = a[:-1]
             a = ''.join(a)
             a = a.replace('\n', '').replace('\r', '')

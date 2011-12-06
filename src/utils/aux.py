@@ -4,17 +4,32 @@
 """
 Formatting console output.
 """
+from repr import repr
 
 """
-@namespace utils.format
+@namespace utils.aux
 $Author$
 $Rev$
 $Date$
 @details
 """
 
-import numpy, datetime
+import numpy
+import datetime
 import sys
+
+def set_array_layout():
+    numpy.set_printoptions(linewidth=300, suppress=True)
+    numpy.set_string_function(f=format_d2)
+
+def format_d2(a):
+    if len(a.shape) == 1: return format_d1(a)
+    return ''.join([format_d1(x) for x in a])
+
+def format_d1(a):
+    return '[' + ' '.join([('%.4f' % [x, 0][abs(x) < 1e-4]).rjust(10) for x in a]) + ' ]\n'
+
+
 
 def format(X, name=''):
     """
@@ -96,3 +111,8 @@ def progress(ratio, text=None, ticks=50, last_ratio=0):
     sys.stdout.flush()
     return ratio
 
+def inv_logit(x):
+    return 1 / (1 + np.exp(-x))
+
+def logit(p):
+    return np.log(p / (1 - p))

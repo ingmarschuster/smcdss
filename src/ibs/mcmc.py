@@ -108,7 +108,7 @@ class MarkovChain(object):
         print "\n%s: %i steps burn in..." % (self.kernel.name, n_burn_in)
         for i in xrange(n_burn_in):
             self.x, self.log_f_x, move, eval = self.kernel.rvs(self.x, self.log_f_x)
-            last_ratio = utils.format.progress(i / float(n_burn_in), last_ratio=last_ratio)
+            last_ratio = utils.aux.progress(i / float(n_burn_in), last_ratio=last_ratio)
         if not self.verbose: print "\n%s: %i steps MCMC..." % (self.kernel.name, self.max_evals)
 
     def do_step(self):
@@ -132,7 +132,7 @@ class MarkovChain(object):
             else:
                 t += 1.0
             if not self.verbose:
-                last_ratio = utils.format.progress(ratio=self.n_evals / self.max_evals, last_ratio=last_ratio)
+                last_ratio = utils.aux.progress(ratio=self.n_evals / self.max_evals, last_ratio=last_ratio)
 
         mean /= float(self.chunk_size)
         cov /= float(self.chunk_size)

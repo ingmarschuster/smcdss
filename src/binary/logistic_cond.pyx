@@ -13,7 +13,6 @@ $Date: 2011-11-03 11:42:31 +0100 (jeu., 03 nov. 2011) $
 
 import numpy
 cimport numpy
-import cython
 
 cdef extern from "math.h":
     double exp(double)
@@ -27,48 +26,6 @@ import utils
 import binary.product
 import binary.qu_exponential
 import binary.wrapper
-
-def _logistic_cond_all(numpy.ndarray[dtype=numpy.float64_t, ndim=2] Beta,
-                       numpy.ndarray[dtype=numpy.float64_t, ndim=2] U=None,
-                       numpy.ndarray[dtype=numpy.int8_t, ndim=2] gamma=None):
-    """
-        All-purpose routine for sampling and point-wise evaluation.
-        \param U uniform variables
-        \param param parameters
-        \return binary variables
-    """
-    cdef int d = Beta.shape[0]
-    cdef int k, i, size
-    cdef double logp = 0.0
-    cdef double sum
-
-    if U is not None:
-        size = U.shape[0]
-        gamma = numpy.empty((size, U.shape[1]), dtype=numpy.int8)
-
-    if gamma is not None:
-        size = gamma.shape[0]
-
-    L = numpy.zeros(size, dtype=numpy.float64)
-
-    for k in xrange(size):
-
-        for i in xrange(0, d):
-            # Compute log conditional probability that gamma(i) is one
-            sum = Beta[i, i]
-            for j in xrange(i):
-                sum += Beta[i, j] * gamma[k, j]
-            logcprob = -log(1 + exp(-sum))
-
-            # Generate the ith entry
-            if U is not None: gamma[k, i] = log(U[k, i]) < logcprob
-
-            # Add to log conditional probability
-            L[k] += logcprob
-            if not gamma[k, i]: L[k] -= sum
-
-    return numpy.array(gamma, dtype=bool), L
-
 
 class LogisticCondBinary(binary.product.ProductBinary):
     """ Binary parametric family with logistic conditionals. """
@@ -87,9 +44,6 @@ class LogisticCondBinary(binary.product.ProductBinary):
         logistic = lambda x: 1.0 / (1.0 + numpy.exp(-x))
         p = logistic(numpy.diagonal(Beta))
 
-        if cython.compiled: print "Yep, I'm compiled."
-        else: print "Just a lowly interpreted script."
-
         # link to python wrapper
         if py_wrapper is None: py_wrapper = binary.wrapper.logistic_cond()
 
@@ -104,6 +58,51 @@ class LogisticCondBinary(binary.product.ProductBinary):
 
         self.param.update({'Beta':Beta})
 
+    def __str__(self):
+        return 'Beta:\n' + repr(self.param['Beta'])
+
+    @classmethod
+    def _logistic_cond_all(cls,
+                           numpy.ndarray[dtype=numpy.float64_t, ndim=2] Beta,
+                           numpy.ndarray[dtype=numpy.float64_t, ndim=2] U=None,
+                           numpy.ndarray[dtype=numpy.int8_t, ndim=2] gamma=None):
+        """
+            All-purpose routine for sampling and point-wise evaluation.
+            \param U uniform variables
+            \param param parameters
+            \return binary variables
+        """
+        cdef int d = Beta.shape[0]
+        cdef int k, i, size
+        cdef double logp = 0.0
+        cdef double sum
+    
+        if U is not None:
+            size = U.shape[0]
+            gamma = numpy.empty((size, U.shape[1]), dtype=numpy.int8)
+    
+        if gamma is not None:
+            size = gamma.shape[0]
+    
+        L = numpy.zeros(size, dtype=numpy.float64)
+    
+        for k in xrange(size):
+    
+            for i in xrange(0, d):
+                # Compute log conditional probability that gamma(i) is one
+                sum = Beta[i, i]
+                for j in xrange(i):
+                    sum += Beta[i, j] * gamma[k, j]
+                logcprob = -log(1 + exp(-sum))
+    
+                # Generate the ith entry
+                if U is not None: gamma[k, i] = log(U[k, i]) < logcprob
+    
+                # Add to log conditional probability
+                L[k] += logcprob
+                if not gamma[k, i]: L[k] -= sum
+    
+        return numpy.array(gamma, dtype=bool), L
 
     @classmethod
     def independent(cls, p):
@@ -201,9 +200,6 @@ class LogisticCondBinary(binary.product.ProductBinary):
     def _getD(self):
         """ Get dimension. \return dimension """
         return self.Beta.shape[0]
-
-    def __str__(self):
-        return utils.format.format_matrix(self.param['Beta'], 'Beta')
 
     def getBeta(self):
         """ Get Beta matrix. \return Beta-matrix """
@@ -512,8 +508,8 @@ def moments2corr(M):
 def example():
     d = 4
     m, R = moments2corr(random_problem(d))
-    print utils.format.format(m)
-    print utils.format.format(R)
+    print m
+    print R
     Beta = adjust_Beta(corr2moments(m, R))
     l = LogisticCondBinary(Beta)
     print l.marginals()

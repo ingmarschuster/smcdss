@@ -15,7 +15,7 @@ $Date$
 
 import pickle
 from numpy import *
-from utils.format import *
+from utils.aux import *
 
 class data(object):
     def __init__(self, X=[], w=[]):
@@ -362,6 +362,7 @@ def calc_mean(X, w=None):
         \param w positive weights
         \return mean
     """
+    #mean = numpy.average(X, axis=0, weights=numpy.exp(w - w.max()))
     if w is None:
         return X.sum(axis=0) / float(X.shape[0])
     else:

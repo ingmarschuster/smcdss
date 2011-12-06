@@ -10,48 +10,12 @@ $Rev: 152 $
 $Date: 2011-10-10 10:51:51 +0200 (Mo, 10 Okt 2011) $
 """
 
-import cython
 import numpy
 cimport numpy
 
 import utils
 import binary.base
 import binary.wrapper
-
-
-def _lpmf(numpy.ndarray[dtype=numpy.int8_t, ndim=2] gamma,
-          numpy.ndarray[dtype=numpy.float64_t, ndim=1] p):
-    """ 
-        Log-probability mass function.
-        \param gamma binary vector
-        \param param parameters
-        \return log-probabilities
-    """
-    cdef int k
-    cdef double prob, m
-
-    L = numpy.empty(gamma.shape[0])
-    for k in xrange(gamma.shape[0]):
-        prob = 1.0
-        for i, m in enumerate(p):
-            if gamma[k, i]: prob *= m
-            else: prob *= (1 - m)
-        L[k] = prob
-    return numpy.log(L)
-
-def _rvs(U, param):
-    """ 
-        Generates a random variable.
-        \param U uniform variables
-        \param param parameters
-        \return binary variables
-    """
-    p = param['p']
-    Y = numpy.empty((U.shape[0], U.shape[1]), dtype=bool)
-    for k in xrange(U.shape[0]):
-        Y[k] = p > U[k]
-    return Y
-
 
 class ProductBinary(binary.base.BaseBinary):
     """ Binary parametric family with independent components."""
@@ -63,9 +27,6 @@ class ProductBinary(binary.base.BaseBinary):
             \param name name
             \param long_name long_name
         """
-
-        if cython.compiled: print "Yep, I'm compiled."
-        else: print "Just a lowly interpreted script."
 
         # link to python wrapper
         if py_wrapper is None: py_wrapper = binary.wrapper.product()
@@ -85,7 +46,44 @@ class ProductBinary(binary.base.BaseBinary):
         self.param.update({'p':p})
 
     def __str__(self):
-        return utils.format.format_vector(self.p, 'p')
+        return 'p:\n%s' % repr(self.p)
+
+    @classmethod
+    def _lpmf(cls,
+              numpy.ndarray[dtype=numpy.int8_t, ndim=2] gamma,
+              numpy.ndarray[dtype=numpy.float64_t, ndim=1] p):
+        """ 
+            Log-probability mass function.
+            \param gamma binary vector
+            \param param parameters
+            \return log-probabilities
+        """
+        cdef int k
+        cdef double prob, m
+
+        L = numpy.empty(gamma.shape[0])
+        for k in xrange(gamma.shape[0]):
+            prob = 1.0
+            for i, m in enumerate(p):
+                if gamma[k, i]: prob *= m
+                else: prob *= (1 - m)
+            L[k] = prob
+        return numpy.log(L)
+
+    @classmethod
+    def _rvs(cls, U, param):
+        """ 
+            Generates a random variable.
+            \param U uniform variables
+            \param param parameters
+            \return binary variables
+        """
+        p = param['p']
+        Y = numpy.empty((U.shape[0], U.shape[1]), dtype=bool)
+        for k in xrange(U.shape[0]):
+            Y[k] = p > U[k]
+        return Y
+
 
     @classmethod
     def random(cls, d):
@@ -94,7 +92,7 @@ class ProductBinary(binary.base.BaseBinary):
             \param cls class
             \param d dimension
         """
-        return cls(numpy.random.random(d))
+        return cls(0.01 + numpy.random.random(d) * 0.98)
 
     @classmethod
     def uniform(cls, d):
