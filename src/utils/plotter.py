@@ -29,9 +29,9 @@ def plot4(f, path, models=None):
         Compares f to its binary model approximations. Generates a pseudo sample
         from f to initialize the binary models. Plots the true f and histograms
         obtained from the models. Works only for dimensions up to 5.
-        @param f target function
-        @param outfile output file
-        @param models list of binary models
+        \param f target function
+        \param outfile output file
+        \param models list of binary models
     """
 
     m = 5000 # number of pseudo samples from f

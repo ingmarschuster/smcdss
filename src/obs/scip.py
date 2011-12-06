@@ -44,9 +44,9 @@ class scip(ubqo.ubqo):
 def solve_scip(f, testsuite, problem, tl=None):
     """
         Solve UBQO using SCIP and ZIMPL from the ZIB Optimization Suite http://zibopt.zib.de.
-        @param f quadratic exponential model.
-        @return best_obj maximum
-        @return best_soln maximizer
+        \param f quadratic exponential model.
+        \return best_obj maximum
+        \return best_soln maximizer
     """
 
     t = time.time()

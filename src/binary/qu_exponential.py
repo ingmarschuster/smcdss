@@ -1,31 +1,44 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""
-Binary model with exponential quadratic multilinear form.
-"""
+""" Binary parametric family with exponential quadratic form. """
 
 """
-@namespace binary.qu_exponential_model
+\namespace binary.qu_exponential
 $Author$
 $Rev$
 $Date$
-@details
 """
 
-from binary import *
+import numpy
+import product
+import scipy.linalg
+import scipy.stats
+import logistic_cond
+import utils
 
-class QuExpBinary(ProductBinary):
-    """ Binary model with exponential quadratic multilinear form. """
+def _lpmf(gamma, param):
+    """ 
+        Log-probability mass function.
+        \param gamma binary vector
+        \param param parameters
+        \return log-probabilities
+    """
+    L = numpy.empty(gamma.shape[0])
+    for k in xrange(gamma.shape[0]):
+        L[k] = float(numpy.dot(numpy.dot(gamma[k], param['A']), gamma[k].T))
+    return L
 
-    def __init__(self, A, name='quadratic exponential binary',
-                 longname='Binary model with exponential quadratic multilinear form.'):
+class QuExpBinary(product.ProductBinary):
+    """ Binary parametric family with quadratic exponential term. """
+
+    def __init__(self, A, name='quadratic exponential binary', long_name=__doc__):
         """ 
             Constructor.
-            @param A matrix of coefficients
+            \param A matrix of coefficients
         """
 
-        ProductBinary.__init__(self, name=name, longname=longname)
+        product.ProductBinary.__init__(self, name=name, long_name=long_name)
         self.f_lpmf = _lpmf
         self.f_rvs = None
         self.f_rvslpmf = None
@@ -34,26 +47,24 @@ class QuExpBinary(ProductBinary):
     @classmethod
     def independent(cls, p):
         """
-            Constructs a log-linear-binary model with independent components.
-            @param cls class 
-            @param p mean
+            Constructs a quadratic exponential family with independent components.
+            \param cls class
+            \param p mean
         """
-        d = p.shape[0]
-        logOdds = numpy.log(p / (numpy.ones(d) - p))
-        return cls(numpy.diag(logOdds))
+        return cls(numpy.diag(numpy.log(p / (1 - p))))
 
     @classmethod
     def random(cls, d, scale=0.5):
         """
-            Constructs a random log-linear-binary model for testing.
-            @param cls class 
-            @param d dimension
-            @param scale standard deviation of the off-diagonal elements
+            Constructs a random quadratic exponential family for testing.
+            \param cls class 
+            \param d dimension
+            \param scale standard deviation of the off-diagonal elements
         """
         p = numpy.random.random(d)
         logratio = numpy.log(p / (1 - p))
         A = numpy.diag(logratio)
-        for i in range(d):
+        for i in xrange(d):
             if scale > 0.0: A[i, :i] = numpy.random.normal(scale=scale, size=i)
 
         return QuExpBinary(A)
@@ -61,28 +72,8 @@ class QuExpBinary(ProductBinary):
     def __str__(self):
         return utils.format.format_matrix(self.A, 'A')
 
-    def __explore(self):
-        """ Find the maximmum of the log-probability.
-            @deprecated method is never used.
-        """
-        ## level of logarithm
-        self.loglevel = -numpy.inf
-        for dec in range(2 ** self.d):
-            bin = utils.format.dec2bin(dec, self.d)
-            eval = self.lpmf(bin)
-            if eval > self.loglevel: self.loglevel = eval
-
-    def pmf(self, gamma):
-        """ Unnormalized probability mass function.
-            @param gamma binary vector
-        """
-        if not hasattr(self, 'loglevel'): self.__explore()
-        return numpy.exp(self.lpmf(gamma) - self.loglevel)
-
-    def getD(self):
-        """ Get dimension.
-            @return dimension 
-        """
+    def _getD(self):
+        """ Get dimension of instance. \return dimension """
         return self.param['A'].shape[0]
 
     def getA(self):
@@ -90,16 +81,6 @@ class QuExpBinary(ProductBinary):
 
     A = property(fget=getA, doc="A")
 
-def _lpmf(gamma, param):
-    """
-        Log probability mass function of the underlying quadratic exponential
-        model.
-        @return random variable
-    """
-    L = numpy.empty(gamma.shape[0])
-    for k in xrange(gamma.shape[0]):
-        L[k] = float(numpy.dot(numpy.dot(gamma[k], param['A']), gamma[k].T))
-    return L
 
 def calc_marginal(A):
     """
@@ -108,8 +89,8 @@ def calc_marginal(A):
         method is inspired by Cox and Wermuth, A note on the quadratic
         exponential binary distribution, Biometrika 1994, 81, 2, pp. 403-8.
         
-        @param A coefficient matrix
-        @return model the approximate marginal distribution
+        \param A coefficient matrix
+        \return model the approximate marginal distribution
     """
 
     I = range(A.shape[0])
@@ -119,7 +100,7 @@ def calc_marginal(A):
     w = numpy.empty(num)
     p = 0.5
     for j in xrange(num):
-        w[j] = stats.binom.pmf(j, num - 1, p)
+        w[j] = scipy.stats.binom.pmf(j, num - 1, p)
     w = numpy.sqrt(w)
 
     X = numpy.ones((num, 3))
@@ -167,7 +148,7 @@ def calc_marginal(A):
         I.pop(k)
         d = len(I)
 
-    model = logistic_cond_model.LogisticBinary(Beta)
+    model = logistic_cond.LogisticCondBinary(Beta)
     perm.reverse()
     model.v2m_perm = perm
     return model
@@ -176,8 +157,8 @@ def calc_logistic_model(A):
     """
         Constructs a logistic conditional model from a quadratic exponential model by
         repeatedly computing the approximate marginal distributions
-        @param A coefficient matrix
-        @return model a logistic conditional model
+        \param A coefficient matrix
+        \return model a logistic conditional model
     """
     d = A.shape[0]
     Beta = numpy.zeros((d, d))
@@ -188,7 +169,7 @@ def calc_logistic_model(A):
         Beta[i, :i + 1] = b
         perm.append(k)
 
-    model = logistic_cond_model.LogisticBinary(Beta)
+    model = logistic_cond.LogisticCondBinary(Beta)
     model.m2v_perm = perm
     return model
 

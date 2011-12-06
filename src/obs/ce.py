@@ -34,12 +34,12 @@ class ce(ubqo.ubqo):
 
 def solve_ce(f, n=5e4, model=binary.LogisticBinary, lag=0.2, elite=0.2, job_server=None, verbose=True):
     """ Finds a maximum via cross-entropy optimization.
-        @param f function
-        @param n number of particles
-        @param model binary model
-        @param lag parameter update lag
-        @param elite elite fraction
-        @param verbose verbose
+        \param f function
+        \param n number of particles
+        \param model binary model
+        \param lag parameter update lag
+        \param elite elite fraction
+        \param verbose verbose
     """
 
     t = time.time()

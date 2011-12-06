@@ -28,10 +28,10 @@ class sa(ubqo.ubqo):
 def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
     """
         Run simulated annealing optimization.
-        @param f f function
-        @param n number of steps
-        @param m maximum time in minutes
-        @param verbose verbose
+        \param f f function
+        \param n number of steps
+        \param m maximum time in minutes
+        \param verbose verbose
     """
 
     print 'Running simulated annealing...',

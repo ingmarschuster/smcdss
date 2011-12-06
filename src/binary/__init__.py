@@ -1,52 +1,36 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""
-Package containing various kinds of models for multivariate binary data.
-"""
+""" Parametric families for sampling random multivariate binary data. """
 
 """
-@namespace binary
+\namespace binary
 $Author$
 $Rev$
 $Date$
-@details The models are all derived from the base class Binary.
 """
 
 """
-@mainpage Sequential Monte Carlo algorithms on binary spaces
-
-@section binary_sec Binary models
-
-The package @link binary binary @endlink for various binary models.
-
-@section int_sec Integration
-
-The package @link ibs @endlink for Monte Carlo integration.
- 
-@section opt_sec Optimization
-
-The package @link obs @endlink for Monte Carlo optimization.
-"""
-
-CONST_PRECISION = 1e-5
-CONST_ITERATIONS = 50
-CONST_MIN_MARGINAL_PROB = 1e-10
-
-import scipy.stats as stats
-import scipy
+import os
 import numpy
-import utils
-import time
+import pyximport
 
-from product_model import ProductBinary
-from logistic_cond_model import LogisticBinary
-from uniform_model import UniformBinary
+if os.name == 'nt':
+    if os.environ.has_key('CPATH'):
+        os.environ['CPATH'] = os.environ['CPATH'] + numpy.get_include()
+    else:
+        os.environ['CPATH'] = numpy.get_include()
+    mingw_setup_args = { 'options': { 'build_ext': { 'compiler': 'mingw32' } } }
+    pyximport.install(setup_args=mingw_setup_args, build_dir=os.path.curdir)
+else:
+    pyximport.install()
+
+from base import BaseBinary
+from product import ProductBinary
+from logistic_cond import LogisticCondBinary
+from uniform import UniformBinary
 from posterior import Posterior
-
-try:
-    from qu_exponential_model import QuExpBinary
-    from qu_linear_model import QuLinearBinary
-    from gaussian_cop_model import GaussianCopulaBinary
-except:
-    pass
+from qu_exponential import QuExpBinary
+from qu_linear import QuLinearBinary
+from gaussian_copula import GaussianCopulaBinary
+"""

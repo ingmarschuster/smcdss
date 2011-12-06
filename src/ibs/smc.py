@@ -64,8 +64,8 @@ class ParticleSystem(object):
     def __init__(self, v):
         """
             Constructor.
-            @param param parameters
-            @param verbose verbose
+            \param param parameters
+            \param verbose verbose
         """
 
         ## target function
@@ -173,13 +173,13 @@ class ParticleSystem(object):
 
     def __str__(self):
         """
-            @return A string containing the mean of the particle system.
+            \return A string containing the mean of the particle system.
         """
         return '[' + ', '.join(['%.3f' % x for x in self.get_mean()]) + ']'
 
     def get_csv(self):
         """
-            @return A comma separated values of mean, name, evals, time, pd, ac, log_f.
+            \return A comma separated values of mean, name, evals, time, pd, ac, log_f.
         """
         return (','.join(['%.8f' % x for x in self.get_mean()]),
                 ','.join([self.condition.__name__,
@@ -191,22 +191,22 @@ class ParticleSystem(object):
 
     def get_mean(self):
         """
-            @return Mean of the particle system.
+            \return Mean of the particle system.
         """
         return numpy.dot(self.get_nweights(), self.X)
 
     def get_ids(self, x):
         """
-            @param x binary vector.
-            @return Unique id.
+            \param x binary vector.
+            \return Unique id.
         """
         return numpy.dot(self.__k, numpy.array(x, dtype=int))
 
     def get_ess(self, alpha=None):
         """ 
             Computes the effective sample size (ess).
-            @param alpha advance of the geometric bridge
-            @return ess
+            \param alpha advance of the geometric bridge
+            \return ess
         """
         if alpha is None: w = self.log_W
         else:             w = self.log_W + alpha * self.log_f
@@ -217,7 +217,7 @@ class ParticleSystem(object):
     def get_particle_diversity(self):
         """
             Computes the particle diversity.
-            @return particle diversity
+            \return particle diversity
         """
         if True:
             # pd via numpy
@@ -305,7 +305,7 @@ class ParticleSystem(object):
 
     def get_nweights(self):
         """
-            @return Normalized weights.
+            \return Normalized weights.
         """
         w = numpy.exp(self.log_W - max(self.log_W))
         return w / w.sum()

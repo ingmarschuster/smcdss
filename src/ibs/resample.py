@@ -27,7 +27,7 @@ import numpy
 def resample_systematic(w, u):
     """
         Computes the particle indices by systematic resampling.
-        @param w array of weights
+        \param w array of weights
     """
     n = w.shape[0]
     cnw = n * numpy.cumsum(w)
@@ -43,11 +43,11 @@ def resample_systematic(w, u):
 def resample_reductive(w, u, n, f_select):
     """ 
         Computes the particle indices and weights by reductive resampling.
-        @param w weights
-        @param n size of resampled vector
-        @param f_select selection algorithm
-        @return w resampled weights
-        @return index resampled indices
+        \param w weights
+        \param n size of resampled vector
+        \param f_select selection algorithm
+        \return w resampled weights
+        \return index resampled indices
     """
     # select smallest value kappa s.t. sum_j^m min(w_j / kappa, 1) <= n
     kappa = f_select(w.copy(), n)
@@ -99,11 +99,11 @@ def resample_reductive(w, u, n, f_select):
 
 def select_recursive(w, n, l=None, u=None):
     """ Selects kappa via recursive search. 
-        @param w weights
-        @param n target sum
-        @param l lower bound
-        @param u upper bound
-        @return kappa s.t. sum_j^m min(w_j / kappa, 1) <= n
+        \param w weights
+        \param n target sum
+        \param l lower bound
+        \param u upper bound
+        \return kappa s.t. sum_j^m min(w_j / kappa, 1) <= n
     """
     if u is None:
         w.sort()
@@ -118,9 +118,9 @@ def select_recursive(w, n, l=None, u=None):
 
 def select_iterative(w, n):
     """ Selects kappa via bisectional search. 
-        @param w weights
-        @param n target sum
-        @return kappa s.t. sum_j^m min(w_j / kappa, 1) <= n
+        \param w weights
+        \param n target sum
+        \return kappa s.t. sum_j^m min(w_j / kappa, 1) <= n
     """
     w.sort()
     m = w.shape[0]
@@ -135,9 +135,9 @@ def select_iterative(w, n):
 
 def select_linear(w, n):
     """ Selects kappa via backward linear search.
-        @param w weights
-        @param n target sum
-        @return kappa s.t. sum_j^m min(w_j / kappa, 1) <= n
+        \param w weights
+        \param n target sum
+        \return kappa s.t. sum_j^m min(w_j / kappa, 1) <= n
     """
     w.sort()
     m = w.shape[0]
@@ -155,11 +155,11 @@ def select_linear(w, n):
 def get_importance_weights(m=5000, mean=5, sd=5):
     """ Samples from a normal with given mean and standard deviation
         as instrumental function for a standard normal.
-        @param m size of weighted sample
-        @param mean mean of proposal
-        @param sd standard deviation of proposal
-        @return w weights
-        @return x sample
+        \param m size of weighted sample
+        \param mean mean of proposal
+        \param sd standard deviation of proposal
+        \return w weights
+        \return x sample
     """
     x = numpy.random.normal(size=m) * sd + mean
     w = numpy.exp(((1.0 - sd * sd) * x * x - 2.0 * mean * x) / (2.0 * sd * sd))
@@ -168,10 +168,10 @@ def get_importance_weights(m=5000, mean=5, sd=5):
 
 def test_selection(m=5000, n=2500, mean=5, sd=5):
     """ Tests the selection algorithms.
-        @param m size of weighted sample
-        @param n size of resampled system
-        @param mean mean of proposal
-        @param sd standard deviation of proposal
+        \param m size of weighted sample
+        \param n size of resampled system
+        \param mean mean of proposal
+        \param sd standard deviation of proposal
     """
     w, x = get_importance_weights(m, mean, sd)
     for f in [select_linear, select_iterative, select_recursive]:
@@ -181,11 +181,11 @@ def test_selection(m=5000, n=2500, mean=5, sd=5):
 
 def test_resample(f=resample_reductive, m=2500, n=500, mean=5, sd=5, path='/home/cschafer/Bureau/tmp'):
     """ Tests the resampling algorithm.
-        @param f resampling algorithm
-        @param m size of weighted sample
-        @param n size of resampled system
-        @param mean mean of proposal
-        @param sd standard deviation of proposal
+        \param f resampling algorithm
+        \param m size of weighted sample
+        \param n size of resampled system
+        \param mean mean of proposal
+        \param sd standard deviation of proposal
     """
     w1, x1 = get_importance_weights(m, mean, sd)
     w2, index = f(w1.copy(), numpy.random.random(), n, f_select=select_linear)

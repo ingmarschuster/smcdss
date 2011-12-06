@@ -90,7 +90,7 @@ def load_cpd_problem(filename):
 def getRandomSubset(n, k):
     """
         Draw a uniformly random subset of the index set.
-        @return subset
+        \return subset
     """
     if k < 5:
         index = []
@@ -104,7 +104,7 @@ def getRandomSubset(n, k):
 def getPermutation(n):
         """
             Draw a random permutation of the index set [[0...n-1]].
-            @return permutation
+            \return permutation
         """
         perm = range(n)
         for i in reversed(range(1, n)):

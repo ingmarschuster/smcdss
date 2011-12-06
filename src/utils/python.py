@@ -19,7 +19,7 @@ import utils
 def resample(w, u):
     """
         Computes the particle indices by systematic resampling.
-        @param w array of weights
+        \param w array of weights
     """
     n = w.shape[0]
     cnw = n * np.cumsum(w)
@@ -34,9 +34,9 @@ def resample(w, u):
 
 def _logistic_all(param, U=None, gamma=None):
     """ Generates a random variable.
-        @param U uniform variables
-        @param param parameters
-        @return binary variables
+        \param U uniform variables
+        \param param parameters
+        \return binary variables
     """
     Beta = param['Beta']
     if U is not None:

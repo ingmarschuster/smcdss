@@ -16,12 +16,10 @@ with variables regressed on the first column.
 
 import numpy
 import scipy
-import binary
+import base
 
-class Posterior(binary.binary_model.Binary):
-    """
-        Variable selection criterion.
-    """
+class Posterior(base.BaseBinary):
+    """ Posterior distribution of a Bayesian variable selection problem."""
 
     def __init__(self, y, Z, param):
         """ 
@@ -31,8 +29,8 @@ class Posterior(binary.binary_model.Binary):
             \param parameter dictionary
         """
 
-        binary.binary_model.Binary.__init__(self, name='posterior',
-                                            longname='Posterior distribution of a Bayesian variable selection problem.')
+        base.BaseBinary.__init__(self, pp_modules=('numpy', 'scipy.linalg'), pp_depfuncs={'lpmf':_lpmf_bayes},
+                                 name='posterior', long_name=__doc__)
 
         # normalize
         self.Z = numpy.subtract(Z, Z.mean(axis=0))
@@ -68,7 +66,6 @@ class Posterior(binary.binary_model.Binary):
       
             \param parameter dictionary
         """
-        self.f_lpmf = _lpmf_bayes
 
         # prior on beta
         tau = self.param['PRIOR_VAR_DISPERSION']
@@ -100,7 +97,7 @@ class Posterior(binary.binary_model.Binary):
       
             \param parameter dictionary
         """
-        self.f_lpmf = _lpmf_bic
+        self.pp_depfuncs.update({'lpmf':_lpmf_bic})
 
         # constants
         self.param.update({'W': numpy.dot(self.Z.T, self.Z) + 1e-10 * numpy.eye(self.Z.shape[1]),

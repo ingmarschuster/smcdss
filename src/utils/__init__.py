@@ -10,7 +10,6 @@ Utilities.
 $Author$
 $Rev$
 $Date$
-@details
 """
 
 import os
@@ -25,6 +24,7 @@ import pyximport
 
 opts = ['python']
 
+'''
 if os.name == 'nt':
     if os.environ.has_key('CPATH'):
         os.environ['CPATH'] = os.environ['CPATH'] + np.get_include()
@@ -40,6 +40,7 @@ try:
     opts += ['cython']
 except:
     print "cython error:", sys.exc_info()[0]
+'''
 
 def inv_logit(x):
     return 1 / (1 + np.exp(-x))

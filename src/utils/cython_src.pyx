@@ -23,7 +23,7 @@ cdef extern from "math.h":
 def resample(numpy.ndarray[dtype=numpy.float64_t, ndim=1] w, double u):
     """
         Computes the particle indices by systematic resampling.
-        @param w array of weights
+        \param w array of weights
     """
     w = w * w.shape[0]
     cdef int j = 0

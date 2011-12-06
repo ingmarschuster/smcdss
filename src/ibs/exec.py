@@ -128,7 +128,7 @@ def main():
 def run(v):
     """ 
         Run algorithm from specified file and store results.
-        @param v parameters
+        \param v parameters
     """
 
     # read data or group files
@@ -192,7 +192,7 @@ def readData(v):
     """ 
         Reads the data file and adds the posterior distribution to the
         parameters.
-        @param v parameters
+        \param v parameters
     """
     DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_DATA_FILE'])
     if not DATA_FILE[-4:].lower() == '.csv': DATA_FILE += '.csv'
@@ -268,7 +268,7 @@ def readData(v):
 def readGroups(v):
     """ 
         Reads the data file and a group file to set up a random effect model.
-        @param v parameters
+        \param v parameters
     """
     # open the data file to load the marker positions
     DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_DATA_FILE'])
@@ -330,7 +330,7 @@ def readGroups(v):
 def plot(v, verbose=True):
     """ 
         Create pdf-boxplots from run files.
-        @param v parameters
+        \param v parameters
     """
 
     if not os.path.isfile(os.path.join(v['RUN_FOLDER'], 'result.csv')):

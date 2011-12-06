@@ -19,8 +19,8 @@ import sys
 def format(X, name=''):
     """
         Formats a vector or matrix for output on stdout
-        @param X vector or matrix
-        @param name name 
+        \param X vector or matrix
+        \param name name 
     """
     if len(X.shape) == 1: return format_vector(X, name)
     if len(X.shape) == 2: return format_matrix(X, name)
@@ -28,8 +28,8 @@ def format(X, name=''):
 def format_vector(v, name=''):
     """
         Formats a vector for output on stdout
-        @param v vector 
-        @param name name 
+        \param v vector 
+        \param name name 
     """
     if not name == '': name = name + ' =\n'
     return name + '[' + ' '.join([('%.3f' % x).rjust(8) for x in v]) + ' ]\n'
@@ -37,8 +37,8 @@ def format_vector(v, name=''):
 def format_matrix(M, name=''):
     """
         Formats a matrix for output on stdout
-        @param M matrix
-        @param name name 
+        \param M matrix
+        \param name name 
     """
     if not name == '': name = name + ' =\n'
     return name + ''.join([format_vector(x) for x in M])
@@ -46,22 +46,22 @@ def format_matrix(M, name=''):
 def bin2str(bin):
     """
         Converts a boolean array to a string representation.
-        @param bin boolean array 
+        \param bin boolean array 
     """
     return ''.join([str(i) for i in numpy.array(bin, dtype=int)])
 
 def bin2dec(bin):
     """
         Converts a boolean array into an integer.
-        @param bin boolean array 
+        \param bin boolean array 
     """
     return long(bin2str(bin), 2)
 
 def dec2bin(n, d=0):
     """
         Converts an integer into a boolean array containing its binary representation.
-        @param n integer
-        @param d dimension of boolean vector
+        \param n integer
+        \param d dimension of boolean vector
     """
     bin = []
     while n > 0:

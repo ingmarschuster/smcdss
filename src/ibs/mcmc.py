@@ -30,8 +30,8 @@ class mcmc():
 def integrate_mcmc(param):
     """
         Compute an estimate of the expected value via MCMC.
-        @param v parameters
-        @param verbose verbose
+        \param v parameters
+        \param verbose verbose
     """
 
     mc = MarkovChain(param)
@@ -51,12 +51,12 @@ class MarkovChain(object):
     def __init__(self, param):
         """
             Constructor.
-            @param f probability mass function 
-            @param kernel Markov kernel
-            @param q expected number of bits to be flipped
-            @param max_evals maximum number of target evaluations
-            @param step_size number of steps stored before updating the estimator
-            @param verbose verbose
+            \param f probability mass function 
+            \param kernel Markov kernel
+            \param q expected number of bits to be flipped
+            \param max_evals maximum number of target evaluations
+            \param step_size number of steps stored before updating the estimator
+            \param verbose verbose
         """
 
         ## time
@@ -100,7 +100,7 @@ class MarkovChain(object):
     def burn_in(self, n_burn_in=None):
         """
             Run a burn-in period to come closer to the invariant distribution.
-            @param n_burn_in number of steps to burn-in 
+            \param n_burn_in number of steps to burn-in 
         """
 
         if n_burn_in is None: n_burn_in = int(self.max_evals / 100.0)
@@ -173,14 +173,14 @@ class MarkovChain(object):
 class Kernel(stats.rv_discrete):
     """ Wrapper class for Markov kernels. """
 
-    def __init__(self, f, name='Markov kernel', longname='Markov kernel.'):
+    def __init__(self, f, name='Markov kernel', long_name='Markov kernel.'):
         """
             Constructor.
-            @param f log probability mass function of the invariant distribution 
-            @param name name
-            @param longname longname
+            \param f log probability mass function of the invariant distribution 
+            \param name name
+            \param long_name long_name
         """
-        stats.rv_discrete.__init__(self, name=name, longname=longname)
+        stats.rv_discrete.__init__(self, name=name, long_name=long_name)
 
         ## log probability mass function of the invariant distribution 
         self.f = f
@@ -194,8 +194,8 @@ class Kernel(stats.rv_discrete):
     def rvs(self, x, log_f_x=None):
         """
             Draw from kernel k(x,\cdot)
-            @param x current state
-            @param log_f_x log probability of current state
+            \param x current state
+            \param log_f_x log probability of current state
         """
         if log_f_x is None: log_f_x = self.f.lpmf(x)
         return self._rvs(x, log_f_x)
@@ -214,7 +214,7 @@ class Kernel(stats.rv_discrete):
     def getPermutation(self):
         """
             Draw a random permutation of the index set.
-            @return permutation
+            \return permutation
         """
         perm = range(self.d)
         for i in reversed(range(1, self.d)):
@@ -227,19 +227,19 @@ class Kernel(stats.rv_discrete):
 class Gibbs(Kernel):
         """ Gibbs kernel. """
 
-        def __init__(self, f, q=1.0, name='Gibbs kernel', longname='Gibbs kernel.'):
+        def __init__(self, f, q=1.0, name='Gibbs kernel', long_name='Gibbs kernel.'):
             """
                 Constructor.
-                @param f log probability mass function of the invariant distribution 
+                \param f log probability mass function of the invariant distribution 
             """
-            Kernel.__init__(self, f, name, longname)
+            Kernel.__init__(self, f, name, long_name)
             self.q = q
 
         def _rvs(self, x, log_f_x):
             """
                 Draw from Gibbs kernel k(x,\cdot)
-                @param x current state
-                @param log_f_x log probability of current state
+                \param x current state
+                \param log_f_x log probability of current state
             """
             Y, log_f_Y = self.proposal(x, Index=[numpy.random.randint(low=0, high=self.d)])
 
@@ -252,12 +252,12 @@ class Gibbs(Kernel):
 class SwapMetropolisHastings(Gibbs):
         """ Swap Metropolis-Hastings kernel. """
 
-        def __init__(self, f, q, name='Swap Metropolis-Hastings kernel', longname='Swap Metropolis-Hastings kernel.'):
+        def __init__(self, f, q, name='Swap Metropolis-Hastings kernel', long_name='Swap Metropolis-Hastings kernel.'):
             """
                 Constructor.
-                @param f log probability mass function of the invariant distribution 
+                \param f log probability mass function of the invariant distribution 
             """
-            Gibbs.__init__(self, f, q, name=name, longname=longname)
+            Gibbs.__init__(self, f, q, name=name, long_name=long_name)
 
         def _rvs(self, x, log_f_x):
             """
@@ -283,12 +283,12 @@ class SwapMetropolisHastings(Gibbs):
 class SymmetricMetropolisHastings(Gibbs):
         """ Symmetric Metropolis-Hastings kernel. """
 
-        def __init__(self, f, q, name='Symmetric Metropolis-Hastings kernel', longname='Symmetric Metropolis-Hastings kernel.'):
+        def __init__(self, f, q, name='Symmetric Metropolis-Hastings kernel', long_name='Symmetric Metropolis-Hastings kernel.'):
             """
                 Constructor.
-                @param f log probability mass function of the invariant distribution 
+                \param f log probability mass function of the invariant distribution 
             """
-            Gibbs.__init__(self, f, q, name=name, longname=longname)
+            Gibbs.__init__(self, f, q, name=name, long_name=long_name)
 
         def _rvs(self, x, log_f_x):
             """
@@ -303,7 +303,7 @@ class SymmetricMetropolisHastings(Gibbs):
         def getRandomSubset(self):
             """
                 Draw a uniformly random subset of the index set.
-                @return subset
+                \return subset
             """
             if self.q == 1: return [numpy.random.randint(low=0, high=self.d)]
             k = min(stats.geom.rvs(1.0 / self.q), self.d)
@@ -321,15 +321,15 @@ class AdaptiveMetropolisHastings(Kernel):
         """ Adaptive Metropolis-Hastings kernel"""
 
         def __init__(self, f, q=1.0, name='Adaptive Metropolis-Hastings kernel',
-                     longname='Adaptive Metropolis-Hastings kernel.'):
+                     long_name='Adaptive Metropolis-Hastings kernel.'):
             """
                 Constructor.
-                @param f log probability mass function of the invariant distribution
-                @param q expected number of bits to be flipped
-                @param name name
-                @param longname longname
+                \param f log probability mass function of the invariant distribution
+                \param q expected number of bits to be flipped
+                \param name name
+                \param long_name long_name
             """
-            Kernel.__init__(self, f=f, name=name, longname=longname)
+            Kernel.__init__(self, f=f, name=name, long_name=long_name)
             self.adapted = False
             self.mean = 0.5 * numpy.ones(self.d)
             self.W = numpy.eye(self.d)
@@ -347,8 +347,8 @@ class AdaptiveMetropolisHastings(Kernel):
         def _rvs(self, x, log_f_x):
             """
                 Draw from Metropolised Gibbs kernel k(x,\cdot)
-                @param x current state
-                @param log_f_x log probability of current state
+                \param x current state
+                \param log_f_x log probability of current state
             """
             if self.k == self.d:
                 self.perm = self.getPermutation()

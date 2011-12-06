@@ -21,8 +21,8 @@ class data(object):
     def __init__(self, X=[], w=[]):
         """
             Data class.
-            @param X data
-            @param w weights  
+            \param X data
+            \param w weights  
         """
 
         ## data
@@ -44,7 +44,7 @@ class data(object):
     def getData(self):
         """
             Get data.
-            @return data array.
+            \return data array.
         """
         if isinstance(self._X, list):
             return array(self._X)
@@ -54,10 +54,10 @@ class data(object):
     def proc_data(self, order=False, fraction=1.0, dtype=int):
         """
             Get processed data.
-            @param order weights in ascending order
-            @param fraction upper fraction of the ordered data
-            @param dtype data type
-            @return data array
+            \param order weights in ascending order
+            \param fraction upper fraction of the ordered data
+            \param dtype data type
+            \return data array
         """
         if fraction == 1.0:
             if order:
@@ -71,7 +71,7 @@ class data(object):
         """
             Get weights.
             @remark If weights are negative, the function returns the normalized exponential weights.
-            @return normalized weights
+            \return normalized weights
         """
         if not self.isWeighted(): return ones(self.size) / float(self.size)
         w = array(self._W)
@@ -85,9 +85,9 @@ class data(object):
     def proc_weights(self, order=False, fraction=1.0):
         """
             Get processed weights.
-            @param order weights in ascending order
-            @param fraction upper fraction of the ordered weights
-            @return weights
+            \param order weights in ascending order
+            \param fraction upper fraction of the ordered weights
+            \return weights
         """
         if fraction == 1.0:
             if order:
@@ -101,7 +101,7 @@ class data(object):
     def clear(self, fraction=1.0):
         """
             Deletes the data.
-            @param fraction keep upper fraction of the ordered data
+            \param fraction keep upper fraction of the ordered data
         """
         if fraction == 1.0:
             self.__init__()
@@ -112,7 +112,7 @@ class data(object):
     def getD(self):
         """
             Get dimension.
-            @return dimension 
+            \return dimension 
         """
         if self.getSize() == 0: return 0
         return len(self._X[0])
@@ -120,36 +120,36 @@ class data(object):
     def getSize(self):
         """
             Get sample size.
-            @return sample size 
+            \return sample size 
         """
         return len(self._X)
 
     def setData(self, X):
         """
             Set data.
-            @param X data
+            \param X data
         """
         self._X = list(X)
 
     def setWeights(self, w):
         """
             Set weights.
-            @param w weights
+            \param w weights
         """
         self._W = list(w)
 
     def isWeighted(self):
         """
             Test if weighted.
-            @return True, if the sample has weights.
+            \return True, if the sample has weights.
         """
         return len(self._W) > 0
 
     def getMean(self, weight=False, fraction=1.0):
         """
             Computes the mean.
-            @param weight compute weighted mean
-            @param fraction use only upper fraction of the ordered data
+            \param weight compute weighted mean
+            \param fraction use only upper fraction of the ordered data
         """
         if weight:
             return calc_mean(self.proc_data(fraction=fraction, dtype=float), w=self.proc_weights(fraction=fraction))
@@ -159,8 +159,8 @@ class data(object):
     def getCov(self, weight=False, fraction=1.0):
         """
             Computes the covariance matrix.
-            @param weight compute weighted covariance
-            @param fraction use only upper fraction of the ordered data
+            \param weight compute weighted covariance
+            \param fraction use only upper fraction of the ordered data
         """
         if weight:
             return calc_cov(X=self.proc_data(fraction=fraction, dtype=float), w=self.proc_weights(fraction=fraction))
@@ -170,8 +170,8 @@ class data(object):
     def getCor(self, weight=False, fraction=1.0):
         """
             Computes the correlation matrix.
-            @param weight compute weighted correlation
-            @param fraction use only upper fraction of the ordered data
+            \param weight compute weighted correlation
+            \param fraction use only upper fraction of the ordered data
         """
         if weight:
             return calc_cor(X=self.proc_data(fraction=fraction, dtype=float), w=self.proc_weights(fraction=fraction))
@@ -181,8 +181,8 @@ class data(object):
     def getVar(self, weight=False, fraction=1.0):
         """
             Computes the variance vector.
-            @param weight compute weighted variance
-            @param fraction use only upper fraction of the ordered data
+            \param weight compute weighted variance
+            \param fraction use only upper fraction of the ordered data
         """
         return diag(self.getCov(weight=weight, fraction=fraction))
 
@@ -196,7 +196,7 @@ class data(object):
     def getOrder(self):
         """
             Get order.
-            @return index set for the data in ascending order according to the weights.
+            \return index set for the data in ascending order according to the weights.
         """
         if self.__order is None: self.__sort()
         if self.__order is None: self.__order = range(size)
@@ -212,7 +212,7 @@ class data(object):
     def assign_weights(self, f, verbose=False):
         """
             Evaluates the value of c*exp(f(x)) for each sample x.
-            @param f a real-valued function on the sampling space 
+            \param f a real-valued function on the sampling space 
         """
 
         if verbose:
@@ -286,8 +286,8 @@ class data(object):
     def append(self, x, w=None):
         """
             Appends the value x with weigth w to the dataset.
-            @param x value
-            @param w weight
+            \param x value
+            \param w weight
         """
         if not isinstance(self._X, list): self._X.tolist()
         if not isinstance(self._W, list): self._W.tolist()
@@ -297,14 +297,14 @@ class data(object):
     def shrink(self, index):
         """
             Removes the indicated columns from the data.
-            @param index column index set 
+            \param index column index set 
         """
         self._X = self.X[:, index]
 
     def get_sub_data(self, index):
         """
             Returns a shrinked version of the data class.
-            @param index column index set 
+            \param index column index set 
         """
         data = self.copy()
         data.shrink(index)
@@ -313,16 +313,16 @@ class data(object):
     def copy(self):
         """
             Creates a deep copy.
-            @return deep copy
+            \return deep copy
         """
         return copy.deepcopy(self)
 
     def sample(self, f, size, job_server=None):
         """
             Samples from a random generator.
-            @param f random variable
-            @param size sample size
-            @param verbose print status line
+            \param f random variable
+            \param size sample size
+            \param verbose print status line
         """
         self._X += list(f.rvs(size, job_server))
 
@@ -330,14 +330,14 @@ class data(object):
     def save(self, filename):
         """
             Saves the sample to a file using pickle.
-            @param filename filename
+            \param filename filename
         """
         pickle.dump(self, open(filename, 'wb'))
 
     def load(self, filename):
         """
             pickle.loads a sample from a file using pickle.
-            @param filename filename
+            \param filename filename
         """
         data = pickle.load(open(filename))
         self.__init__(data.X, data._W)
@@ -358,9 +358,9 @@ class data(object):
 def calc_mean(X, w=None):
     """
         Mean.
-        @param X array
-        @param w positive weights
-        @return mean
+        \param X array
+        \param w positive weights
+        \return mean
     """
     if w is None:
         return X.sum(axis=0) / float(X.shape[0])
@@ -370,9 +370,9 @@ def calc_mean(X, w=None):
 def calc_cov(X, w=None):
     """
         Covariance.
-        @param X array
-        @param w positive weights
-        @return covariance matrix
+        \param X array
+        \param w positive weights
+        \return covariance matrix
     """
     if w is None:
         n = float(X.shape[0])
@@ -385,9 +385,9 @@ def calc_cov(X, w=None):
 def calc_cor(X, w=None):
     """
         Correlation.
-        @param X array
-        @param w positive weights
-        @return correlation matrix
+        \param X array
+        \param w positive weights
+        \return correlation matrix
     """
     d = X.shape[1]
     cov = calc_cov(X, w) + 1e-10 * eye(d)
