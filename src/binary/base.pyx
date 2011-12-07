@@ -166,13 +166,13 @@ class BaseBinary(object):
         """ Generates a matrix of random base variables. \param size size """
         return numpy.random.random((size, self.d))
 
-    def rvstest(self, n):
+    def rvstest(self, n, start_jobserver='autodetect'):
         """
             Prints the empirical mean and correlation to stdout.
             \param n sample size
         """
-        if self.hasPP:
-            job_server = pp.Server(ncpus='autodetect', ppservers=())
+        if self.hasPP and start_jobserver:
+            job_server = pp.Server(ncpus=start_jobserver, ppservers=())
             print 'rvstest running on %d cpus...\n' % job_server.get_ncpus()
         else:
             job_server = None
@@ -186,7 +186,7 @@ class BaseBinary(object):
                 "sample (n = %(n)d) correlation:\n%(corr)s") % info
 
 
-    def marginals(self):
+    def marginals(self, start_jobserver='autodetect'):
         """
             Get string representation of the marginals. 
             \remark Evaluation of the marginals requires exponential time. Do not do it.
@@ -200,7 +200,7 @@ class BaseBinary(object):
             X.append(bin_vector)
         X = numpy.array(X)
 
-        if self.hasPP: job_server = pp.Server(ncpus='autodetect', ppservers=())
+        if self.hasPP: job_server = pp.Server(ncpus=start_jobserver, ppservers=())
         else: job_server = None
 
         lpmf = self.lpmf(X, job_server=job_server)

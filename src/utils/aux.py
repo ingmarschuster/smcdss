@@ -23,6 +23,7 @@ def set_array_layout():
     numpy.set_string_function(f=format_d2)
 
 def format_d2(a):
+    if not a.dtype == float: return str(a)
     if len(a.shape) == 1: return format_d1(a)
     return ''.join([format_d1(x) for x in a])
 

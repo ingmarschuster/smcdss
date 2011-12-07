@@ -55,14 +55,26 @@ class logistic_cond():
         return binary.logistic_cond.LogisticCondBinary._logistic_cond_all(
                 Beta=param['Beta'], U=U, gamma=None)
 
-class uniform():
+class constrained_size():
     """ Wrapper class for logistic conditionals family."""
 
     def lpmf(self, gamma, param):
-        return binary.uniform.UniformBinary._lpmf(gamma, param)
+        return binary.constrained.ConstrSizeBinary._lpmf(gamma, param)
 
     def rvs(self, U, param):
-        return binary.uniform.UniformBinary._rvs(U, param)
+        return binary.constrained.ConstrSizeBinary._rvs(U, param)
 
     def rvslpmf(self, U, param):
-        return binary.uniform.UniformBinary._rvslpmf(U, param)
+        return binary.constrained.ConstrSizeBinary._rvslpmf(U, param)
+    
+class constrained_interaction():
+    """ Wrapper class for logistic conditionals family."""
+
+    def lpmf(self, gamma, param):
+        return binary.constrained.ConstrInteractionBinary._lpmf(gamma, param)
+
+    def rvs(self, U, param):
+        return binary.constrained.ConstrInteractionBinary._rvs(U, param)
+
+    def rvslpmf(self, U, param):
+        return binary.constrained.ConstrInteractionBinary._rvslpmf(U, param)
