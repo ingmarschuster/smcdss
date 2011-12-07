@@ -4,7 +4,6 @@
 """
 Formatting console output.
 """
-from repr import repr
 
 """
 @namespace utils.aux
