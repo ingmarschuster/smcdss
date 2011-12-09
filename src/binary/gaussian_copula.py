@@ -254,8 +254,7 @@ def newtonraphson(mu, p, r, init=0, verbose=False):
     q = init
     last_q = numpy.inf
 
-    N = 50
-    for i in xrange(N):
+    for i in xrange(GaussianCopulaBinary.MAX_ITERATIONS):
         q = q - round((bvnorm.cdf(mu, q) - s), 8) / bvnorm.pdf(mu, q)
         if verbose: print q
         if q > 1:
@@ -374,8 +373,8 @@ def nearest_Q(Q, verbose=False):
     # run alternating projections
     S = numpy.zeros((d, d))
     Y = Q
-    N = 50
-    for i in xrange(N):
+
+    for i in xrange(GaussianCopulaBinary.MAX_ITERATIONS):
         # Dykstra's correction term
         R = Y - S
 

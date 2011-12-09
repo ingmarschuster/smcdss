@@ -22,7 +22,7 @@ import binary.wrapper
 class EquableProductBinary(binary.base.BaseBinary):
     """ Binary parametric family with independent components."""
 
-    def __init__(self, d, p, py_wrapper=None, name='equable product family', long_name=__doc__):
+    def __init__(self, d, p, name='equable product family', long_name=__doc__):
         """ 
             Constructor.
             \param p mean vector
@@ -30,39 +30,38 @@ class EquableProductBinary(binary.base.BaseBinary):
             \param long_name long_name
         """
 
-        # link to python wrapper
-        if py_wrapper is None: py_wrapper = binary.wrapper.equable_product()
-
         # call super constructor
-        binary.base.BaseBinary.__init__(self, py_wrapper, name=name, long_name=long_name)
+        binary.base.BaseBinary.__init__(self, d=d, name=name, long_name=long_name)
 
         # add module
+        self.py_wrapper = binary.wrapper.equable_product()
         self.pp_modules += ('binary.product',)
 
-        self.param.update({'p':p, 'logit_p':numpy.log(p / (1.0 - p)), 'd':d})
+        self.p = p
+        self.logit_p = numpy.log(p / (1.0 - p))
 
     def __str__(self):
-        return 'd: %(d)d, p: %(p).4f' % self.param
+        return 'd: %d, p: %.4f' % (self.d, self.p)
 
     @classmethod
-    def _lpmf(cls, Y, param):
+    def _lpmf(cls, Y, logit_p):
         """ 
             Log-probability mass function.
             \param Y binary vector
             \param param parameters
             \return log-probabilities
         """
-        return Y.sum(axis=1) * param['logit_p']
+        return Y.sum(axis=1) * logit_p
 
     @classmethod
-    def _rvs(cls, U, param):
+    def _rvs(cls, U, p):
         """ 
             Generates a random variable.
             \param U uniform variables
             \param param parameters
             \return binary variables
         """
-        return U < param['p']
+        return U < p
 
     @classmethod
     def random(cls, d):
@@ -80,23 +79,9 @@ class EquableProductBinary(binary.base.BaseBinary):
         """
         return cls(d=d, p=0.5)
 
-    def getP(self):
-        """ Get p-vector. \return p-vector """
-        return self._getP()
-
-    def _getP(self):
-        """ Get p-vector of instance. \return p-vector """
-        return self.param['p']
-
     def _getMean(self):
         """ Get expected value of instance. \return p-vector """
         return self.param['p'] * numpy.ones(self.param['d'])
-
-    def _getD(self):
-        """ Get dimension of instance. \return dimension """
-        return self.param['d']
-
-    p = property(fget=getP, doc="p")
 
 
 
@@ -105,7 +90,7 @@ class EquableProductBinary(binary.base.BaseBinary):
 class ProductBinary(EquableProductBinary):
     """ Binary parametric family with independent components."""
 
-    def __init__(self, p, py_wrapper=None, name='product family', long_name=__doc__):
+    def __init__(self, p, name='product family', long_name=__doc__):
         """
             Constructor.
             \param p mean vector
@@ -113,24 +98,22 @@ class ProductBinary(EquableProductBinary):
             \param long_name long_name
         """
 
-        # link to python wrapper
-        if py_wrapper is None: py_wrapper = binary.wrapper.product()
-
         if isinstance(p, float): p = [p]
         p = numpy.array(p, dtype=float)
 
         # call super constructor
-        EquableProductBinary.__init__(self, d=p.shape[0], p=p, py_wrapper=py_wrapper, name=name, long_name=long_name)
+        EquableProductBinary.__init__(self, d=p.shape[0], p=p, name=name, long_name=long_name)
 
         # add module
         self.pp_modules += ('binary.product',)
+        self.py_wrapper = binary.wrapper.product()
 
     def __str__(self):
-        return 'd: %(d)d, p:\n%%s' % self.param % repr(self.p)
+        return 'd: %d, p:\n%s' % (self.d, repr(self.p))
 
     @classmethod
     def _lpmf(cls,
-              numpy.ndarray[dtype=numpy.int8_t, ndim=2] gamma,
+              numpy.ndarray[dtype=numpy.int8_t, ndim=2] Y,
               numpy.ndarray[dtype=numpy.float64_t, ndim=1] p):
         """ 
             Log-probability mass function.
@@ -141,24 +124,23 @@ class ProductBinary(EquableProductBinary):
         cdef int k
         cdef double prob, m
 
-        L = numpy.empty(gamma.shape[0])
-        for k in xrange(gamma.shape[0]):
+        L = numpy.empty(Y.shape[0])
+        for k in xrange(Y.shape[0]):
             prob = 1.0
             for i, m in enumerate(p):
-                if gamma[k, i]: prob *= m
+                if Y[k, i]: prob *= m
                 else: prob *= (1 - m)
             L[k] = prob
         return numpy.log(L)
 
     @classmethod
-    def _rvs(cls, U, param):
+    def _rvs(cls, U, p):
         """ 
             Generates a random variable.
             \param U uniform variables
             \param param parameters
             \return binary variables
         """
-        p = param['p']
         Y = numpy.empty((U.shape[0], U.shape[1]), dtype=bool)
         for k in xrange(U.shape[0]):
             Y[k] = p > U[k]
@@ -201,17 +183,9 @@ class ProductBinary(EquableProductBinary):
         p = sample.getMean(weight=True)
         self.param['p'] = (1 - lag) * p + lag * self.p
 
-    def _getP(self):
-        """ Get p-vector of instance. \return p-vector """
-        return self.param['p']
-
     def _getMean(self):
         """ Get expected value of instance. \return p-vector """
         return self.param['p']
-
-    def _getD(self):
-        """ Get dimension of instance. \return dimension """
-        return self.p.shape[0]
 
     def _getRandom(self, xi=binary.base.BaseBinary.MIN_MARGINAL_PROB):
         """ Get index list of random components of instance. \return index list """
@@ -224,7 +198,7 @@ class ProductBinary(EquableProductBinary):
 class PositiveProductBinary(ProductBinary):
     """ Binary parametric family with independent components and positive support."""
 
-    def __init__(self, p, py_wrapper=None, name='positive product family', long_name=__doc__):
+    def __init__(self, p, name='positive product family', long_name=__doc__):
         """ 
             Constructor.
             \param p mean vector
@@ -232,26 +206,25 @@ class PositiveProductBinary(ProductBinary):
             \param long_name long name
         """
 
-        # link to python wrapper
-        if py_wrapper is None: py_wrapper = binary.wrapper.positive_product()
-
         # call super constructor
-        binary.product.ProductBinary.__init__(self, p=p, py_wrapper=py_wrapper, name=name, long_name=long_name)
+        binary.product.ProductBinary.__init__(self, p=p, name=name, long_name=long_name)
 
         # add dependent functions
-        self.pp_depfuncs += ('_posproduct_all',)
+        self.pp_depfuncs += ('_rvslpmf_all',)
+        self.py_wrapper = binary.wrapper.positive_product()
 
         log_c = numpy.log(1.0 - numpy.cumprod(1.0 - p[::-1])[::-1]) # prob of gamma > 0 at component 1,..,d
         log_c = numpy.append(log_c, -numpy.inf)
 
-        self.param.update({'log_p':numpy.log(self.p), 'log_q':numpy.log(1 - self.p), 'log_c':log_c})
+        self.log_p = numpy.log(self.p)
+        self.log_q = numpy.log(1.0 - self.p)
+        self.log_c = log_c
 
     def __str__(self):
-        return 'd: %(d)d, p:\n%%smean:\n%%s' % self.param % (repr(self.p),repr(self.mean))
+        return 'd: %d, p:\n%smean:\n%s' % (self.d, repr(self.p), repr(self.mean))
 
     @classmethod
-    def _posproduct_all(cls,
-                        param, U=None, gamma=None):
+    def _rvslpmf_all(cls, log_p, log_q, log_c, U=None, Y=None):
         """ 
             All-purpose routine for sampling and point-wise evaluation.
             \param U uniform variables
@@ -259,37 +232,34 @@ class PositiveProductBinary(ProductBinary):
             \return binary variables
         """
         cdef int size, d, k, i
-        logp, logq, logc = param['log_p'], param['log_q'], param['log_c']
         if U is not None:
-            size = U.shape[0]
-            d = U.shape[1]
-            gamma = numpy.empty((size, U.shape[1]), dtype=bool)
+            size, d = U.shape
+            Y = numpy.empty((size, d), dtype=bool)
             logU = numpy.log(U)
-    
-        if gamma is not None:
-            size = gamma.shape[0]
-            d = gamma.shape[1]
-    
+
+        if Y is not None:
+            size, d = Y.shape
+
         L = numpy.zeros(size, dtype=float)
-    
+
         for k in xrange(size):
-    
+
             for i in xrange(d):
                 # Compute log conditional probability that gamma(i) is one
-                logcprob = logp[i]
-                if not gamma[k, :i].any(): logcprob -= logc[i]
-    
+                logcprob = log_p[i]
+                if not Y[k, :i].any(): logcprob -= log_c[i]
+
                 # Generate the ith entry
-                if U is not None: gamma[k, i] = logU[k, i] < logcprob
-    
+                if U is not None: Y[k, i] = logU[k, i] < logcprob
+
                 # Add to log conditional probability
-                if gamma[k, i]:
+                if Y[k, i]:
                     L[k] += logcprob
                 else:
-                    L[k] += logq[i]
-                    if not gamma[k, :i].any(): L[k] += logc[i + 1] - logc[i]
-    
-        return gamma, L
+                    L[k] += log_q[i]
+                    if not Y[k, :i].any(): L[k] += log_c[i + 1] - log_c[i]
+
+        return Y, L
 
     @classmethod
     def random(cls, d):
@@ -301,16 +271,16 @@ class PositiveProductBinary(ProductBinary):
         return cls(0.01 + numpy.random.random(d) * 0.1)
 
     def _getMean(self):
-        return numpy.exp(self.param['log_p'] - self.param['log_c'][0])
+        return numpy.exp(self.log_p - self.log_c[0])
 
 
 
 
-    
+
 class ConstrProductBinary(ProductBinary):
     """ Binary parametric family constrained to vectors that verify certain interactions. """
 
-    def __init__(self, p, constrained=None, py_wrapper=None, name='constrained product family', long_name=__doc__):
+    def __init__(self, p, constrained=None, name='constrained product family', long_name=__doc__):
         """ 
             Constructor.
             \param d dimension
@@ -319,31 +289,33 @@ class ConstrProductBinary(ProductBinary):
             \param long_name long_name
         """
 
-        if py_wrapper is None: py_wrapper = binary.wrapper.constrained_product()
-        ProductBinary.__init__(self, p=p, py_wrapper=py_wrapper, name=name, long_name=long_name)
+        ProductBinary.__init__(self, p=p, name=name, long_name=long_name)
 
-        free = [i for i in xrange(self.d) if not i in [item for sublist in constrained for item in sublist]]
-        self.param.update({'constrained':constrained, 'free':free})
+        self.py_wrapper = binary.wrapper.constrained_product()
+
+        ## list of entries having interaction constraints
+        self.constrained = constrained
+        ## list of free entries
+        self.free = [i for i in xrange(self.d) if not i in [item for sublist in constrained for item in sublist]]
 
     def __str__(self):
-        return 'd: %(d)d, p:\n%%sconstraints:\n%%s\n' % self.param % (repr(self.p),repr(self.param['constrained']))
+        return 'd: %d, p:\n%sconstraints:\n%s\n' % (self.d, repr(self.p), repr(self.constrained))
 
     @classmethod
-    def _lpmf(cls, Y, param):
+    def _lpmf(cls, Y, p, constrained):
         """ 
             Log-probability mass function.
             \param gamma binary vector
             \param param parameters
             \return log-probabilities
         """
-        L = ProductBinary._lpmf(numpy.array(Y, dtype=numpy.int8), param['p'])
-        violations = ConstrProductBinary.constraint_violation(Y, param)
+        L = ProductBinary._lpmf(numpy.array(Y, dtype=numpy.int8), p)
+        violations = ConstrProductBinary.constraint_violation(Y, p, constrained)
         L[violations] = -numpy.inf
         return L
 
     @classmethod
-    def constraint_violation(cls, Y, param):
-        constrained = param['constrained']
+    def constraint_violation(cls, Y, p, constrained):
         V = numpy.zeros(Y.shape[0], dtype=bool)
 
         for k in xrange(Y.shape[0]):
@@ -354,7 +326,7 @@ class ConstrProductBinary(ProductBinary):
         return V
 
     @classmethod
-    def _rvs(cls, U, param):
+    def _rvs(cls, U, p, constrained, free):
         """ 
             Generates a random variable.
             \param U uniform variables
@@ -362,8 +334,6 @@ class ConstrProductBinary(ProductBinary):
             \return binary variables
         """
         Y = numpy.zeros((U.shape[0], U.shape[1]), dtype=bool)
-
-        p, constrained, free = param['p'], param['constrained'], param['free']
 
         for k in xrange(U.shape[0]):
             Y[k][free] = U[k][free] < p[free]
@@ -387,7 +357,7 @@ class ConstrProductBinary(ProductBinary):
         # random marginal probability
         if p is None: p = 0.01 + 0.98 * numpy.random.random(d)
         if isinstance(p, float): p = p * numpy.ones(d)
-        
+
         perm = numpy.arange(d, dtype=int)
         # random permutation
         for i in xrange(d):
@@ -409,13 +379,13 @@ class ConstrProductBinary(ProductBinary):
 class LimitedProductBinary(EquableProductBinary):
     """ Binary parametric family constrained to vectors of norm not greater than q subsets. """
 
-    @staticmethod
-    def log_binomial(a, b):
-        return (scipy.special.gammaln(a + 1) - 
-                scipy.special.gammaln(b + 1) - 
+    @classmethod
+    def log_binomial(cls, a, b):
+        return (scipy.special.gammaln(a + 1) -
+                scipy.special.gammaln(b + 1) -
                 scipy.special.gammaln(a - b + 1))
 
-    def __init__(self, d, q, p=0.5, py_wrapper=None, name='limited product family', long_name=__doc__):
+    def __init__(self, d, q, p=0.5, name='limited product family', long_name=__doc__):
         """ 
             Constructor.
             \param d dimension
@@ -425,50 +395,52 @@ class LimitedProductBinary(EquableProductBinary):
             \param long_name long_name
         """
 
-        if py_wrapper is None: py_wrapper = binary.wrapper.limited_product()
+        EquableProductBinary.__init__(self, d=d, p=p, name=name, long_name=long_name)
 
-        EquableProductBinary.__init__(self, d=d, p=p, py_wrapper=py_wrapper, name=name, long_name=long_name)
+        py_wrapper = binary.wrapper.limited_product()
 
         # compute binomial probabilities up to q
         b = numpy.empty(q + 1, dtype=float)
         for k in xrange(q + 1):
-            b[k] = LimitedProductBinary.log_binomial(d, k) + k * self.param['logit_p']
+            b[k] = LimitedProductBinary.log_binomial(d, k) + k * self.logit_p
 
         # deal with sum of exponentials
         b = numpy.exp(b - b.max())
         b /= b.sum()
 
-        self.param.update({'q':q, 'binomial_cumsum':b.cumsum()})
+        self.q = q
+        self.b = b.cumsum()
+
 
     def __str__(self):
-        return 'd: %(d)d, limit: %(q)d, p: %(p).4f\n' % self.param
+        return 'd: %d, limit: %d, p: %.4f\n' % (self.d, self.q, self.p)
 
     @classmethod
-    def _lpmf(cls, gamma, param):
+    def _lpmf(cls, Y, q, logit_p):
         """ 
             Log-probability mass function.
             \param gamma binary vector
             \param param parameters
             \return log-probabilities
         """
-        L = -numpy.inf * numpy.ones(gamma.shape[0])
-        index = numpy.array(gamma.sum(axis=1), dtype=float)
-        index = index[index <= param['q']]
-        L[gamma.sum(axis=1) <= param['q']] = index * param['logit_p']
+        L = -numpy.inf * numpy.ones(Y.shape[0])
+        index = numpy.array(Y.sum(axis=1), dtype=float)
+        index = index[index <= q]
+        L[Y.sum(axis=1) <= q] = index * logit_p
         return L
 
     @classmethod
-    def _rvs(cls, U, param):
+    def _rvs(cls, U, b):
         """ 
             Generates a random variable.
             \param U uniform variables
             \param param parameters
             \return binary variables
         """
-        Y = numpy.zeros((U.shape[0], U.shape[1]), dtype=bool)
-        d, binomial_cumsum = param['d'], param['binomial_cumsum']
+        size, d = U.shape
+        Y = numpy.zeros(U.shape, dtype=bool)
 
-        for k in xrange(U.shape[0]):
+        for k in xrange(size):
             perm = numpy.arange(d)
             for i in xrange(d):
                 # pick an element in p[:i+1] with which to exchange p[i]
@@ -476,7 +448,7 @@ class LimitedProductBinary(EquableProductBinary):
                 perm[d - 1 - i], perm[j] = perm[j], perm[d - 1 - i]
             # draw the number of nonzero elements
 
-            for r, p in enumerate(binomial_cumsum):
+            for r, p in enumerate(b):
                 if U[k][d - 1] < p: break
 
             Y[k][perm[:r]] = True
@@ -491,11 +463,11 @@ class LimitedProductBinary(EquableProductBinary):
         """
         # random marginal probability
         if p is None: p = 0.01 + 0.98 * numpy.random.random()
-        
+
         # random maximal norm
         q = numpy.random.randint(d) + 1
         return cls(d=d, q=q, p=p)
 
     def _getMean(self):
-        mean = self.param['p'] * self.param['q'] / float(self.d)
+        mean = self.p * self.q / float(self.d)
         return mean * numpy.ones(self.d)
