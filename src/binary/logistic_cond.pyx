@@ -31,6 +31,9 @@ import binary.wrapper
 class LogisticCondBinary(binary.product.ProductBinary):
     """ Binary parametric family with logistic conditionals. """
 
+    PRECISION = binary.base.BaseBinary.PRECISION
+    MAX_ENTRY_SUM = numpy.finfo(float).maxexp * log(2)
+
     def __init__(self, Beta, name='logistic conditionals family', long_name=__doc__):
         """ 
             Constructor.
@@ -39,7 +42,6 @@ class LogisticCondBinary(binary.product.ProductBinary):
             \param long_name long name
         """
 
-        logistic = lambda x: 1.0 / (1.0 + numpy.exp(-x))
         p = logistic(numpy.diagonal(Beta))
 
         # call super constructor
@@ -51,7 +53,7 @@ class LogisticCondBinary(binary.product.ProductBinary):
         self.pp_modules = ('numpy', 'scipy.linalg', 'binary.logistic_cond',)
 
         # add dependent functions
-        self.pp_depfuncs += ('_logistic_cond_all',)
+        self.pp_depfuncs += ('_rvslpmf_all',)
 
         self.Beta = Beta
 
@@ -59,10 +61,9 @@ class LogisticCondBinary(binary.product.ProductBinary):
         return 'd: %d, Beta:\n%s' % (self.d, repr(self.Beta))
 
     @classmethod
-    def _rvslpmf_all(cls,
-                           numpy.ndarray[dtype=numpy.float64_t, ndim=2] Beta,
-                           numpy.ndarray[dtype=numpy.float64_t, ndim=2] U=None,
-                           numpy.ndarray[dtype=numpy.int8_t, ndim=2] Y=None):
+    def _rvslpmf_all(cls, numpy.ndarray[dtype=numpy.float64_t, ndim=2] Beta,
+                          numpy.ndarray[dtype=numpy.float64_t, ndim=2] U=None,
+                          numpy.ndarray[dtype=numpy.int8_t, ndim=2] Y=None):
         """
             All-purpose routine for sampling and point-wise evaluation.
             \param U uniform variables
@@ -140,14 +141,15 @@ class LogisticCondBinary(binary.product.ProductBinary):
         return cls
 
     @classmethod
-    def from_moments(cls, mean, corr, max_d=12, mcmc_n=1e4):
+    def from_moments(cls, mean, corr, max_d=12, mcmc_n=1e4, verbose=False):
         """ 
-            Constructs a logistic conditionals model from given mean and correlation.
+            Constructs a logistic conditionals family from given mean and correlation.
             \param mean mean
             \param corr correlation
-            \return logistic model
+            \return logistic conditionals family
             \todo Augment data by one dimension instead of using a completely new sample.
         """
+
         # Convert arguments
         M = binary.base.corr2moments(mean, corr)
         d = M.shape[0]
@@ -184,6 +186,8 @@ class LogisticCondBinary(binary.product.ProductBinary):
 
                 b_before = b.copy()
 
+                if verbose: sys.stderr.write('b: %s' % repr(b))
+
                 # Compute MC estimates for expected values
                 f = numpy.zeros(i + 1)
                 J = numpy.zeros((i + 1, i + 1))
@@ -192,7 +196,7 @@ class LogisticCondBinary(binary.product.ProductBinary):
                     # Compute marginal probability
                     p = max(min(1.0 / (1.0 + numpy.exp(-numpy.dot(X[v], b))), 1.0 - 1e-8), 1e-8)
                     f += pmf[v] * p * X[v]
-                    J += pmf[v] * (p - p * p) * numpy.dot(X[v][:, numpy.newaxis], X[v][numpy.newaxis, :])
+                    J += pmf[v] * (p - p * p) * numpy.outer(X[v], X[v])
 
                 # Subtract non-random parts            
                 f -= tM
@@ -202,7 +206,17 @@ class LogisticCondBinary(binary.product.ProductBinary):
                     b = scipy.linalg.solve(J, numpy.dot(J, b) - f, sym_pos=True)
                 except numpy.linalg.linalg.LinAlgError:
                     b = scipy.linalg.solve(J + numpy.eye(i + 1) * 1e-8, numpy.dot(J, b) - f, sym_pos=False)
-                if (numpy.abs(b - b_before) < LogisticCondBinary.PRECISION).all(): break
+
+                entry_sum = max(b[b > 0].sum(), -b[b < 0].sum())
+                if entry_sum > LogisticCondBinary.MAX_ENTRY_SUM:
+                    phi = LogisticCondBinary.MAX_ENTRY_SUM / entry_sum
+                    b = phi * b + (1.0 - phi) * b_before
+                    if verbose: sys.stderr.write('sum of b exceeded threshold %.f.\n' % LogisticCondBinary.MAX_ENTRY_SUM)
+                    break
+
+                if numpy.allclose(b, b_before, rtol=0, atol=LogisticCondBinary.PRECISION):
+                    if verbose: sys.stderr.write('b converged.\n')
+                    break
 
             # Convergence failure
             if j > LogisticCondBinary.MAX_ITERATIONS:
@@ -210,6 +224,27 @@ class LogisticCondBinary(binary.product.ProductBinary):
                 b[-1] = logit(M[i, i])
 
             Beta[i, :i + 1] = b
+        if verbose: sys.stderr.write('\nlogistic family successfully constructed from moments.\n\n')
+        return cls(Beta)
+
+    @classmethod
+    def from_qu_exponential(cls, qu_exp):
+        """ 
+            Constructs a logistic conditionals family that approximates a
+            quadratic exponential family.
+            \param qu_exp quadratic exponential family
+            \todo Instead of margining out in arbitrary order, we could use a greedy approach
+            which picks the next dimension by minimizing the error made in the Taylor approximation. 
+        """
+        d = qu_exp.d
+        Beta = numpy.zeros((d, d))
+        Beta[0, 0] = logit(qu_exp.p_0)
+
+        A = numpy.copy(qu_exp.A)
+        for i in xrange(d - 1, 0, -1):
+            Beta[i, 0:i] = A[i, :i] * 2.0
+            Beta[i, i] = A[i, i]
+            A = binary.qu_exponential.calc_marginal(A)
 
         return cls(Beta)
 
@@ -248,25 +283,28 @@ class LogisticCondBinary(binary.product.ProductBinary):
         self.p = LogisticCondBinary.logistic(self.Beta.sum(axis=1))
 
     @classmethod
-    def from_loglinear_model(cls, llmodel):
-        """ 
-            Constructs a logistic model that approximates a log-linear model.
-            \param cls instance
-            \param llmodel log-linear model
-            \todo Instead of margining out in arbitrary order, we could use a greedy approach
-            which picks the next dimension by minimizing the error made in the Taylor approximation. 
+    def test_properties(cls, d, n=1e4, phi=0.8, ncpus=1):
         """
-        d = llmodel.d
-        Beta = numpy.zeros((d, d))
-        Beta[0, 0] = logit(llmodel.p_0)
+            Tests functionality of the quadratic linear family class.
+            \param d dimension
+            \param n number of samples
+            \param phi dependency level in [0,1]
+            \param ncpus number of cpus 
+        """
 
-        A = numpy.copy(llmodel.A)
-        for i in xrange(d - 1, 0, -1):
-            Beta[i, 0:i] = A[i, :i] * 2.0
-            Beta[i, i] = A[i, i]
-            A = binary.qu_exponential.calc_marginal(A)
+        mean, corr = binary.base.moments2corr(binary.base.random_moments(d, phi=phi))
+        print 'given marginals '.ljust(100, '*')
+        binary.base.print_moments(mean, corr)
 
-        return cls(Beta)
+        generator = LogisticCondBinary.from_moments(mean, corr)
+        print generator.name + ':'
+        print generator
+
+        print 'exact '.ljust(100, '*')
+        binary.base.print_moments(generator.exact_marginals(ncpus))
+
+        print ('simulation (n = %d) ' % n).ljust(100, '*')
+        binary.base.print_moments(generator.rvs_marginals(n, ncpus))
 
 
 def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, verbose=True):
@@ -384,9 +422,6 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
         \param verbose verbose
         \return vector of regression coefficients
     """
-
-    PRECISION = 1e-5
-
     # Initialize variables. 
     n = X.shape[0]
     d = X.shape[1]
@@ -421,22 +456,26 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
 
         # Compute the log-likelihood.
         llh = -0.5 * _lambda * numpy.dot(beta, beta) + (w * (y * Xbeta + numpy.log(1 + numpy.exp(Xbeta)))).sum()
-
+        print 'verbose', verbose
         if abs(beta).max() > 1e4:
             if verbose: print 'convergence failure\n'
             return None, i
 
-        if numpy.allclose(last_beta, beta, rtol=0, atol=PRECISION):
+        if numpy.allclose(last_beta, beta, rtol=0, atol=LogisticCondBinary.PRECISION):
             if verbose: print 'no change in beta\n'
             break
 
         if verbose: print '%i) log-likelihood %.2f' % (i + 1, llh)
-        if abs(last_llh - llh) < PRECISION:
+        if abs(last_llh - llh) < LogisticCondBinary.PRECISION:
             if verbose: print 'no change in likelihood\n'
             break
     return beta, i + 1
 
 
-def logistic(x): return 1.0 / (1.0 + numpy.exp(-x))
+def logistic(x):
+    """ Logistic function 1/(1+exp(x)) \return logistic function """
+    return 1.0 / (1.0 + numpy.exp(-x))
 
-def logit(p): return numpy.log(p / (1.0 - p))
+def logit(p):
+    """ Logit function exp(1/(1-p)) \return logit function """
+    return numpy.log(p / (1.0 - p))

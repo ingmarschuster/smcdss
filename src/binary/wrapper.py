@@ -85,8 +85,21 @@ class qu_linear(wrapper):
     """ Wrapper class for logistic conditionals family."""
 
     def lpmf(self, Y, param):
-        return binary.qu_linear.QuLinearBinary._lpmf(
-                Y, param.Beta, param.a)
+        return binary.qu_linear.QuLinearBinary._rvslpmf_all(
+                param.Beta, param.p, Y=Y)[1]
     def rvs(self, U, param):
-        return binary.qu_linear.QuLinearBinary._rvs(
-                U, param.Beta, param.p)
+        return self.rvslpmf(U, param)[0]
+    def rvslpmf(self, U, param):
+        return binary.qu_linear.QuLinearBinary._rvslpmf_all(
+                param.Beta, param.p, U=U)
+
+
+class gaussian_copula(wrapper):
+    """ Wrapper class for logistic conditionals family."""
+
+    def lpmf(self, Y, param):
+        return None
+    def rvs(self, V, param):
+        return binary.gaussian_copula.GaussianCopulaBinary._rvs(V, param.mu, param.C)
+    def rvslpmf(self, V, param):
+        return self.rvs(V, param), None

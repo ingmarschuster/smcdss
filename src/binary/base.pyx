@@ -104,6 +104,7 @@ class BaseBinary(object):
             \param size number of variables
             \return random variable
         """
+        size = int(size)
         ncpus, job_server = BaseBinary._check_job_server(size, job_server)
         Y = numpy.empty((size, self.d), dtype=bool)
         U = self._rvsbase(size)
@@ -139,6 +140,7 @@ class BaseBinary(object):
             \param size number of variables
             \return random variable
         """
+        size = int(size)
         ncpus, job_server = BaseBinary._check_job_server(size, job_server)
         Y = numpy.empty((size, self.d), dtype=bool)
         U = self._rvsbase(size)
@@ -212,8 +214,7 @@ class BaseBinary(object):
         else: job_server = None
 
         X = self.rvs(n, job_server)
-
-        return numpy.average(X, axis=0), numpy.corrcoef(X, rowvar=0)
+        return sample2corr(X)
 
     def exact_marginals(self, ncpus='autodetect'):
         """
@@ -227,8 +228,9 @@ class BaseBinary(object):
 
         X = self.state_space()
         lpmf = self.lpmf(X, job_server=job_server)
-        weights = numpy.exp(lpmf - lpmf.max()); weights /= weights.sum()
+        if lpmf is None: return None
 
+        weights = numpy.exp(lpmf - lpmf.max())
         return sample2corr(X, weights)
 
     def state_space(self):
@@ -250,6 +252,8 @@ class BaseBinary(object):
     mean = property(fget=getMean, doc="mathematical mean")
     r = property(fget=getRandom, doc="random components")
 
+
+#---------------------------------------------------------- conversion functions
 
 def bin2str(bin):
     """
@@ -280,6 +284,9 @@ def dec2bin(n, d=0):
     bin_vector.reverse()
     return numpy.array(bin_vector)
 
+
+#-------------------------------------------------------------- moment functions
+
 def random_moments(d, eps=0.05, phi=0.5):
     """
         Creates a random cross-moments matrix that is consistent with the
@@ -302,8 +309,7 @@ def corr2moments(mean, corr):
     """
         Converts a mean vector and correlation matrix to the corresponding
         cross-moment matrix.
-        
-        \param mena mean vector.
+        \param mean mean vector.
         \param corr correlation matrix
         \return cross-moment matrix
     """
@@ -316,7 +322,6 @@ def moments2corr(M):
     """
         Converts a cross-moment matrix to a corresponding pair of mean vector
         and correlation matrix. .
-        
         \param M cross-moment matrix
         \return mean vector.
         \return correlation matrix
@@ -327,11 +332,21 @@ def moments2corr(M):
     corr = (M - numpy.outer(adj_mean, adj_mean)) / numpy.sqrt(numpy.outer(var, var))
     return mean, corr
 
-def sample2corr(X, weights):
+def sample2corr(X, weights=None):
+    """
+        Computes mean vector and correlation matrix of a weighted sample.
+        \return mean vector
+        \return correlation matrix 
+    """
 
-    # compute weighted mean and correlation
+    # weights
+    if weights is None: weights = numpy.ones(X.shape[0])
+    weights /= weights.sum()
+
+    # mean vector
     mean = numpy.average(X, axis=0, weights=weights)
 
+    # correlation matrix
     adj_mean = numpy.minimum(numpy.maximum(mean, 1e-8), 1.0 - 1e-8)
     cov = (numpy.dot(X.T, weights[:, numpy.newaxis] * X) - numpy.outer(adj_mean, adj_mean)) / (1 - numpy.inner(weights, weights).sum())
     var = numpy.maximum(cov.diagonal(), 1e-6)
@@ -339,22 +354,32 @@ def sample2corr(X, weights):
 
     return mean, corr
 
+def print_moments(mean, corr=None):
+    """ Prints the mean vector and the correlation matrix to stdout. """
+    if isinstance(mean, tuple):
+        mean, corr = mean
+    print 'mean:\n' + repr(mean)
+    print 'correlation:\n' + repr(corr)
+    if corr is None: print
 
-    """
-    def getv2m(self):
-        return self._v2m_perm
 
-    def setv2m(self, perm):
-        self._v2m_perm = numpy.array(perm)
-        self._m2v_perm = numpy.argsort(numpy.array(perm))
 
-    def getm2v(self):
-        return self._m2v_perm
 
-    def setm2v(self, perm):
-        self._m2v_perm = numpy.array(perm)
-        self._v2m_perm = numpy.argsort(numpy.array(perm))
-        
-    v2m_perm = property(fget=getv2m, fset=setv2m, doc="vector to model permutation")
-    m2v_perm = property(fget=getm2v, fset=setm2v, doc="model to vector permutation")
-    """
+"""
+def getv2m(self):
+    return self._v2m_perm
+
+def setv2m(self, perm):
+    self._v2m_perm = numpy.array(perm)
+    self._m2v_perm = numpy.argsort(numpy.array(perm))
+
+def getm2v(self):
+    return self._m2v_perm
+
+def setm2v(self, perm):
+    self._m2v_perm = numpy.array(perm)
+    self._v2m_perm = numpy.argsort(numpy.array(perm))
+    
+v2m_perm = property(fget=getv2m, fset=setv2m, doc="vector to model permutation")
+m2v_perm = property(fget=getm2v, fset=setm2v, doc="model to vector permutation")
+"""

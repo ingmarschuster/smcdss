@@ -102,11 +102,14 @@ class ProductBinary(EquableProductBinary):
         p = numpy.array(p, dtype=float)
 
         # call super constructor
-        EquableProductBinary.__init__(self, d=p.shape[0], p=p, name=name, long_name=long_name)
+        EquableProductBinary.__init__(self, d=p.shape[0], p=0.5, name=name, long_name=long_name)
+
+        self.py_wrapper = binary.wrapper.product()
 
         # add module
         self.pp_modules += ('binary.product',)
-        self.py_wrapper = binary.wrapper.product()
+
+        self.p = p
 
     def __str__(self):
         return 'd: %d, p:\n%s' % (self.d, repr(self.p))
@@ -185,11 +188,11 @@ class ProductBinary(EquableProductBinary):
 
     def _getMean(self):
         """ Get expected value of instance. \return p-vector """
-        return self.param['p']
+        return self.p
 
     def _getRandom(self, xi=binary.base.BaseBinary.MIN_MARGINAL_PROB):
         """ Get index list of random components of instance. \return index list """
-        return [i for i, p in enumerate(self.param['p']) if min(p, 1.0 - p) > xi]
+        return [i for i, p in enumerate(self.p) if min(p, 1.0 - p) > xi]
 
 
 

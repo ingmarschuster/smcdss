@@ -11,14 +11,16 @@ $Date: 2011-05-12 19:12:23 +0200 (Do, 12 Mai 2011) $
 \details The correlation structure of the model is limited by the constraints of the elliptic Gaussian copula.
 """
 
+import binary.base
+import binary.product
+import binary.wrapper
 import numpy
-import product
-import scipy.stats as stats
 import scipy.linalg
-import utils
+import scipy.stats as stats
 import time
 
-class GaussianCopulaBinary(product.ProductBinary):
+
+class GaussianCopulaBinary(binary.product.ProductBinary):
     """ Binary parametric family obtained via dichotomizing a multivariate Gaussian. """
 
     def __init__(self, p, R, verbose=False):
@@ -27,18 +29,37 @@ class GaussianCopulaBinary(product.ProductBinary):
             \param p mean
             \param R correlation matrix
         """
-        product.ProductBinary.__init__(self, p, name='gaussian', long_name=__doc__)
-        self.f_rvs = _rvs
 
-        ## correlation matrix of the binary distribution
-        self.param.update(dict(R=R))
+        # call super constructor
+        binary.product.ProductBinary.__init__(self, p, name='Gaussian copula family', long_name=__doc__)
 
-        ## mean of Gaussian copula binary
-        self.param.update(dict(mu=stats.norm.ppf(self.p)))
+        self.py_wrapper = binary.wrapper.gaussian_copula()
+        
+        # add modules
+        self.pp_modules = ('numpy', 'scipy.linalg', 'binary.gaussian_copula')
 
-        localQ = calc_local_Q(self.param, verbose=verbose)
-        ## correlation matrix of the Gaussian copula binary
-        self.param.update(decompose_Q(localQ, mode='scaled', verbose=verbose))
+        # add dependent functions
+        self.pp_depfuncs += ('_rvslpmf_all',)
+
+        ## target correlation matrix of binary distribution
+        self.R = R
+
+        ## target mean vector of binary distribution
+        self.p = p
+
+        ## mean vector of auxiliary multivariate Gaussian
+        self.mu = stats.norm.ppf(self.p)
+
+        ## correlation matrix of auxiliary multivariate Gaussian
+        self.Q = None
+
+        ## Cholesky decomposition of the correlation matrix of auxiliary multivariate Gaussian
+        self.C = None
+
+        # locally adjust correlation matrix of auxiliary multivariate Gaussian
+        localQ = calc_local_Q(self.mu, self.p, self.R, verbose=verbose)
+        # compute the Cholesky decomposition of the locally adjust correlation matrix
+        self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
 
 
     @classmethod
@@ -48,18 +69,24 @@ class GaussianCopulaBinary(product.ProductBinary):
             \param cls class 
             \param d dimension
         """
-        p = 0.25 + 0.5 * numpy.random.rand(d)
-
-        # For a numpy.random matrix X with entries U[-1,1], set Q = X*X^t and stats.normalize.
-        X = numpy.ones((d, d)) - numpy.random.random((d, d))
-        Q = numpy.dot(X, X.T) + 1e-10 * numpy.eye(d)
-        q = Q.diagonal()[numpy.newaxis, :]
-        Q = Q / numpy.sqrt(numpy.dot(q.T, q))
-        R = calc_R(Q, stats.norm.ppf(p), p)
+        p, R = binary.base.moments2corr(binary.base.random_moments(d, phi=0.8))
         return cls(p, R)
 
     def __str__(self):
-        return 'p:\n' + self.p + '\nR:\n' + self.R
+        return 'mu:\n' + repr(self.mu) + '\nSigma:\n' + repr(self.Q)
+
+    @classmethod
+    def _rvs(cls, V, mu, C):
+        """ 
+            Generates a random variable.
+            \param V normal variables
+            \param param parameters
+            \return binary variables
+        """
+        Y = numpy.empty((V.shape[0], V.shape[1]), dtype=bool)
+        for k in xrange(V.shape[0]):
+            Y[k] = mu > numpy.dot(C, V[k])
+        return Y
 
     @classmethod
     def independent(cls, p):
@@ -81,87 +108,90 @@ class GaussianCopulaBinary(product.ProductBinary):
         return cls.independent(p=0.5 * numpy.ones(d))
 
     @classmethod
+    def from_moments(cls, mean, corr):
+        """ 
+            Constructs a gaussian copula family from given mean and correlation.
+            \param mean mean
+            \param corr correlation
+            \return gaussian copula family
+        """
+        return cls(mean, corr)
+
+    @classmethod
     def from_data(cls, sample, verbose=False):
         """ 
-            Construct a Gaussian copula model from data.
-            \param cls class
+            Construct a Gaussian copula family from data.
             \param sample a sample of binary data
         """
         return cls(sample.mean, sample.cor, verbose=verbose)
 
     def renew_from_data(self, sample, lag=0.0, verbose=False, **param):
         """ 
-            Re-parameterizes the Gaussian copula model from data.
+            Re-parameterizes the Gaussian copula family from data.
             \param sample a sample of binary data
             \param lag update lag
             \param verbose verbose     
             \param param parameters
         """
-        self.param['R'] = sample.getCor(weight=True)
+        self.R = sample.getCor(weight=True)
         newP = sample.getMean(weight=True)
-        self.param['p'] = (1 - lag) * newP + lag * self.param['p']
+        self.p = (1 - lag) * newP + lag * self.p
 
         ## mean of hidden stats.normal distribution
-        self.param['mu'] = stats.norm.ppf(self.p)
+        self.mu = stats.norm.ppf(self.p)
 
-        localQ = calc_local_Q(self.param, verbose=verbose)
+        localQ = calc_local_Q(self.mu, self.p, self.R, verbose=verbose)
 
         ## correlation matrix of the hidden stats.normal distribution
-        self.param.update(decompose_Q(localQ, mode='scaled', verbose=verbose))
+        self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
 
     def _rvsbase(self, size):
         return numpy.random.normal(size=(size, self.d))
 
-    def getR(self):
-        return self.param['R']
 
-    def getQ(self):
-        return self.param['Q']
+    def getCorr(self):
+        """ 
+            Computes the correlation matrix induced by the adjusted auxiliary
+            multivariate Gaussian correlation matrix Q. The effective
+            correlation matrix does not necessarily coincide with the target
+            correlation matrix R.
+        """
+        sd = numpy.sqrt(self.p * (1 - self.p))
+        corr = numpy.ones((self.d, self.d))
+        for i in xrange(self.d):
+            for j in xrange(i):
+                corr[i, j] = bvnorm.cdf([self.mu[i], self.mu[j]], self.Q[i, j]) - self.p[i] * self.p[j]
+                corr[i, j] /= (sd[i] * sd[j])
+            corr[0:i, i] = corr[i, 0:i].T
+        return corr
 
-    def getC(self):
-        return self.param['C']
+    corr = property(fget=getCorr, doc="correlation matrix")
 
-    def getMu(self):
-        return self.param['mu']
+    @classmethod
+    def test_properties(cls,d, n=1e4, phi=0.8, ncpus=1):
+        """
+            Tests functionality of the quadratic linear family class.
+            \param d dimension
+            \param n number of samples
+            \param phi dependency level in [0,1]
+            \param ncpus number of cpus 
+        """
 
-    R = property(fget=getR, doc="R")
-    Q = property(fget=getQ, doc="Q")
-    C = property(fget=getC, doc="C")
-    mu = property(fget=getMu, doc="mu")
+        mean, corr = binary.base.moments2corr(binary.base.random_moments(d, phi=phi))
+        print 'given marginals '.ljust(100, '*')
+        binary.base.print_moments(mean, corr)
 
-def _rvs(V, param):
-    """ 
-        Generates a random variable.
-        \param V normal variables
-        \param param parameters
-        \return binary variables
-    """
-    mu, C = param['mu'], param['C']
-    Y = numpy.empty((V.shape[0], V.shape[1]), dtype=bool)
-    for k in xrange(V.shape[0]):
-        Y[k] = mu > numpy.dot(C, V[k])
-    return Y
+        generator = GaussianCopulaBinary.from_moments(mean, corr)
+        print generator.name + ':'
+        print generator
 
-def calc_R(Q, mu, p):
-    """ 
-        Computes the binary correlation matrix R induced by the Gaussian
-        correlation matrix Q.
-        \param Q correlation matrix of the hidden stats.normal
-        \param mu mean of the hidden stats.normal
-        \param p mean of the binary
-    """
-    d = len(p)
-    R = numpy.ones((d, d))
-    for i in range(d):
-        for j in range(i):
-            R[i][j] = bvnorm.pdf([mu[i], mu[j]], Q[i][j]) - p[i] * p[j]
-            R[i][j] /= numpy.sqrt(p[i] * p[j] * (1 - p[i]) * (1 - p[j]))
-            R[i][j] = max(min(R[i][j], 1.0), -1.0)
-        R[0:i, i] = R[i, 0:i].T
-    return R
+        print 'exact '.ljust(100, '*')
+        binary.base.print_moments(generator.mean, generator.corr)
 
+        print ('simulation (n = %d) ' % n).ljust(100, '*')
+        binary.base.print_moments(generator.rvs_marginals(n, ncpus))
 
-def calc_local_Q(param, eps=0.02, delta=0.075, verbose=False):
+def calc_local_Q(mu, p, R, eps=0.02, delta=0.075, verbose=False):
     """ 
         Computes the Gaussian correlation matrix Q necessary to generate
         bivariate Bernoulli samples with a certain local correlation matrix R.
@@ -172,7 +202,6 @@ def calc_local_Q(param, eps=0.02, delta=0.075, verbose=False):
     """
 
     t = time.time()
-    R, mu, p = param['R'], param['mu'], param['p']
     iterations = 0
     d = len(p)
     localQ = numpy.ones((d, d))
@@ -238,7 +267,7 @@ def calc_local_q(mu, p, r, init=0, verbose=False):
 
 def newtonraphson(mu, p, r, init=0, verbose=False):
     """
-        Newton-Raphson search for the correlation parameter q of the underlying stats.normal distibution.
+        Newton-Raphson search for the correlation parameter q of the underlying normal distribution.
         \param mu mean of the hidden stats.normal
         \param p mean of the binary            
         \param r correlation between the binary
@@ -275,7 +304,7 @@ def newtonraphson(mu, p, r, init=0, verbose=False):
 
 def bisectional(mu, p, r, l= -1, u=1, init=0, verbose=False):
     """
-        Bisectional search for the correlation parameter q of the underlying stats.normal distibution.
+        Bisectional search for the correlation parameter q of the underlying normal distribution.
         \param mu mean of the hidden stats.normal
         \param p mean of the binary            
         \param r correlation between the binary
@@ -330,7 +359,7 @@ def decompose_Q(Q, mode='scaled', verbose=False):
 
     if verbose: print 'decomposeQ'.ljust(20) + '> time %.3f' % (time.time() - t)
 
-    return dict(C=C, Q=Q)
+    return C, Q
 
 
 def scale_Q(Q, verbose=False):
@@ -360,11 +389,14 @@ def scale_Q(Q, verbose=False):
 
 def nearest_Q(Q, verbose=False):
     """
-        Computes the nearest (Frobenius stats.norm) correlation matrix for the locally adjusted matrix Q.
-        The nearest correlation matrix problem is solved using the alternating projection method proposed
-        in <i>Computing the Nearest Correlation Matrix - A problem from Finance</i> by N. Higham (2001).
-        \param Q summetric matrix 
-        \param verbose print to stdout 
+        Computes the nearest (Frobenius stats.norm) correlation matrix for the
+        locally adjusted matrix Q. The nearest correlation matrix problem is
+        solved using the alternating projection method proposed in <i>Computing
+        the Nearest Correlation Matrix - A problem from Finance</i> by N. Higham
+        (2001).
+        
+        \param Q symmetric matrix 
+        \param verbose print to stdout
     """
     t = time.time()
     d = len(Q[0])
@@ -401,11 +433,12 @@ def nearest_Q(Q, verbose=False):
 
 
 
+#-------------------------------------------------------------- bivariate normal
 
 class _bvnorm(stats.rv_continuous):
     """
-        bivariate normal distribution with correlation r.
-        stats.normal.pdf(x,y) = numpy.exp(-(x*x-2*r*x*y+y*y)/(2*(1-r*r))) / (2*numpy.pi*numpy.sqrt(1-r*r))
+        bivariate normal distribution with correlation coefficient r.
+        pdf(x,y) = numpy.exp(-(x*x-2*r*x*y+y*y)/(2*(1-r*r))) / (2*numpy.pi*numpy.sqrt(1-r*r))
     """
 
     def cdf(self, x, r=0):
@@ -552,11 +585,3 @@ class _bvnorm(stats.rv_continuous):
         return p / float(n)
 
 bvnorm = _bvnorm(name='bvnorm', longname='A bivariate normal', shapes='r')
-
-
-def main():
-    h = GaussianCopulaBinary.random(5)
-    print h.rvstest(200)
-
-if __name__ == "__main__":
-    main()
