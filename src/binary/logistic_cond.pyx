@@ -70,35 +70,35 @@ class LogisticCondBinary(binary.product.ProductBinary):
             \param param parameters
             \return binary variables
         """
-        cdef int d = Beta.shape[0]
-        cdef int k, i, size
-        cdef double logp = 0.0
-        cdef double sum
+        cdef Py_ssize_t d = Beta.shape[0]
+        cdef Py_ssize_t k, i, size
+        cdef double logprob
+        cdef double x
 
         if U is not None:
             size = U.shape[0]
-            Y = numpy.empty((size, U.shape[1]), dtype=numpy.int8)
+            Y = numpy.empty((size, d), dtype=numpy.int8)
 
         if Y is not None:
             size = Y.shape[0]
 
-        L = numpy.zeros(size, dtype=numpy.float64)
+        cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 1] L = numpy.zeros(size, dtype=numpy.float64)
 
         for k in xrange(size):
 
-            for i in xrange(0, d):
+            for i in xrange(d):
                 # Compute log conditional probability that Y(i) is one
-                sum = Beta[i, i]
+                x = Beta[i, i]
                 for j in xrange(i):
-                    sum += Beta[i, j] * Y[k, j]
-                logcprob = -log(1 + exp(-sum))
+                    x += Beta[i, j] * Y[k, j]
+                logcprob = -log(1 + exp(-x))
 
                 # Generate the ith entry
                 if U is not None: Y[k, i] = log(U[k, i]) < logcprob
 
                 # Add to log conditional probability
                 L[k] += logcprob
-                if not Y[k, i]: L[k] -= sum
+                if not Y[k, i]: L[k] -= x
 
         return numpy.array(Y, dtype=bool), L
 
@@ -141,92 +141,192 @@ class LogisticCondBinary(binary.product.ProductBinary):
         return cls
 
     @classmethod
-    def from_moments(cls, mean, corr, max_d=12, mcmc_n=1e4, verbose=False):
+    def from_moments(cls, mean, corr, n=1e4, q=25.0, delta=None, verbose=False):
         """ 
             Constructs a logistic conditionals family from given mean and correlation.
             \param mean mean
             \param corr correlation
+            \param n number of samples for Monte Carlo estimation
+            \param q number of intermediate steps in Newton-Raphson procedure
+            \param delta minimum absolute value of correlation coefficients
             \return logistic conditionals family
-            \todo Augment data by one dimension instead of using a completely new sample.
         """
 
-        # Convert arguments
-        M = binary.base.corr2moments(mean, corr)
-        d = M.shape[0]
+        ## dimension of binary family
+        cdef Py_ssize_t d = mean.shape[0]
 
-        # Initialize Beta
-        Beta = numpy.zeros((d, d), dtype=float)
+        ## dimension of the current logistic regression
+        cdef Py_ssize_t c
+
+        ## dimension of the sparse logistic regression
+        cdef Py_ssize_t s
+
+        ## iterators
+        cdef Py_ssize_t k, i, j
+
+        ## minimum dimension for Monte Carlo estimates
+        cdef Py_ssize_t min_c = int(numpy.log2(n))
+
+        ## probability of binary vector
+        cdef double prob
+
+        ## floating point variable
+        cdef double x
+
+        ## parameter matrix holding regression coefficients
+        cdef numpy.ndarray[numpy.float64_t, ndim = 2] Beta = numpy.zeros((d, d), dtype=numpy.float64)
+
+        ## parameter vector holding regression coefficients
+        cdef numpy.ndarray[numpy.float64_t, ndim = 1] beta = numpy.empty(0, dtype=numpy.float64)
+
+        ## f: mapping of the parameter vector onto the cross-moment vector
+        cdef numpy.ndarray[numpy.float64_t, ndim = 1] f = numpy.empty(0, dtype=numpy.float64)
+
+        ## Jacobian matrix of f
+        cdef numpy.ndarray[numpy.float64_t, ndim = 2] J = numpy.empty((0, 0), dtype=numpy.float64)
+
+        ## probability mass for enumeration 
+        cdef numpy.ndarray[numpy.float64_t, ndim = 1] pm = numpy.empty(0, dtype=numpy.float64)
+
+        ## array holding uniform [0,1] random variables
+        cdef numpy.ndarray[numpy.float64_t, ndim = 2] U = numpy.empty((0, 0), dtype=numpy.float64)
+
+        ## array holding random binary vectors
+        cdef numpy.ndarray[numpy.int8_t, ndim = 2] Y = numpy.empty((0, 0), dtype=numpy.int8)
+
+        ## index vector for sparse logistic regression
+        cdef numpy.ndarray[Py_ssize_t, ndim = 1] S = numpy.empty(0, dtype=numpy.int)
+
+        ## index vector for intermediate steps in Newton-Raphson procedure
+        cdef numpy.ndarray[numpy.float64_t, ndim = 1] Q = numpy.linspace(1 / (float(q) - 1), 1.0, q - 1)
+
+        ## cross-moment matrix
+        cdef numpy.ndarray[numpy.float64_t, ndim = 2] M = binary.base.corr2moments(mean, corr)
+
+        ## cross-moment matrix for independent components
+        cdef numpy.ndarray[numpy.float64_t, ndim = 2] I = M.copy()
+
+        ## parameter for convex combination between target and independent moment vectors 
+        cdef double phi
+
+
+        #------------------------------------------------------------------------------ 
+
+
+        if delta is None:
+            delta = 2.0 * scipy.linalg.norm(numpy.tril(corr, k= -1)) / float((d - 1) * (d - 2))
+
+        # compute cross-moment for independent case
+        for i in xrange(d):
+            for j in xrange(i):
+                I[i, j] = M[i, i] * M[j, j]
+                I[j, i] = I[i, j]
+
+        # initialize for component of Beta
         Beta[0, 0] = logit(M[0, 0])
 
-        # Loop over all dimensions
-        for i in xrange(1, d):
+        # loop over dimensions
+        for c in xrange(1, d):
+            if verbose > 0: sys.stderr.write('\ndim: %d' % c)
 
-            # Build lower dimensional model
-            l = LogisticCondBinary(Beta=Beta[:i, :i])
-
-            # Draw random states for MC estimate
-            if d > max_d:
-                X = l.rvs(size=mcmc_n)
-                pmf = numpy.ones(mcmc_n) / float(mcmc_n)
+            if c < min_c:
+                Y = numpy.array(LogisticCondBinary.state_space(c), dtype=numpy.int8)
+                pm = numpy.exp(LogisticCondBinary._rvslpmf_all(Beta=Beta[:c, :c], Y=Y)[1])
             else:
-                X = l.state_space()
-                pmf = l.pmf(X)
+                Y = numpy.empty(shape=(n, c), dtype=numpy.int8)
+                U = numpy.random.random(size=(n, c))
 
-            X = numpy.column_stack((X, numpy.ones(X.shape[0], dtype=float)[:, numpy.newaxis]))
+                # sample array of random binary vectors
+                for k in xrange(n):
 
-            # Initialize b with zero vector
-            b = numpy.zeros(i + 1)
-            b[-1] = logit(M[i, i])
+                    for i in xrange(c):
 
-            # Target vector
-            tM = M[i, :i + 1]
+                        # compute the probability that Y(k,i) is one                    
+                        x = Beta[i, i]
+                        for j in xrange(i): x += Beta[i, j] * Y[k, j]
 
-            # Newton iteration
-            for j in xrange(LogisticCondBinary.MAX_ITERATIONS):
+                        # generate the entry Y(k,i)
+                        Y[k, i] = U[k, i] < 1.0 / (1.0 + exp(-x))
 
-                b_before = b.copy()
+            # filter components with high association for sparse regression
+            S = numpy.append((abs(corr[c, :c]) > delta).nonzero(), c)
+            s = S.shape[0] - 1
 
-                if verbose: sys.stderr.write('b: %s' % repr(b))
+            # initialize b with independent parameter
+            beta = numpy.zeros(s + 1, dtype=numpy.float64)
+            beta[s] = logit(M[c, c])
 
-                # Compute MC estimates for expected values
-                f = numpy.zeros(i + 1)
-                J = numpy.zeros((i + 1, i + 1))
+            # set target moment vector and independent moment vector
+            tM, tI = M[c, S], I[c, S]
 
-                for v in xrange(X.shape[0]):
-                    # Compute marginal probability
-                    p = max(min(1.0 / (1.0 + numpy.exp(-numpy.dot(X[v], b))), 1.0 - 1e-8), 1e-8)
-                    f += pmf[v] * p * X[v]
-                    J += pmf[v] * (p - p * p) * numpy.outer(X[v], X[v])
+            # Newton-Raphson iteration
+            for phi in Q:
 
-                # Subtract non-random parts            
-                f -= tM
+                for nr in xrange(LogisticCondBinary.MAX_ITERATIONS):
 
-                # Newton update
-                try:
-                    b = scipy.linalg.solve(J, numpy.dot(J, b) - f, sym_pos=True)
-                except numpy.linalg.linalg.LinAlgError:
-                    b = scipy.linalg.solve(J + numpy.eye(i + 1) * 1e-8, numpy.dot(J, b) - f, sym_pos=False)
+                    if verbose > 1: sys.stderr.write('phi: %.3f, nr: %d, beta: %s' % (phi, nr, repr(beta)))
+                    beta_before = beta.copy()
 
-                entry_sum = max(b[b > 0].sum(), -b[b < 0].sum())
-                if entry_sum > LogisticCondBinary.MAX_ENTRY_SUM:
-                    phi = LogisticCondBinary.MAX_ENTRY_SUM / entry_sum
-                    b = phi * b + (1.0 - phi) * b_before
-                    if verbose: sys.stderr.write('sum of b exceeded threshold %.f.\n' % LogisticCondBinary.MAX_ENTRY_SUM)
+                    # compute f and J 
+                    f = numpy.zeros(s + 1, dtype=numpy.float64)
+                    J = numpy.zeros((s + 1, s + 1), dtype=numpy.float64)
+
+                    # loop over all binary vectors
+                    for k in xrange(Y.shape[0]):
+
+                        x = beta[s]
+                        for i in xrange(s): x += beta[i] * Y[k, S[i]]
+                        prob = 1.0 / (1.0 + exp(-x))
+                        prob = min(max(prob, 1e-8), 1.0 - 1e-8)
+
+                        x = prob / float(n)
+                        if c < min_c: x *= n * pm[k]
+                        for i in xrange(s):
+                            f[i] = f[i] + x * Y[k, S[i]]
+                        f[s] = f[s] + x
+
+                        x = prob * (1 - prob) / float(n)
+                        if c < min_c: x *= n * pm[k]
+                        for i in xrange(s):
+                            for j in xrange(s):
+                                J[i, j] += x * Y[k, S[i]] * Y[k, S[j]]
+                            J[s, i] += x * Y[k, S[i]]
+                            J[i, s] += x * Y[k, S[i]]
+                        J[s, s] += x
+
+                    # subtract non-random parts
+                    f -= (phi * tM + (1.0 - phi) * tI)
+
+                    # Newton update
+                    try:
+                        beta = scipy.linalg.solve(J, numpy.dot(J, beta) - f, sym_pos=True)
+                    except numpy.linalg.linalg.LinAlgError:
+                        sys.stderr.write('numerical error. adding 1e-8 on main diagonal.')
+                        beta = scipy.linalg.solve(J + numpy.eye(s + 1) * 1e-8, numpy.dot(J, beta) - f, sym_pos=False)
+
+                    # check for absolute sums in beta
+                    entry_sum = max(beta[beta > 0].sum(), -beta[beta < 0].sum())
+                    if entry_sum > LogisticCondBinary.MAX_ENTRY_SUM:
+                        if verbose > 1: sys.stderr.write('stopped. beta exceeded %.1f\n' % LogisticCondBinary.MAX_ENTRY_SUM)
+                        nr = None
+                        break
+
+                    # check for convergence
+                    if numpy.allclose(beta, beta_before, rtol=0, atol=LogisticCondBinary.PRECISION):
+                        if verbose > 1: sys.stderr.write('beta converged.\n')
+                        Beta[c, S] = beta
+                        break
+
+                if nr is None or phi == 1.0:
+                    if verbose > 0: sys.stderr.write(' phi: %.3f ' % phi)
                     break
 
-                if numpy.allclose(b, b_before, rtol=0, atol=LogisticCondBinary.PRECISION):
-                    if verbose: sys.stderr.write('b converged.\n')
-                    break
 
-            # Convergence failure
-            if j > LogisticCondBinary.MAX_ITERATIONS:
-                b = numpy.zeros(i + 1)
-                b[-1] = logit(M[i, i])
+        if verbose: sys.stderr.write('\nlogistic conditionals family successfully constructed from moments.\n\n')
 
-            Beta[i, :i + 1] = b
-        if verbose: sys.stderr.write('\nlogistic family successfully constructed from moments.\n\n')
         return cls(Beta)
 
+    '''
     @classmethod
     def from_qu_exponential(cls, qu_exp):
         """ 
@@ -281,7 +381,7 @@ class LogisticCondBinary(binary.product.ProductBinary):
         # Set convex combination of old and new parameter.
         self.Beta = (1 - lag) * newBeta + lag * self.Beta
         self.p = LogisticCondBinary.logistic(self.Beta.sum(axis=1))
-
+    '''
     @classmethod
     def test_properties(cls, d, n=1e4, phi=0.8, ncpus=1):
         """
@@ -300,13 +400,13 @@ class LogisticCondBinary(binary.product.ProductBinary):
         print generator.name + ':'
         print generator
 
-        print 'exact '.ljust(100, '*')
-        binary.base.print_moments(generator.exact_marginals(ncpus))
+        #print 'exact '.ljust(100, '*')
+        #binary.base.print_moments(generator.exact_marginals(ncpus))
 
         print ('simulation (n = %d) ' % n).ljust(100, '*')
         binary.base.print_moments(generator.rvs_marginals(n, ncpus))
 
-
+'''
 def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, verbose=True):
     """ 
         Computes the logistic regression coefficients of all conditionals. 
@@ -470,7 +570,7 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
             if verbose: print 'no change in likelihood\n'
             break
     return beta, i + 1
-
+'''
 
 def logistic(x):
     """ Logistic function 1/(1+exp(x)) \return logistic function """

@@ -74,11 +74,22 @@ class logistic_cond(wrapper):
         return binary.logistic_cond.LogisticCondBinary._rvslpmf_all(
                 Beta=param.Beta, U=None, Y=numpy.array(Y, dtype=numpy.int8))[1]
     def rvs(self, U, param):
-        return binary.logistic_cond.LogisticCondBinary._rvslpmf_all(
-                Beta=param.Beta, U=U, Y=None)[0]
+        return self.rvslpmf(U, param)[0]
     def rvslpmf(self, U, param):
         return binary.logistic_cond.LogisticCondBinary._rvslpmf_all(
-                Beta=param.Beta, U=U, Y=None)
+                Beta=param.Beta, U=U)
+
+
+class linear_cond(wrapper):
+    """ Wrapper class for linear conditionals family."""
+    def lpmf(self, Y, param):
+        return binary.linear_cond.LinearCondBinary._rvslpmf_all(
+                param.Beta, Y=numpy.array(Y, dtype=numpy.int8))[1]
+    def rvs(self, U, param):
+        return self.rvslpmf(U, param)[0]
+    def rvslpmf(self, U, param):
+        return binary.linear_cond.LinearCondBinary._rvslpmf_all(
+                param.Beta, U=U)
 
 
 class qu_linear(wrapper):

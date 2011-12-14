@@ -34,7 +34,7 @@ class GaussianCopulaBinary(binary.product.ProductBinary):
         binary.product.ProductBinary.__init__(self, p, name='Gaussian copula family', long_name=__doc__)
 
         self.py_wrapper = binary.wrapper.gaussian_copula()
-        
+
         # add modules
         self.pp_modules = ('numpy', 'scipy.linalg', 'binary.gaussian_copula')
 
@@ -115,7 +115,7 @@ class GaussianCopulaBinary(binary.product.ProductBinary):
             \param corr correlation
             \return gaussian copula family
         """
-        return cls(mean, corr)
+        return cls(mean.copy(), corr.copy())
 
     @classmethod
     def from_data(cls, sample, verbose=False):
@@ -168,7 +168,7 @@ class GaussianCopulaBinary(binary.product.ProductBinary):
     corr = property(fget=getCorr, doc="correlation matrix")
 
     @classmethod
-    def test_properties(cls,d, n=1e4, phi=0.8, ncpus=1):
+    def test_properties(cls, d, n=1e4, phi=0.8, ncpus=1):
         """
             Tests functionality of the quadratic linear family class.
             \param d dimension
@@ -188,10 +188,10 @@ class GaussianCopulaBinary(binary.product.ProductBinary):
         print 'exact '.ljust(100, '*')
         binary.base.print_moments(generator.mean, generator.corr)
 
-        print ('simulation (n = %d) ' % n).ljust(100, '*')
-        binary.base.print_moments(generator.rvs_marginals(n, ncpus))
+        #print ('simulation (n = %d) ' % n).ljust(100, '*')
+        #binary.base.print_moments(generator.rvs_marginals(n, ncpus))
 
-def calc_local_Q(mu, p, R, eps=0.02, delta=0.075, verbose=False):
+def calc_local_Q(mu, p, R, eps=0.02, delta=None, verbose=False):
     """ 
         Computes the Gaussian correlation matrix Q necessary to generate
         bivariate Bernoulli samples with a certain local correlation matrix R.
@@ -201,9 +201,13 @@ def calc_local_Q(mu, p, R, eps=0.02, delta=0.075, verbose=False):
         \param verbose print to stdout 
     """
 
-    t = time.time()
-    iterations = 0
+    t = time.time()    
     d = len(p)
+
+    if delta is None:
+        delta = 2.0 * scipy.linalg.norm(numpy.tril(R, k= -1)) / float((d - 1) * (d - 2))
+
+    iterations = 0
     localQ = numpy.ones((d, d))
 
     for i in range(d):
@@ -215,6 +219,7 @@ def calc_local_Q(mu, p, R, eps=0.02, delta=0.075, verbose=False):
                 if abs(R[i, j]) < delta:
                     R[i, j] = 0.0
         R[:i, i] = R[i, :i]
+
     k = 0.5 * (sum(R > 0.0) - d)
 
     for i in range(d):

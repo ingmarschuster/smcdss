@@ -156,7 +156,6 @@ class BaseBinary(object):
                     args=(U[start:end], self),
                     modules=self.pp_modules
                     ))
-                # depfuncs=tuple(self.pp_depfuncs.values())
 
             # wait and retrieve results
             job_server.wait()
@@ -164,7 +163,7 @@ class BaseBinary(object):
                 Y[start:end], L[start:end] = job()
         else:
             # no job server
-            Y, L = self.py_wrapper.self.lpmf(U, param=self.param)
+            Y, L = self.py_wrapper.rvslpmf(U, param=self)
 
         #if self.m2v_perm is not None:
         #    Y = Y[:, self.m2v_perm]
@@ -226,18 +225,19 @@ class BaseBinary(object):
             job_server = pp.Server(ncpus=ncpus, ppservers=())
         else: job_server = None
 
-        X = self.state_space()
+        X = BaseBinary.state_space(self.d)
         lpmf = self.lpmf(X, job_server=job_server)
         if lpmf is None: return None
 
         weights = numpy.exp(lpmf - lpmf.max())
         return sample2corr(X, weights)
 
-    def state_space(self):
+    @classmethod
+    def state_space(cls, d):
         """ Enumerates the state space. \return array of binary vectors """
         X = list()
-        for dec_vector in range(2 ** self.d):
-            bin_vector = dec2bin(dec_vector, self.d)
+        for dec_vector in range(2 ** d):
+            bin_vector = dec2bin(dec_vector, d)
             X.append(bin_vector)
         return numpy.array(X)
 
@@ -287,7 +287,7 @@ def dec2bin(n, d=0):
 
 #-------------------------------------------------------------- moment functions
 
-def random_moments(d, eps=0.05, phi=0.5):
+def random_moments(d, eps=0.05, phi=0.5, rho=0.5):
     """
         Creates a random cross-moments matrix that is consistent with the
         general constraints on binary data.
@@ -296,12 +296,13 @@ def random_moments(d, eps=0.05, phi=0.5):
         \param phi parameter in [0,1] where phi=0 means zero correlation
         \return M cross-moment matrix
     """
+    a = 1.0 / max(rho, 1e-5)
     M = numpy.diag(eps + (1.0 - 2 * eps) * numpy.random.random(d))
-    for i in range(d):
-        for j in range(i):
+    for i in xrange(d):
+        for j in xrange(i):
             high = min(M[i, i], M[j, j])
             low = max(M[i, i] + M[j, j] - 1.0, 0)
-            M[i, j] = phi * (low + numpy.abs(high - low) * numpy.random.random()) + (1.0 - phi) * M[i, i] * M[j, j]
+            M[i, j] = phi * (low + numpy.abs(high - low) * numpy.random.beta(a, a)) + (1.0 - phi) * M[i, i] * M[j, j]
             M[j, i] = M[i, j]
     return M
 

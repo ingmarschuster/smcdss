@@ -149,6 +149,14 @@ class ProductBinary(EquableProductBinary):
             Y[k] = p > U[k]
         return Y
 
+    @classmethod
+    def from_moments(cls, mean, corr):
+        """ 
+            Construct a random family for testing.
+            \param mean mean vector
+            \param corr correlation matrix (nuisance parameter)
+        """
+        return cls(p=mean)
 
     @classmethod
     def random(cls, d):

@@ -15,10 +15,11 @@ import pstats
 import os
 
 import numpy; numpy.seterr(divide='raise')
-
-from binary.base import print_moments
+import scipy.linalg
+import binary.base
 
 from binary.logistic_cond import LogisticCondBinary
+from binary.linear_cond import LinearCondBinary
 from binary.qu_linear import QuLinearBinary
 from binary.product import ProductBinary, PositiveProductBinary, ConstrProductBinary, EquableProductBinary, LimitedProductBinary
 from binary.gaussian_copula import GaussianCopulaBinary
@@ -30,20 +31,22 @@ generator_classes = [
 # PositiveProductBinary,
 # ConstrProductBinary,
 # LimitedProductBinary,
- LogisticCondBinary,
- QuLinearBinary,
- GaussianCopulaBinary
+# LogisticCondBinary,
+# QuLinearBinary,
+# GaussianCopulaBinary
+# LinearCondBinary
 ]
 
-n = 50000
-d = 5
-phi = 1.0
-ncpus = 1
+n = 1e6
+d = 15
+phi = 0.5
+rho = 0.5
+ncpus = 2
 rvs_marginals = True
 exact_marginals = False
 
 def main():
-    test_properties()
+    compare()
 
 def test_rvs():
 
@@ -52,19 +55,56 @@ def test_rvs():
         print (generator.name + ' ').ljust(100, '*')
         if rvs_marginals:
             print 'simulation marginals:'
-            print_moments(generator.rvs_marginals(n, ncpus=ncpus))
+            binary.base.print_moments(generator.rvs_marginals(n, ncpus=ncpus))
         if exact_marginals:
             print 'exact marginals:'
-            print_moments(generator.exact_marginals(ncpus=ncpus))
+            binary.base.print_moments(generator.exact_marginals(ncpus=ncpus))
 
 def test_properties():
 
     for generator_class in generator_classes:
         generator_class.test_properties(d, n, phi=phi, ncpus=ncpus)
 
+def compare():
+
+    mean, corr = binary.base.moments2corr(binary.base.random_moments(d, phi=phi, rho=rho))
+    #print 'given marginals '.ljust(100, '*')
+    #binary.base.print_moments(mean, corr)
+
+    d_corr = corr - numpy.eye(d)
+    p_sn, p_fn = scipy.linalg.norm(d_corr, 2), scipy.linalg.norm(d_corr)
+    print 'product family:'
+    print 'Spectral  norm: %.4f' % p_sn
+    print 'Frobenius norm: %.4f\n' % p_fn
+    #print repr(d_corr)
+
+    print 'gaussian copula family:'
+    generator = GaussianCopulaBinary.from_moments(mean, corr)
+    d_corr = corr - generator.corr
+    sn, fn = scipy.linalg.norm(d_corr, 2), scipy.linalg.norm(d_corr)
+    print 'Spectral  norm: %.4f, %.2f%%' % (sn, (p_sn - sn) / p_sn)
+    print 'Frobenius norm: %.4f, %.2f%%\n' % (fn, (p_fn - fn) / p_fn)
+    #print repr(d_corr)
+
+    print 'logistic conditionals family:'
+    generator = LogisticCondBinary.from_moments(mean, corr)
+    d_corr = corr - generator.rvs_marginals(n, ncpus)[1]
+    sn, fn = scipy.linalg.norm(d_corr, 2), scipy.linalg.norm(d_corr)
+    print 'Spectral  norm: %.4f, %.2f%%' % (sn, (p_sn - sn) / p_sn)
+    print 'Frobenius norm: %.4f, %.2f%%\n' % (fn, (p_fn - fn) / p_fn)
+    #print repr(d_corr)
+
+    print 'linear conditionals family:'
+    generator = LinearCondBinary.from_moments(mean, corr)
+    d_corr = corr - generator.rvs_marginals(n, ncpus)[1]
+    sn, fn = scipy.linalg.norm(d_corr, 2), scipy.linalg.norm(d_corr)
+    print 'Spectral  norm: %.4f, %.2f%%' % (sn, (p_sn - sn) / p_sn)
+    print 'Frobenius norm: %.4f, %.2f%%\n' % (fn, (p_fn - fn) / p_fn)
+    #print repr(d_corr)
+
 def profile():
 
-    cProfile.run('test_rvs()', 'unit_test.prof')
+    cProfile.run('test_properties()', 'unit_test.prof')
     p = pstats.Stats('unit_test.prof')
     p.sort_stats('time').print_stats(10)
     os.remove('unit_test.prof')
