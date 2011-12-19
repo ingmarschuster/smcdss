@@ -6,10 +6,10 @@ Formatting console output.
 """
 
 """
-@namespace utils.aux
-$Author$
-$Rev$
-$Date$
+@namespace utils.auxi
+$Author: christian.a.schafer@gmail.com $
+$Rev: 190 $
+$Date: 2011-12-07 23:41:07 +0100 (Mi, 07 Dez 2011) $
 @details
 """
 

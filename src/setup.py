@@ -12,7 +12,7 @@ import numpy
 if os.name == 'nt':
     if os.environ.has_key('CPATH'): os.environ['CPATH'] = os.environ['CPATH'] + numpy.get_include()
     else: os.environ['CPATH'] = numpy.get_include()
-    
+
     '''
     mingw_setup_args = { 'options': { 'build_ext': { 'compiler': 'mingw32' } } }
     pyximport.install(setup_args=mingw_setup_args, build_dir=os.path.curdir)
@@ -20,10 +20,13 @@ if os.name == 'nt':
 
 # extensions
 ext_modules = [Extension('binary.%s' % pyx_name, ['binary/%s.pyx' % pyx_name])
-               for pyx_name in ['base', 'product', 'pos_product', 'logistic_cond']]
+               for pyx_name in ['base', 'product', 'logistic_cond', 'linear_cond']]
 
 # build directory
-build_temp = os.path.join('..', 'build', '_'.join(list(os.uname())[0::2]))
+if os.name == 'posix':
+    build_temp = os.path.join('..', 'build', '_'.join(list(os.uname())[0::2]))
+else:
+    build_temp = os.path.join('..', 'build', 'win32')
 
 # run setup
 setup(

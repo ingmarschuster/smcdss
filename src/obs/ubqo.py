@@ -38,14 +38,14 @@ from numpy import inf
 
 class ubqo():
     def __init__(self, v):
-        
+
         # problem number
         self.problem = v['RUN_PROBLEM']
         self.testsuite = v['RUN_TESTSUITE']
-        
+
         # read specific problem
         self.A, self.primal_bound, self.dual_bound = read_problem(self.testsuite, self.problem)
-        
+
         # save parameters
         self.d, self.v = self.A.shape[0], v
 
@@ -55,14 +55,14 @@ def write_problem(testsuite, problem, A, primal_bound, dual_bound):
     """
     # write matrix
     d = A.shape[0]
-    
+
     # find path
     path = os.path.join(obs.v['DATA_PATH'], testsuite)
     if not os.path.isdir(path): os.mkdir(path)
     path = os.path.join(path, testsuite + '_%02d.dat' % problem)
-    
+
     file = open(path, 'w')
-    file.write('%.f\n' % primal_bound)    
+    file.write('%.f\n' % primal_bound)
     file.write('%.10f\n' % dual_bound)
     file.write('%d\n' % d)
     for j in xrange(d):
@@ -71,7 +71,7 @@ def write_problem(testsuite, problem, A, primal_bound, dual_bound):
             else: a = 2 * A[i, j]
             file.write('%d\n' % a)
     file.close()
-    
+
 def read_problem(testsuite, problem):
     """
         Reads a UQBO problem from file.
@@ -79,7 +79,7 @@ def read_problem(testsuite, problem):
     path = os.path.join(obs.v['DATA_PATH'], testsuite, testsuite + '_%02d.dat' % problem)
 
     # read matrix
-    file = open(path, 'r')  
+    file = open(path, 'r')
     primal_bound, dual_bound, d = eval(file.readline()), eval(file.readline()), int(file.readline())
     A = numpy.zeros(shape=(d, d))
     for j in xrange(d):
@@ -102,7 +102,7 @@ def normal(d, rho=1.0, xi=0.0, c=50):
 
 def normal_mixture(d, rho=1.0, xi=0.0, c=50):
     p = 0.1
-    v = numpy.array([numpy.random.normal()*(c, 10 * c)[numpy.random.random() < p] for i in xrange(d)]).T // 1 * (numpy.random.random(size=d) <= rho)
+    v = numpy.array([numpy.random.normal() * (c, 10 * c)[numpy.random.random() < p] for i in xrange(d)]).T // 1 * (numpy.random.random(size=d) <= rho)
     return v + (v.max(), -v.min())[xi > 0] * xi
 
 def generate_ubqo_problem(d, completeness=1.0, skewness=0.0, range=50, n=1, type=cauchy, testsuite=None):
@@ -115,7 +115,7 @@ def generate_ubqo_problem(d, completeness=1.0, skewness=0.0, range=50, n=1, type
         for i in xrange(d):
             A[i, : i + 1] = type(d=i + 1, rho=completeness, xi=skewness, c=range)
             A[:i, i] = A[i, :i]
-        write_problem(testsuite, problem, A, -numpy.inf, numpy.inf)
+            write_problem(testsuite, problem, A, -numpy.inf, numpy.inf)
 
 def main():
     # Parse command line options.
@@ -124,10 +124,10 @@ def main():
     except getopt.error, msg:
         print msg
         sys.exit(2)
-        
+
     d, type, testsuite = None, None, None
     n, completeness, skewness, range = 1, 1.0, 0.0, 100
-    
+
     for o, a in opts:
         if o == '-d': d = int(a)
         if o == '-n': n = int(a)
@@ -137,22 +137,22 @@ def main():
         if o == '-s': skewness = float(a)
         if o == '-r': range = int(a)
         if o == '-n': n = int(a)
-    
+
     for var in [d, type, testsuite]:
         if var is None:
             print "You need to specify dimension, type and testsuite."
             sys.exit(0)
-    
+
     obs.read_config()
     generate_ubqo_problem(d=d, completeness=completeness, skewness=skewness, n=n, range=range, type=type, testsuite=testsuite)
     print "Test suite saved as '%s'." % testsuite
 
 if __name__ == "__main__":
     main()
-    
 
 
-    
+
+
 #------------------------------------------------------------------------------ 
 
 
@@ -173,11 +173,11 @@ def import_beasly_lib():
 
     for filename in primal_bound.keys():
         if filename in ['bqp1000', 'bqp2500']: continue
-    
+
         file = open(os.path.join(obs.v['DATA_PATH'], 'archive', 'beasly', filename + '.txt'), 'r')
         n = int(file.readline())
         line = file.readline().strip().split(' ')
-    
+
         for problem in xrange(n):
             print '%d\t d=%s, nonzeros=%s' % (problem + 1, line[0], line[1])
             d = int(line[0])
@@ -189,9 +189,9 @@ def import_beasly_lib():
             for i in xrange(A.shape[0]):
                 for j in xrange(i):
                     A[j, i] = A[i, j]
-            
+
             write_problem(filename, problem + 1, A, float(primal_bound[filename][problem]), numpy.inf)
-    
+
         file.close()
 
 def import_glover_lib():

@@ -296,7 +296,9 @@ def random_moments(d, eps=0.05, phi=0.5, rho=0.5):
         \param phi parameter in [0,1] where phi=0 means zero correlation
         \return M cross-moment matrix
     """
-    a = 1.0 / max(rho, 1e-5)
+    rho = max(rho, 1e-10)
+    a = 1.0 / rho
+
     M = numpy.diag(eps + (1.0 - 2 * eps) * numpy.random.random(d))
     for i in xrange(d):
         for j in xrange(i):

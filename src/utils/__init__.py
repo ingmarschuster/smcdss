@@ -12,5 +12,5 @@ $Rev$
 $Date$
 """
 
-import aux
-aux.set_array_layout()
+import auxi
+#aux.set_array_layout()
