@@ -23,7 +23,7 @@ import time
 class GaussianCopulaBinary(binary.product.ProductBinary):
     """ Binary parametric family obtained via dichotomizing a multivariate Gaussian. """
 
-    def __init__(self, p, R, verbose=False):
+    def __init__(self, p, R, delta=None, verbose=False):
         """ 
             Constructor.
             \param p mean
@@ -57,7 +57,7 @@ class GaussianCopulaBinary(binary.product.ProductBinary):
         self.C = None
 
         # locally adjust correlation matrix of auxiliary multivariate Gaussian
-        localQ = calc_local_Q(self.mu, self.p, self.R, verbose=verbose)
+        localQ = calc_local_Q(self.mu, self.p, self.R, delta=delta, verbose=verbose)
         # compute the Cholesky decomposition of the locally adjust correlation matrix
         self.C, self.Q = decompose_Q(localQ, mode='scaled', verbose=verbose)
 
@@ -108,14 +108,14 @@ class GaussianCopulaBinary(binary.product.ProductBinary):
         return cls.independent(p=0.5 * numpy.ones(d))
 
     @classmethod
-    def from_moments(cls, mean, corr):
+    def from_moments(cls, mean, corr, delta=None):
         """ 
             Constructs a gaussian copula family from given mean and correlation.
             \param mean mean
             \param corr correlation
             \return gaussian copula family
         """
-        return cls(mean.copy(), corr.copy())
+        return cls(mean.copy(), corr.copy(), delta=delta)
 
     @classmethod
     def from_data(cls, sample, verbose=False):
@@ -201,11 +201,11 @@ def calc_local_Q(mu, p, R, eps=0.02, delta=None, verbose=False):
         \param verbose print to stdout 
     """
 
-    t = time.time()    
+    t = time.time()
     d = len(p)
 
     if delta is None:
-        delta = 2.0 * scipy.linalg.norm(numpy.tril(R, k= -1)) / float((d - 1) * (d - 2))
+        delta = 2.0 * scipy.linalg.norm(numpy.tril(R, k= -1) + numpy.triu(R, k=1)) / float((d - 1) * d)
 
     iterations = 0
     localQ = numpy.ones((d, d))
@@ -289,7 +289,10 @@ def newtonraphson(mu, p, r, init=0, verbose=False):
     last_q = numpy.inf
 
     for i in xrange(GaussianCopulaBinary.MAX_ITERATIONS):
-        q = q - round((bvnorm.cdf(mu, q) - s), 8) / bvnorm.pdf(mu, q)
+        try:
+            q = q - round((bvnorm.cdf(mu, q) - s), 8) / bvnorm.pdf(mu, q)
+        except FloatingPointError:
+            return 0.0, i
         if verbose: print q
         if q > 1:
             q = 0.999
@@ -470,7 +473,7 @@ class _bvnorm(stats.rv_continuous):
             \return random bivariate normal
         """
         v = numpy.random.normal(0, 1)
-        return r * v + numpy.sqrt(1 - r * r) * numpy.random.normal(0, 1)
+        return numpy.array([v, r * v + numpy.sqrt(1 - r * r) * numpy.random.normal(0, 1)])
 
     def lower_DW(self, dh, dk, r):
         """

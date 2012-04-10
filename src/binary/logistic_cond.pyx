@@ -171,7 +171,7 @@ class LogisticCondBinary(binary.product.ProductBinary):
         cdef double prob
 
         ## floating point variable
-        cdef double x
+        cdef double x, high, low
 
         ## parameter matrix holding regression coefficients
         cdef numpy.ndarray[numpy.float64_t, ndim = 2] Beta = numpy.zeros((d, d), dtype=numpy.float64)
@@ -212,9 +212,8 @@ class LogisticCondBinary(binary.product.ProductBinary):
 
         #------------------------------------------------------------------------------ 
 
-
         if delta is None:
-            delta = 2.0 * scipy.linalg.norm(numpy.tril(corr, k= -1)) / float((d - 1) * (d - 2))
+            delta = 2.0 * scipy.linalg.norm(numpy.tril(corr, k= -1) + numpy.triu(corr, k=1)) / float((d - 1) * d)
 
         # compute cross-moment for independent case
         for i in xrange(d):
@@ -255,6 +254,7 @@ class LogisticCondBinary(binary.product.ProductBinary):
             # initialize b with independent parameter
             beta = numpy.zeros(s + 1, dtype=numpy.float64)
             beta[s] = logit(M[c, c])
+            Beta[c, S] = beta
 
             # set target moment vector and independent moment vector
             tM, tI = M[c, S], I[c, S]
@@ -276,6 +276,7 @@ class LogisticCondBinary(binary.product.ProductBinary):
 
                         x = beta[s]
                         for i in xrange(s): x += beta[i] * Y[k, S[i]]
+
                         prob = 1.0 / (1.0 + exp(-x))
                         prob = min(max(prob, 1e-8), 1.0 - 1e-8)
 
@@ -306,8 +307,8 @@ class LogisticCondBinary(binary.product.ProductBinary):
 
                     # check for absolute sums in beta
                     entry_sum = max(beta[beta > 0].sum(), -beta[beta < 0].sum())
-                    if entry_sum > LogisticCondBinary.MAX_ENTRY_SUM:
-                        if verbose > 1: sys.stderr.write('stopped. beta exceeded %.1f\n' % LogisticCondBinary.MAX_ENTRY_SUM)
+                    if entry_sum > LogisticCondBinary.MAX_ENTRY_SUM * (0.25 * s + 1):
+                        if verbose > 1: sys.stderr.write('stopped. beta exceeding %.1f\n' % entry_sum)
                         nr = None
                         break
 
@@ -318,7 +319,7 @@ class LogisticCondBinary(binary.product.ProductBinary):
                         break
 
                 if nr is None or phi == 1.0:
-                    if verbose > 0: sys.stderr.write(' phi: %.3f ' % phi)
+                    if verbose: sys.stderr.write('phi: %.3f ' % phi)
                     break
 
 
@@ -326,7 +327,6 @@ class LogisticCondBinary(binary.product.ProductBinary):
 
         return cls(Beta)
 
-    '''
     @classmethod
     def from_qu_exponential(cls, qu_exp):
         """ 
@@ -375,13 +375,13 @@ class LogisticCondBinary(binary.product.ProductBinary):
         """
 
         # Compute new parameter from data.
-        newBeta = calc_Beta(sample=sample, Init=self.Beta, \
-                            job_server=job_server, eps=eps, delta=delta, verbose=verbose)
+        newBeta = calc_Beta(sample=sample, Init=self.Beta,
+                            job_server=job_server, eps=eps, delta=delta, verbose=verbose, pywrapper=self.py_wrapper)
 
         # Set convex combination of old and new parameter.
         self.Beta = (1 - lag) * newBeta + lag * self.Beta
-        self.p = LogisticCondBinary.logistic(self.Beta.sum(axis=1))
-    '''
+        self.p = logistic(self.Beta.sum(axis=1))
+
     @classmethod
     def test_properties(cls, d, n=1e4, phi=0.8, ncpus=1):
         """
@@ -406,8 +406,8 @@ class LogisticCondBinary(binary.product.ProductBinary):
         print ('simulation (n = %d) ' % n).ljust(100, '*')
         binary.base.print_moments(generator.rvs_marginals(n, ncpus))
 
-'''
-def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, verbose=True):
+
+def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, verbose=True, pywrapper=None):
     """ 
         Computes the logistic regression coefficients of all conditionals. 
         \param sample binary data
@@ -467,9 +467,9 @@ def calc_Beta(sample, eps=0.02, delta=0.05, Init=None, job_server=None, verbose=
             if not job_server is None:
                 jobs.append([i, covariates + [i],
                         (job_server.submit(
-                         func=calc_log_regr,
+                         func=pywrapper.calc_log_regr,
                          args=(X[:, i], X[:, covariates + [d]], XW[:, covariates + [d]], Init[i, covariates + [i]], w, False),
-                         modules=('numpy', 'scipy.linalg', 'binary')))
+                         modules=('numpy', 'scipy.linalg', 'binary.logistic_cond')))
                 ])
                 # once jobs are assigned to all cpus let the job server
                 # wait in order to prevent memory errors on large problems
@@ -556,7 +556,6 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
 
         # Compute the log-likelihood.
         llh = -0.5 * _lambda * numpy.dot(beta, beta) + (w * (y * Xbeta + numpy.log(1 + numpy.exp(Xbeta)))).sum()
-        print 'verbose', verbose
         if abs(beta).max() > 1e4:
             if verbose: print 'convergence failure\n'
             return None, i
@@ -570,7 +569,6 @@ def calc_log_regr(y, X, XW, init, w=None, verbose=False):
             if verbose: print 'no change in likelihood\n'
             break
     return beta, i + 1
-'''
 
 def logistic(x):
     """ Logistic function 1/(1+exp(x)) \return logistic function """

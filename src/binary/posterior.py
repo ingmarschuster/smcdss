@@ -15,13 +15,14 @@ with variables regressed on the first column.
 """
 
 import numpy
-import scipy
+import scipy.linalg
 import base
+import wrapper
 
 class Posterior(base.BaseBinary):
     """ Posterior distribution of a Bayesian variable selection problem."""
 
-    def __init__(self, y, Z, param):
+    def __init__(self, y, Z, config):
         """ 
             Constructor.
             \param Y explained variable
@@ -29,18 +30,25 @@ class Posterior(base.BaseBinary):
             \param parameter dictionary
         """
 
-        base.BaseBinary.__init__(self, pp_modules=('numpy', 'scipy.linalg'), pp_depfuncs={'lpmf':_lpmf_bayes},
-                                 name='posterior', long_name=__doc__)
+        # store parameters
+        self.n, d = Z.shape
+
+        base.BaseBinary.__init__(self, d=d, name='posterior', long_name=__doc__)
+
+        self.py_wrapper = wrapper.posterior()
+
+        # add modules
+        self.pp_modules = ('numpy', 'scipy.linalg', 'binary.posterior',)
+
+        # add dependent functions
+        self.pp_depfuncs += ('_lpmf',)
 
         # normalize
-        self.Z = numpy.subtract(Z, Z.mean(axis=0))
+        self.Z = Z#numpy.subtract(Z, Z.mean(axis=0))
         self.y = y
 
-        # store parameters
-        self.n, d = self.Z.shape
-
         # maximum model size
-        max_size = param['PRIOR_MODEL_MAXSIZE_HP']
+        max_size = config['prior/model_maxsize_hp']
         if max_size is None:
             max_size = numpy.inf
         elif isinstance(max_size, str):
@@ -50,15 +58,14 @@ class Posterior(base.BaseBinary):
                       'penalty':-self.n * numpy.dot(y.T, y),
                       'n':self.n,
                       'd':d,
-                      'fixed':param['DATA_PCA'],
-                      'interactions':param['INTERACTIONS'],
-                      'constraints':len(param['INTERACTIONS']),
+                      'last_static':config['data/last_static'],
+                      'constraints':config['data/constraints'],
                       'max_size':max_size
                       }
-        for key in param.keys():
-            if 'PRIOR' in key: self.param.update({key:param[key]})
+        for key in config.keys():
+            if 'prior/' in key: self.param.update({key:config[key]})
 
-        {'bayes':self.__init_bayes, 'bic':self.__init_bic}[param['PRIOR_CRITERION']](param)
+        {'bayes':self.__init_bayes, 'bic':self.__init_bic}[config['prior/criterion']](config)
 
     def __init_bayes(self, param):
         """ 
@@ -68,19 +75,19 @@ class Posterior(base.BaseBinary):
         """
 
         # prior on beta
-        tau = self.param['PRIOR_VAR_DISPERSION']
+        tau = self.param['prior/var_dispersion']
         if isinstance(tau, str):
             if tau == 'n': tau = self.n
 
         # prior on sigma
-        a = self.param['PRIOR_VAR_HP_A']
-        b = self.param['PRIOR_VAR_HP_B']
+        a = self.param['prior/var_hp_a']
+        b = self.param['prior/var_hp_b']
 
         # prior on gamma
-        p = self.param['PRIOR_MODEL_INCLPROB_HP']
+        p = self.param['prior/model_inclprob_hp']
 
         W = {'zellner':Posterior.__zellner,
-             'independent':Posterior.__independent}[param['PRIOR_COV_MATRIX_HP']](tau, self.Z)
+             'independent':Posterior.__independent}[param['prior/cov_matrix_hp']](tau, self.Z)
 
         # constants
         self.param.update({'W': W,
@@ -90,6 +97,64 @@ class Posterior(base.BaseBinary):
                            '-log(tau)/2' :-numpy.log(1 + tau) / 2.0,
                            'logit(p)' : numpy.log(p / (1.0 - p))
                            })
+
+    @classmethod
+    def _lpmf(cls, gamma, param):
+        """ 
+            Log-posterior probability mass function in a hierarchical Bayesian model.
+            
+            \param gamma binary vector
+            \param param parameters
+            \return log-probabilities
+        """
+
+        # unpack some parameters
+        param = param.param
+        penalty, W, Zty, max_size, last_static, constraints = \
+            [param[key] for key in ['penalty', 'W', 'Zty', 'max_size', 'last_static', 'constraints']]
+
+        # number of models
+        size = gamma.shape[0]
+
+        # array to store results
+        L = numpy.empty(size, dtype=float)
+        gamma_pc = numpy.ones(shape=gamma.shape[1] + last_static, dtype=bool)
+
+        for k in xrange(size):
+
+            # model dimension
+            gamma_pc[last_static:] = gamma[k]
+            gamma_size = gamma_pc.sum()
+
+            # check main effects constraints
+            if len(constraints) > 0:
+                mec_violations = (gamma_pc[constraints[:, 0]] > gamma_pc[constraints[:, 1]] * gamma_pc[constraints[:, 2]]).sum()
+            else:
+                mec_violations = False
+
+            if mec_violations > 0 or gamma_size > max_size:
+                # inadmissible model
+                L[k] = penalty - mec_violations - gamma_size
+            else:
+                # regular model
+                if gamma_size == 0:
+                    btb = 0.0
+                else:
+                    chol = scipy.linalg.cholesky(W[gamma_pc, :][:, gamma_pc])
+                    b = scipy.linalg.solve(chol.T, Zty[gamma_pc, :])
+                    btb = numpy.dot(b.T, b)
+
+                L[k] = param['-(n-1+a)/2'] * numpy.log(param['a*b + TSS'] - btb) + gamma_size * param['logit(p)']
+
+                # difference between Zellner's and independent prior
+                if param['prior/cov_matrix_hp'] == 'zellner':
+                    L[k] += gamma_size * param['-log(1+tau)/2']
+                else:
+                    L[k] += gamma_size * param['-log(tau)/2']
+                    if gamma_size > 0: L[k] -= numpy.log(chol.diagonal()).sum()
+
+        return L
+
 
     def __init_bic(self, param):
         """ 
@@ -121,12 +186,12 @@ class Posterior(base.BaseBinary):
         param.update({'d':1})
 
         gamma = numpy.array([True])[:, numpy.newaxis]
-        log_prob_H0 = float(_lpmf_bayes(gamma - 1, param))
+        log_prob_H0 = float(Posterior._lpmf(self, gamma - 1, param))
 
         for i in xrange(d):
             param.update({'Zty':numpy.dot(self.Z[:, i].T, self.y)[numpy.newaxis, numpy.newaxis],
                            'W': numpy.dot(self.Z[:, i].T, self.Z[:, i])[numpy.newaxis, numpy.newaxis] + 1e-10})
-            log_prob_H1 = float(_lpmf_bayes(gamma, param))
+            log_prob_H1 = float(Posterior._lpmf(self, gamma - 1, param))
             m = max(log_prob_H0, log_prob_H1)
             prob_H0 = numpy.exp(log_prob_H0 - m)
             prob_H1 = numpy.exp(log_prob_H1 - m)
@@ -136,17 +201,17 @@ class Posterior(base.BaseBinary):
 
     def __str__(self):
 
-        d, n, Zty, fixed = [self.param[key] for key in ['d', 'n', 'Zty', 'fixed']]
+        d, n, Zty, last_static = [self.param[key] for key in ['d', 'n', 'Zty', 'last_static']]
         ZtZ = numpy.dot(self.Z.T, self.Z) + 1e-10 * numpy.eye(d)
         yty = numpy.dot(self.y.T, self.y)
 
         # null model
         sigma2_null = Posterior.__total_sum_of_squares(self.y) / float(n - 2)
 
-        # only fixed components
-        if fixed > 0:
+        # only static components
+        if last_static > 0:
             gamma_pc = numpy.zeros(d, dtype=bool)
-            gamma_pc[:fixed] = True
+            gamma_pc[:last_static] = True
             sigma2_fixed = (yty - numpy.dot(Zty[gamma_pc, :],
                                             scipy.linalg.solve(ZtZ[gamma_pc, :][:, gamma_pc], Zty[gamma_pc, :], sym_pos=True))
                             ) / float(n - 2)
@@ -190,65 +255,6 @@ class Posterior(base.BaseBinary):
     @staticmethod
     def __independent(tau, Z):
         return numpy.dot(Z.T, Z) + (1.0 / tau) * numpy.eye(Z.shape[1])
-
-
-#------------------------------------------------------------------------------ 
-
-
-def _lpmf_bayes(gamma, param):
-    """ 
-        Log-posterior probability mass function in a hierarchical Bayesian model.
-        
-        \param gamma binary vector
-        \param param parameters
-        \return log-probabilities
-    """
-
-    # unpack some parameters
-    penalty, W, Zty, max_size, fixed, constraints, interactions = \
-        [param[key] for key in ['penalty', 'W', 'Zty', 'max_size', 'fixed', 'constraints', 'interactions']]
-
-    # number of models
-    size = gamma.shape[0]
-
-    # array to store results
-    L = numpy.empty(size, dtype=float)
-    gamma_pc = numpy.ones(shape=gamma.shape[1] + fixed, dtype=bool)
-
-    for k in xrange(size):
-
-        # model dimension
-        gamma_pc[fixed:] = gamma[k]
-        gamma_size = gamma_pc.sum()
-
-        # check main effects constraints
-        if constraints > 0:
-            mec_violations = (gamma_pc[interactions[:, 0]] > gamma_pc[interactions[:, 1]] * gamma_pc[interactions[:, 2]]).sum()
-        else:
-            mec_violations = False
-
-        if mec_violations > 0 or gamma_size > max_size:
-            # inadmissible model
-            L[k] = penalty - mec_violations - gamma_size
-        else:
-            # regular model
-            if gamma_size == 0:
-                btb = 0.0
-            else:
-                chol = scipy.linalg.cholesky(W[gamma_pc, :][:, gamma_pc])
-                b = scipy.linalg.solve(chol.T, Zty[gamma_pc, :])
-                btb = numpy.dot(b.T, b)
-
-            L[k] = param['-(n-1+a)/2'] * numpy.log(param['a*b + TSS'] - btb) + gamma_size * param['logit(p)']
-
-            # difference between Zellner's and independent prior
-            if param['PRIOR_COV_MATRIX_HP'] == 'zellner':
-                L[k] += gamma_size * param['-log(1+tau)/2']
-            else:
-                L[k] += gamma_size * param['-log(tau)/2']
-                if gamma_size > 0: L[k] -= numpy.log(chol.diagonal()).sum()
-
-    return L
 
 
 def _lpmf_bic(gamma, param):

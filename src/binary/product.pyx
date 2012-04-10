@@ -83,7 +83,8 @@ class EquableProductBinary(binary.base.BaseBinary):
         """ Get expected value of instance. \return p-vector """
         return self.param['p'] * numpy.ones(self.param['d'])
 
-
+    def _getRandom(self, eps=0.0):
+        return range(self.d)
 
 
 

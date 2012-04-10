@@ -11,25 +11,12 @@ $Date: 2011-09-16 17:40:26 +0200 (Fr, 16 Sep 2011) $
 """
 
 import numpy
-import product
 import scipy.linalg
 import scipy.stats
 import logistic_cond
-import utils
+import binary
 
-def _lpmf(gamma, param):
-    """ 
-        Log-probability mass function.
-        \param gamma binary vector
-        \param param parameters
-        \return log-probabilities
-    """
-    L = numpy.empty(gamma.shape[0])
-    for k in xrange(gamma.shape[0]):
-        L[k] = float(numpy.dot(numpy.dot(gamma[k], param['A']), gamma[k].T))
-    return L
-
-class QuExpBinary(product.ProductBinary):
+class QuExpBinary(binary.base.BaseBinary):
     """ Binary parametric family with quadratic exponential term. """
 
     def __init__(self, A, name='quadratic exponential binary', long_name=__doc__):
@@ -38,11 +25,9 @@ class QuExpBinary(product.ProductBinary):
             \param A matrix of coefficients
         """
 
-        product.ProductBinary.__init__(self, name=name, long_name=long_name)
-        self.f_lpmf = _lpmf
-        self.f_rvs = None
-        self.f_rvslpmf = None
-        self.param = dict(A=A)
+        binary.base.BaseBinary.__init__(self, A.shape[0], name=name, long_name=long_name)
+        self.A = A
+        self.py_wrapper = binary.wrapper.qu_exponential()
 
     @classmethod
     def independent(cls, p):
@@ -70,16 +55,20 @@ class QuExpBinary(product.ProductBinary):
         return QuExpBinary(A)
 
     def __str__(self):
-        return 'A:\n' + sutils.auxelf.A
+        return repr(self.A)
 
-    def _getD(self):
-        """ Get dimension of instance. \return dimension """
-        return self.param['A'].shape[0]
-
-    def getA(self):
-        return self.param['A']
-
-    A = property(fget=getA, doc="A")
+    @classmethod
+    def _lpmf(cls, Y, A):
+        """ 
+            Log-probability mass function.
+            \param gamma binary vector
+            \param param parameters
+            \return log-probabilities
+        """
+        L = numpy.empty(Y.shape[0])
+        for k in xrange(Y.shape[0]):
+            L[k] = float(numpy.dot(numpy.dot(Y[k], A), Y[k].T))
+        return L
 
 
 def calc_marginal(A):
@@ -172,9 +161,3 @@ def calc_logistic_model(A):
     model = logistic_cond.LogisticCondBinary(Beta)
     model.m2v_perm = perm
     return model
-
-def main():
-    pass
-
-if __name__ == "__main__":
-    main()

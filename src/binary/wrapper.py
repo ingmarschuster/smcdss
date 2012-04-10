@@ -66,7 +66,6 @@ class limited_product(wrapper):
         return binary.product.LimitedProductBinary._rvs(U, param.b)
 
 
-
 class logistic_cond(wrapper):
     """ Wrapper class for logistic conditionals family."""
 
@@ -78,7 +77,8 @@ class logistic_cond(wrapper):
     def rvslpmf(self, U, param):
         return binary.logistic_cond.LogisticCondBinary._rvslpmf_all(
                 Beta=param.Beta, U=U)
-
+    def calc_log_regr(self, y, X, XW, init, w=None, verbose=False):
+        return binary.logistic_cond.calc_log_regr(y, X, XW, init, w, verbose)
 
 class linear_cond(wrapper):
     """ Wrapper class for linear conditionals family."""
@@ -105,6 +105,13 @@ class qu_linear(wrapper):
                 param.Beta, param.p, U=U)
 
 
+class qu_exponential(wrapper):
+    """ Wrapper class for quadratic exponential family."""
+
+    def lpmf(self, Y, param):
+        return binary.qu_exponential.QuExpBinary._lpmf(Y, A=param.A)
+
+
 class gaussian_copula(wrapper):
     """ Wrapper class for logistic conditionals family."""
 
@@ -114,3 +121,24 @@ class gaussian_copula(wrapper):
         return binary.gaussian_copula.GaussianCopulaBinary._rvs(V, param.mu, param.C)
     def rvslpmf(self, V, param):
         return self.rvs(V, param), None
+
+class student_copula(wrapper):
+    """ Wrapper class for logistic conditionals family."""
+
+    def lpmf(self, Y, param):
+        return None
+    def rvs(self, V, param):
+        return binary.student_copula.StudentCopulaBinary._rvs(V, param.mu, param.C)
+    def rvslpmf(self, V, param):
+        return self.rvs(V, param), None
+
+
+class posterior(wrapper):
+    """ Wrapper class for logistic conditionals family."""
+
+    def lpmf(self, Y, param):
+        return binary.posterior.Posterior._lpmf(Y, param)
+    def rvs(self, V, param):
+        raise NotImplementedError('Random variable generation not possible.')
+    def rvslpmf(self, V, param):
+        raise NotImplementedError('Random variable generation not possible.')

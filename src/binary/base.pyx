@@ -16,8 +16,8 @@ import sys
 import numpy
 import utils
 
-try: import pp
-except: print "error loading parallel python: ", sys.exc_info()[0]
+#try: import pp
+#except: print "error loading parallel python: ", sys.exc_info()[0]
 
 class BaseBinary(object):
     """ Binary parametric family. """
@@ -208,7 +208,7 @@ class BaseBinary(object):
             \param n sample size
         """
         if 'pp' in sys.modules.keys() and ncpus > 1:
-            job_server = pp.Server(ncpus=ncpus, ppservers=())
+            job_server = utils.pp.Server(ncpus=ncpus, ppservers=())
             print 'rvstest running on %d cpus...\n' % job_server.get_ncpus()
         else: job_server = None
 
@@ -222,7 +222,7 @@ class BaseBinary(object):
         """
 
         if 'pp' in sys.modules.keys() and ncpus > 1:
-            job_server = pp.Server(ncpus=ncpus, ppservers=())
+            job_server = utils.pp.Server(ncpus=ncpus, ppservers=())
         else: job_server = None
 
         X = BaseBinary.state_space(self.d)
@@ -245,9 +245,9 @@ class BaseBinary(object):
         """ Get expected value. \return p-vector """
         return self._getMean()
 
-    def getRandom(self):
+    def getRandom(self,eps=0.0):
         """ Get index list of random components. \return index list """
-        return self._getRandom()
+        return self._getRandom(eps=0.0)
 
     mean = property(fget=getMean, doc="mathematical mean")
     r = property(fget=getRandom, doc="random components")

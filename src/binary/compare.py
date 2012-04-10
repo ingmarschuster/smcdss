@@ -26,7 +26,8 @@ $Rev: 167 $
 $Date: 2011-12-06 15:10:39 +0100 (mar., 06 déc. 2011) $
 """
 
-from binary.base import moments2corr, random_moments
+from binary.base import moments2corr, corr2moments
+from unit_test import random_moments
 from binary.gaussian_copula import GaussianCopulaBinary
 from binary.linear_cond import LinearCondBinary
 from binary.logistic_cond import LogisticCondBinary
@@ -76,7 +77,7 @@ def main():
     f_name = os.path.expanduser('~/Documents/Data/bg/test_%d.csv' % d)
     if not os.path.isfile(f_name) or c:
         f = open(f_name, 'w')
-        f.write('rho,gaussian_fro,logistic_fro,linear_fro,gaussian_sv,logistic_sv,linear_sv,gaussian_max,logistic_max,linear_max\n')
+        f.write('rho,gaussian_corr,logistic_corr,linear_corr,gaussian_moments,logistic_moments,linear_moments\n')
         f.close()
 
     # start external processes
@@ -133,31 +134,44 @@ def plot(d):
 
 def compare(d, ticks=20, n=1e6):
 
-    score = numpy.zeros((ticks + 1, 10), dtype=float)
+    eps = 0.01
+    delta = 0.005
+    #if d < 12: delta = 0.0
+    score = numpy.zeros((ticks + 1, 7), dtype=float)
     score[:, 0] = numpy.linspace(0.0, 1.0, ticks + 1)
+    norm = lambda x: scipy.linalg.norm(x, ord=2)
 
     for i in xrange(ticks + 1):
 
         utils.auxi.progress(score[i, 0])
 
         # sample random moments
-        mean, corr = moments2corr(random_moments(d, phi=1.0, rho=score[i, 0]))
+        mean, corr = moments2corr(random_moments(d, rho=score[i, 0]))
+        M = corr2moments(mean, corr)
+        I = numpy.outer(mean, mean)
+        I = numpy.triu(I, 1) + numpy.tril(I, -1) + numpy.diag(mean)
         loss = {}
 
         # compute parametric families and reference loss
-        loss['product'] = corr - numpy.eye(d)
-        generator = GaussianCopulaBinary.from_moments(mean, corr)
-        loss['gaussian'] = corr - generator.corr
-        generator = LogisticCondBinary.from_moments(mean, corr)
-        loss['logistic'] = corr - generator.rvs_marginals(n, 1)[1]
+        loss['product_corr'] = corr - numpy.eye(d)
+        loss['product_moments'] = M - I
+        generator = GaussianCopulaBinary.from_moments(mean, corr, delta=delta)
+        loss['gaussian_corr'] = corr - generator.corr
+        loss['gaussian_moments'] = M - corr2moments(generator.mean, generator.corr)
+        generator = LogisticCondBinary.from_moments(mean, corr, delta=delta, verbose=False)
+        loss['logistic_corr'] = corr - generator.rvs_marginals(n, 1)[1]
+        loss['logistic_moments'] = M - corr2moments(*generator.rvs_marginals(n, 1))
         generator = LinearCondBinary.from_moments(mean, corr)
-        loss['linear'] = corr - generator.rvs_marginals(n, 1)[1]
+        loss['linear_corr'] = corr - generator.rvs_marginals(n, 1)[1]
+        loss['linear_moments'] = M - corr2moments(*generator.rvs_marginals(n, 1))
 
-        for j, norm in enumerate([lambda x: scipy.linalg.norm(x, ord='fro'),
-                                  lambda x: scipy.linalg.norm(x, ord=2),
-                                  lambda x: numpy.max(abs(x))]):
+        for j, c_type in enumerate(['_corr', '_moments']):
+            ref = loss['product' + c_type]
+            ref = ref * (numpy.abs(ref) > eps)
             for k, generator in enumerate(['gaussian', 'logistic', 'linear']):
-                score[i, j * 3 + k + 1] = (norm(loss['product']) - norm(loss[generator])) / norm(loss['product'])
+                gen = loss[generator + c_type]
+                gen = gen * (numpy.abs(gen) > eps)
+                score[i, j * 3 + k + 1] = (norm(ref) - norm(gen)) / norm(ref)
 
     return score
 
