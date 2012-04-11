@@ -28,6 +28,7 @@ import binary.base
 import binary.qu_exponential
 import binary.wrapper
 
+
 class LogisticCondBinary(binary.product.ProductBinary):
     """ Binary parametric family with logistic conditionals. """
 
@@ -45,7 +46,7 @@ class LogisticCondBinary(binary.product.ProductBinary):
         p = logistic(numpy.diagonal(Beta))
 
         # call super constructor
-        binary.product.ProductBinary.__init__(self, p=p, name=name, long_name=long_name)
+        super(LogisticCondBinary, self).__init__(p=p, name=name, long_name=long_name)
 
         self.py_wrapper = binary.wrapper.logistic_cond()
 

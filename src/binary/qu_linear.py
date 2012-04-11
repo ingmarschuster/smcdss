@@ -25,7 +25,7 @@ class QuLinearBinary(binary.base.BaseBinary):
             \param a probability of zero
             \param Beta matrix of coefficients
         """
-        binary.base.BaseBinary.__init__(self, d=Beta.shape[0], name='quadratic linear binary', long_name=__doc__)
+        super(QuLinearBinary, self).__init__(self, d=Beta.shape[0], name='quadratic linear binary', long_name=__doc__)
 
         # add modules
         self.pp_modules = ('numpy', 'scipy.linalg', 'binary.qu_linear')

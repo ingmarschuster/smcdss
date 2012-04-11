@@ -1,14 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with linear conditionals. """
-
-"""
-\namespace binary.qu_linear
-$Author: christian.a.schafer@gmail.com $
-$Rev: 122 $
-$Date: 2011-04-12 19:22:11 +0200 (Di, 12 Apr 2011) $
-"""
+""" Binary parametric family with linear conditionals. \namespace binary.qu_linear """
 
 import numpy
 cimport numpy
@@ -22,7 +15,6 @@ import scipy.linalg
 import binary.base
 import binary.wrapper
 
-
 class LinearCondBinary(binary.base.BaseBinary):
     """ Binary parametric family with linear conditionals. """
 
@@ -31,7 +23,7 @@ class LinearCondBinary(binary.base.BaseBinary):
             Constructor.
             \param Beta matrix of coefficients
         """
-        binary.base.BaseBinary.__init__(self, d=Beta.shape[0], name='linear conditionals binary', long_name=__doc__)
+        super(LinearCondBinary, self).__init__(d=Beta.shape[0], name='linear conditionals binary', long_name=__doc__)
 
         # add modules
         self.pp_modules = ('numpy', 'binary.linear_cond')

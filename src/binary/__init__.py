@@ -1,16 +1,16 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Parametric families for sampling random multivariate binary data. """
+""" Parametric families for sampling random multivariate binary data. \namespace binary """
 
-"""
-\namespace binary
-$Author: christian.a.schafer@gmail.com $
-$Rev: 163 $
-$Date: 2011-11-23 11:55:50 +0100 (mer., 23 nov. 2011) $
-"""
-
+import base
 import posterior
 import product
+import limited
+import constrained
 import logistic_cond
+import linear_cond
 import gaussian_copula
+import student_copula
+import positive
+import exchangeable

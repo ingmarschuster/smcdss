@@ -1,26 +1,21 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family obtained via dichotomizing a multivariate Gaussian. """
-
-"""
-\namespace binary.gaussian_copula
-$Author: christian.a.schafer@gmail.com $
-$Rev: 144 $
-$Date: 2011-05-12 19:12:23 +0200 (Do, 12 Mai 2011) $
-\details The correlation structure of the model is limited by the constraints of the elliptic Gaussian copula.
+""" Binary parametric family obtained via dichotomizing a multivariate Gaussian.
+    \namespace binary.gaussian_copula
+    \details The correlation structure of the model is limited by the constraints of the elliptic Gaussian copula.
 """
 
-import binary.base
-import binary.product
-import binary.wrapper
+import base
+import product
+import wrapper
+
 import numpy
 import scipy.linalg
 import scipy.stats as stats
 import time
 
-
-class GaussianCopulaBinary(binary.product.ProductBinary):
+class GaussianCopulaBinary(product.ProductBinary):
     """ Binary parametric family obtained via dichotomizing a multivariate Gaussian. """
 
     def __init__(self, p, R, delta=None, verbose=False):
@@ -31,9 +26,9 @@ class GaussianCopulaBinary(binary.product.ProductBinary):
         """
 
         # call super constructor
-        binary.product.ProductBinary.__init__(self, p, name='Gaussian copula family', long_name=__doc__)
+        super(GaussianCopulaBinary, self).__init__(p, name='Gaussian copula family', long_name=__doc__)
 
-        self.py_wrapper = binary.wrapper.gaussian_copula()
+        self.py_wrapper = wrapper.gaussian_copula()
 
         # add modules
         self.pp_modules = ('numpy', 'scipy.linalg', 'binary.gaussian_copula')
@@ -69,7 +64,7 @@ class GaussianCopulaBinary(binary.product.ProductBinary):
             \param cls class 
             \param d dimension
         """
-        p, R = binary.base.moments2corr(binary.base.random_moments(d, phi=0.8))
+        p, R = base.moments2corr(base.random_moments(d, phi=0.8))
         return cls(p, R)
 
     def __str__(self):
@@ -177,21 +172,21 @@ class GaussianCopulaBinary(binary.product.ProductBinary):
             \param ncpus number of cpus 
         """
 
-        mean, corr = binary.base.moments2corr(binary.base.random_moments(d, phi=phi))
+        mean, corr = base.moments2corr(base.random_moments(d, phi=phi))
         print 'given marginals '.ljust(100, '*')
-        binary.base.print_moments(mean, corr)
+        base.print_moments(mean, corr)
 
         generator = GaussianCopulaBinary.from_moments(mean, corr)
         print generator.name + ':'
         print generator
 
         print 'exact '.ljust(100, '*')
-        binary.base.print_moments(generator.mean, generator.corr)
+        base.print_moments(generator.mean, generator.corr)
 
         #print ('simulation (n = %d) ' % n).ljust(100, '*')
         #binary.base.print_moments(generator.rvs_marginals(n, ncpus))
 
-def calc_local_Q(mu, p, R, eps=0.02, delta=None, verbose=False):
+def calc_local_Q(mu, p, R, eps=0.02, delta=0.005, verbose=False):
     """ 
         Computes the Gaussian correlation matrix Q necessary to generate
         bivariate Bernoulli samples with a certain local correlation matrix R.
@@ -203,9 +198,6 @@ def calc_local_Q(mu, p, R, eps=0.02, delta=None, verbose=False):
 
     t = time.time()
     d = len(p)
-
-    if delta is None:
-        delta = 2.0 * scipy.linalg.norm(numpy.tril(R, k= -1) + numpy.triu(R, k=1)) / float((d - 1) * d)
 
     iterations = 0
     localQ = numpy.ones((d, d))

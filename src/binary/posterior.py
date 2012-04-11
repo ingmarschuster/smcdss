@@ -33,7 +33,7 @@ class Posterior(base.BaseBinary):
         # store parameters
         self.n, d = Z.shape
 
-        base.BaseBinary.__init__(self, d=d, name='posterior', long_name=__doc__)
+        super(Posterior, self).__init__(d=d, name='posterior', long_name=__doc__)
 
         self.py_wrapper = wrapper.posterior()
 

@@ -20,15 +20,12 @@ OPTIONS:
 """
 
 """
-@namespace binary.compare
-$Author: christian.a.schafer@gmail.com $
-$Rev: 167 $
-$Date: 2011-12-06 15:10:39 +0100 (mar., 06 déc. 2011) $
+\namespace binary.compare
 """
 
-from binary.base import moments2corr, corr2moments
-from unit_test import random_moments
+from binary.base import moments2corr, corr2moments, random_moments
 from binary.gaussian_copula import GaussianCopulaBinary
+from binary.student_copula import StudentCopulaBinary
 from binary.linear_cond import LinearCondBinary
 from binary.logistic_cond import LogisticCondBinary
 
@@ -55,7 +52,7 @@ def main():
         print __doc__.replace('@verbatim', '').replace('@endverbatim', '')
         sys.exit(0)
 
-    m, r, e, c, v, d, n, t = 0, 0, False, False, False, None, 1e6, 20
+    m, r, e, c, v, d, n, t = 0, 0, False, False, False, None, 1e6, 15
 
     # Start multiple processes.
     for o, a in opts:
@@ -77,7 +74,7 @@ def main():
     f_name = os.path.expanduser('~/Documents/Data/bg/test_%d.csv' % d)
     if not os.path.isfile(f_name) or c:
         f = open(f_name, 'w')
-        f.write('rho,gaussian_corr,logistic_corr,linear_corr,gaussian_moments,logistic_moments,linear_moments\n')
+        f.write('rho,student,gaussian,logistic,linear\n')
         f.close()
 
     # start external processes
@@ -132,12 +129,12 @@ def plot(d):
                       os.path.join(cbg_dir, 'plot.Rout')]).wait()
 
 
-def compare(d, ticks=20, n=1e6):
+def compare(d, ticks=15, n=1e6):
 
     eps = 0.01
     delta = 0.005
-    #if d < 12: delta = 0.0
-    score = numpy.zeros((ticks + 1, 7), dtype=float)
+    if d < 15: delta = 0.0
+    score = numpy.zeros((ticks + 1, 5), dtype=float)
     score[:, 0] = numpy.linspace(0.0, 1.0, ticks + 1)
     norm = lambda x: scipy.linalg.norm(x, ord=2)
 
@@ -148,30 +145,27 @@ def compare(d, ticks=20, n=1e6):
         # sample random moments
         mean, corr = moments2corr(random_moments(d, rho=score[i, 0]))
         M = corr2moments(mean, corr)
-        I = numpy.outer(mean, mean)
-        I = numpy.triu(I, 1) + numpy.tril(I, -1) + numpy.diag(mean)
+        M_star = numpy.outer(mean, mean)
+        M_star = numpy.triu(M_star, 1) + numpy.tril(M_star, -1) + numpy.diag(mean)
         loss = {}
 
         # compute parametric families and reference loss
-        loss['product_corr'] = corr - numpy.eye(d)
-        loss['product_moments'] = M - I
+        loss['product'] = M - M_star
+        generator = StudentCopulaBinary.from_moments(mean, corr, delta=delta)
+        loss['student'] = M - corr2moments(generator.mean, generator.corr)
         generator = GaussianCopulaBinary.from_moments(mean, corr, delta=delta)
-        loss['gaussian_corr'] = corr - generator.corr
-        loss['gaussian_moments'] = M - corr2moments(generator.mean, generator.corr)
+        loss['gaussian'] = M - corr2moments(generator.mean, generator.corr)
         generator = LogisticCondBinary.from_moments(mean, corr, delta=delta, verbose=False)
-        loss['logistic_corr'] = corr - generator.rvs_marginals(n, 1)[1]
-        loss['logistic_moments'] = M - corr2moments(*generator.rvs_marginals(n, 1))
+        loss['logistic'] = M - corr2moments(*generator.rvs_marginals(n, 1))
         generator = LinearCondBinary.from_moments(mean, corr)
-        loss['linear_corr'] = corr - generator.rvs_marginals(n, 1)[1]
-        loss['linear_moments'] = M - corr2moments(*generator.rvs_marginals(n, 1))
+        loss['linear'] = M - corr2moments(*generator.rvs_marginals(n, 1))
 
-        for j, c_type in enumerate(['_corr', '_moments']):
-            ref = loss['product' + c_type]
-            ref = ref * (numpy.abs(ref) > eps)
-            for k, generator in enumerate(['gaussian', 'logistic', 'linear']):
-                gen = loss[generator + c_type]
-                gen = gen * (numpy.abs(gen) > eps)
-                score[i, j * 3 + k + 1] = (norm(ref) - norm(gen)) / norm(ref)
+        ref = loss['product']
+        ref = ref * (numpy.abs(ref) > eps)
+        for k, generator in enumerate(['student', 'gaussian', 'logistic', 'linear']):
+            gen = loss[generator]
+            gen = gen * (numpy.abs(gen) > eps)
+            score[i, k + 1] = (norm(ref) - norm(gen)) / norm(ref)
 
     return score
 

@@ -12,12 +12,12 @@ $Rev: 152 $
 $Date: 2011-10-10 10:51:51 +0200 (Mo, 10 Okt 2011) $
 """
 
-import sys
 import numpy
-import utils
+cimport numpy
 
-#try: import pp
-#except: print "error loading parallel python: ", sys.exc_info()[0]
+import sys
+import utils
+import scipy.linalg
 
 class BaseBinary(object):
     """ Binary parametric family. """
@@ -245,7 +245,7 @@ class BaseBinary(object):
         """ Get expected value. \return p-vector """
         return self._getMean()
 
-    def getRandom(self,eps=0.0):
+    def getRandom(self, eps=0.0):
         """ Get index list of random components. \return index list """
         return self._getRandom(eps=0.0)
 
@@ -287,26 +287,97 @@ def dec2bin(n, d=0):
 
 #-------------------------------------------------------------- moment functions
 
-def random_moments(d, eps=0.05, phi=0.5, rho=0.5):
+def random_moments(d, rho=1.0, n_cond=500, n_perm=None, boundary=0.01, verbose=False):
     """
         Creates a random cross-moments matrix that is consistent with the
         general constraints on binary data.
         \param d dimension
-        \param eps minmum distance to borders of [0,1]
-        \param phi parameter in [0,1] where phi=0 means zero correlation
+        \param rho parameter in [0,1] where rho=0 means no correlation
         \return M cross-moment matrix
     """
-    rho = max(rho, 1e-10)
-    a = 1.0 / rho
 
-    M = numpy.diag(eps + (1.0 - 2 * eps) * numpy.random.random(d))
-    for i in xrange(d):
+    if n_perm is None: n_perm = 10 * int(d)
+
+    cdef Py_ssize_t i, j , k
+    cdef double upper, lower, adjustment, det, det_j
+
+    # fix i
+    i = d - 1
+
+    # mean
+    cdef numpy.ndarray[numpy.float64_t, ndim = 1] m = boundary + numpy.random.random(d) * (1.0 - 2 * boundary)
+
+    # covariance of independent Bernoulli    
+    cdef numpy.ndarray[numpy.float64_t, ndim = 2] C = numpy.diag(m - m * m)
+    cdef numpy.ndarray[numpy.float64_t, ndim = 2] C_inv = numpy.empty(shape=(i, i), dtype=numpy.float64)
+
+    # upper and lower bounds
+    cdef numpy.ndarray[numpy.float64_t, ndim = 1] b_lower = numpy.empty(i, dtype=numpy.float64)
+    cdef numpy.ndarray[numpy.float64_t, ndim = 1] b_upper = numpy.empty(i, dtype=numpy.float64)
+
+    for l in xrange(n_perm):
+
+        if l % 1e1 == 0 and verbose:
+            sys.stderr.write('perm: %.0f\n' % (l / 1e1))
+
+        # compute bounds
         for j in xrange(i):
-            high = min(M[i, i], M[j, j])
-            low = max(M[i, i] + M[j, j] - 1.0, 0)
-            M[i, j] = phi * (low + numpy.abs(high - low) * numpy.random.beta(a, a)) + (1.0 - phi) * M[i, i] * M[j, j]
-            M[j, i] = M[i, j]
-    return M
+            b_lower[j] = max(m[i] + m[j] - 1.0, 0)
+            b_upper[j] = min(m[i], m[j])
+            for bound in [b_lower, b_upper]: bound[j] -= m[i] * m[j]
+
+        # compute inverse
+        C_inv = scipy.linalg.inv(C[:i, :i])
+        det = C[i, i] - numpy.dot(numpy.dot(C[:i, i], C_inv), C[:i, i])
+
+        for k in xrange(n_cond):
+
+            for j in get_permutation(i):
+
+                det_j = numpy.dot(C[:i, i], C_inv[:, j]) - C_inv[j, j] * C[i, j]
+                rest = det + (C_inv[j, j] * C[i, j] + 2 * det_j) * C[i, j]
+
+                # maximal feasible range to ensure finiteness
+                t = det_j / C_inv[j, j]
+                root = numpy.sqrt(t * t + rest / C_inv[j, j])
+
+                # compute bounds
+                lower = max(-t - root, b_lower[j])
+                upper = min(-t + root, b_upper[j])
+
+                # avoid extreme cases
+                adjustment = (1.0 - rho) * 0.5 * (upper - lower)
+                lower += adjustment
+                upper -= adjustment
+
+                # draw conditional entry
+                C[i, j] = lower + (upper - lower) * numpy.random.random()
+                C[j, i] = C[i, j]
+
+                det_j = numpy.dot(C[:i, i], C_inv[:, j])
+                det = rest - (2 * det_j - C_inv[j, j] * C[i, j]) * C[i, j]
+
+        # draw random permutation
+        perm = get_permutation(d)
+        C = C[perm, :][:, perm]
+        m = m[perm]
+
+    return C + numpy.outer(m, m)
+
+def get_permutation(d):
+    """
+        Draw a random permutation of the index set.
+        \return permutation
+    """
+    cdef Py_ssize_t i, j
+    cdef numpy.ndarray[Py_ssize_t, ndim = 1] perm = numpy.array(range(d), dtype=numpy.int)
+
+    for i in xrange(d - 1, 0, -1):
+        # pick an element in p[:i+1] with which to exchange p[i]
+        j = numpy.random.randint(low=0, high=i + 1)
+        perm[i], perm[j] = perm[j], perm[i]
+    return perm
+
 
 def corr2moments(mean, corr):
     """

@@ -14,9 +14,10 @@ import numpy
 import scipy.linalg
 import scipy.stats
 import logistic_cond
-import binary
+import base
+import binary.wrapper
 
-class QuExpBinary(binary.base.BaseBinary):
+class QuExpBinary(base.BaseBinary):
     """ Binary parametric family with quadratic exponential term. """
 
     def __init__(self, A, name='quadratic exponential binary', long_name=__doc__):
@@ -25,7 +26,7 @@ class QuExpBinary(binary.base.BaseBinary):
             \param A matrix of coefficients
         """
 
-        binary.base.BaseBinary.__init__(self, A.shape[0], name=name, long_name=long_name)
+        super(QuExpBinary, self).__init__(A.shape[0], name=name, long_name=long_name)
         self.A = A
         self.py_wrapper = binary.wrapper.qu_exponential()
 
