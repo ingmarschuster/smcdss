@@ -6,10 +6,11 @@
 import numpy
 cimport numpy
 
-import binary.exchangeable
-import binary.wrapper
+import product_exchangeable
+import binary.base as base
+import binary.wrapper as wrapper
 
-class ProductBinary(binary.exchangeable.ExchangeableBinary):
+class ProductBinary(product_exchangeable.ExchangeableBinary):
     """ Binary parametric family with independent components."""
 
     def __init__(self, p, name='product family', long_name=__doc__):
@@ -22,13 +23,12 @@ class ProductBinary(binary.exchangeable.ExchangeableBinary):
 
         if isinstance(p, float): p = [p]
         p = numpy.array(p, dtype=float)
-
+        
         # call super constructor
         super(ProductBinary, self).__init__(d=p.shape[0], p=0.5, name=name, long_name=long_name)
 
-        self.py_wrapper = binary.wrapper.product()
-
         # add module
+        self.py_wrapper = wrapper.product()
         self.pp_modules += ('binary.product',)
 
         self.p = p
@@ -72,11 +72,10 @@ class ProductBinary(binary.exchangeable.ExchangeableBinary):
         return Y
 
     @classmethod
-    def from_moments(cls, mean, corr):
+    def from_moments(cls, mean, corr=None):
         """ 
             Construct a random family for testing.
             \param mean mean vector
-            \param corr correlation matrix (nuisance parameter)
         """
         return cls(p=mean)
 
@@ -120,6 +119,6 @@ class ProductBinary(binary.exchangeable.ExchangeableBinary):
         """ Get expected value of instance. \return p-vector """
         return self.p
 
-    def _getRandom(self, xi=binary.base.BaseBinary.MIN_MARGINAL_PROB):
+    def _getRandom(self, xi=base.BaseBinary.MIN_MARGINAL_PROB):
         """ Get index list of random components of instance. \return index list """
         return [i for i, p in enumerate(self.p) if min(p, 1.0 - p) > xi]

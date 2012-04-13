@@ -1,22 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with quadratic form. """
-
-"""
-\namespace binary.qu_linear
-$Author: christian.a.schafer@gmail.com $
-$Rev: 122 $
-$Date: 2011-04-12 19:22:11 +0200 (Di, 12 Apr 2011) $
-"""
+""" Binary parametric family with quadratic form. \namespace binary.qu_linear"""
 
 import numpy
 import scipy.linalg
-import binary.base
-import binary.wrapper
+import binary.base as base
+import binary.wrapper as wrapper
 
 
-class QuLinearBinary(binary.base.BaseBinary):
+class QuLinearBinary(base.BaseBinary):
     """ Binary parametric family with quadratic linear form. """
 
     def __init__(self, a, Beta):
@@ -33,7 +26,7 @@ class QuLinearBinary(binary.base.BaseBinary):
         # add dependent functions
         self.pp_depfuncs += ('_pmf',)
 
-        self.py_wrapper = binary.wrapper.qu_linear()
+        self.py_wrapper = wrapper.qu_linear()
 
         #scipy.linalg.cholesky(Beta)
 
@@ -162,7 +155,7 @@ class QuLinearBinary(binary.base.BaseBinary):
         Z = QuLinearBinary.generate_Z(d)
 
         # compute cross-moment matrix
-        M = binary.base.corr2moments(mean, corr)
+        M = base.corr2moments(mean, corr)
 
         # convert adjusted moments to vector
         s = m2v(2 * M - numpy.diag(numpy.diag(M)))
@@ -217,27 +210,27 @@ class QuLinearBinary(binary.base.BaseBinary):
             \param ncpus number of cpus 
         """
 
-        mean, corr = binary.base.moments2corr(binary.base.random_moments(d, phi=phi))
+        mean, corr = base.moments2corr(base.random_moments(d, phi=phi))
         print 'given marginals '.ljust(100, '*')
-        binary.base.print_moments(mean, corr)
+        base.print_moments(mean, corr)
 
         generator = QuLinearBinary.from_moments(mean, corr)
         print generator.name + ':'
         print generator
 
         print 'formula '.ljust(100, '*')
-        binary.base.print_moments(generator.mean, generator.corr)
+        base.print_moments(generator.mean, generator.corr)
 
         print 'exact \pi conditionals in [0,1] '.ljust(100, '*')
-        binary.base.print_moments(generator.exact_marginals(ncpus))
+        base.print_moments(generator.exact_marginals(ncpus))
 
         print ('simulation \pi conditionals in [0,1] (n = %d) ' % n).ljust(100, '*')
-        binary.base.print_moments(generator.rvs_marginals(n, ncpus))
+        base.print_moments(generator.rvs_marginals(n, ncpus))
 
         print 'exact \pi non-negative '.ljust(100, '*')
         X = generator.state_space(d)
-        mean, corr = binary.base.sample2corr(X, generator.pmf_nonnegative(X))
-        binary.base.print_moments(mean, corr)
+        mean, corr = base.sample2corr(X, generator.pmf_nonnegative(X))
+        base.print_moments(mean, corr)
 
     def _getMean(self):
         """ Get expected value of instance. \return mean """

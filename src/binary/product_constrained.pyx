@@ -4,9 +4,10 @@
 """ Binary parametric family with constrained components. \namespace binary.constrained """
 
 import numpy
+cimport numpy
 
 import product
-import wrapper
+import binary.wrapper as wrapper
 
 class ConstrProductBinary(product.ProductBinary):
     """ Binary parametric family constrained to vectors that verify certain interactions. """
@@ -22,15 +23,26 @@ class ConstrProductBinary(product.ProductBinary):
 
         super(ConstrProductBinary, self).__init__(p=p, name=name, long_name=long_name)
 
-        self.py_wrapper = wrapper.constrained_product()
+        # add module
+        self.py_wrapper = wrapper.product_constrained()
+        self.pp_modules += ('binary.product_constrained',)
 
         ## list of entries having interaction constraints
         self.constrained = constrained
+        
         ## list of free entries
-        self.free = [i for i in xrange(self.d) if not i in [item for sublist in constrained for item in sublist]]
+        self.free = numpy.array([i for i in xrange(self.d) if not i in [item for sublist in constrained for item in sublist]], dtype=numpy.int16)
 
     def __str__(self):
         return 'd: %d, p:\n%sconstraints:\n%s\n' % (self.d, repr(self.p), repr(self.constrained))
+
+    @classmethod
+    def from_moments(cls, mean, corr=None):
+        """ 
+            Construct a random family for testing.
+            \param mean mean vector
+        """
+        return cls.random(d=mean.shape[0], p=mean)
 
     @classmethod
     def _lpmf(cls, Y, p, constrained):
@@ -57,26 +69,34 @@ class ConstrProductBinary(product.ProductBinary):
         return V
 
     @classmethod
-    def _rvs(cls, U, p, constrained, free):
+    def _rvs(cls, numpy.ndarray[dtype=numpy.float64_t, ndim=2] U,
+                  numpy.ndarray[dtype=numpy.float64_t, ndim=1] p,
+                  constrained,
+                  numpy.ndarray[dtype=numpy.int16_t, ndim=1] free):
         """ 
             Generates a random variable.
             \param U uniform variables
             \param param parameters
             \return binary variables
         """
-        Y = numpy.zeros((U.shape[0], U.shape[1]), dtype=bool)
+        
+        cdef Py_ssize_t k, i
+        cdef double p_all
+        cdef numpy.ndarray[dtype = Py_ssize_t, ndim = 1] bundle
+        cdef numpy.ndarray[dtype = numpy.int8_t, ndim = 2] Y = numpy.zeros((U.shape[0], U.shape[1]), dtype=numpy.int8)
 
         for k in xrange(U.shape[0]):
-            Y[k][free] = U[k][free] < p[free]
+            for i in free: Y[k, i] = U[k, i] < p[i]
             for bundle in constrained:
-                index = list(bundle)
-                p_all = p[bundle].prod()
+                p_all = 1.0
+                for i in bundle: p_all *= p[i]
                 if U[k, bundle[0]] < p_all / (1.0 - p[bundle[0]] + p_all):
-                    Y[k][index] = numpy.ones(len(bundle), dtype=bool)
+                    for i in bundle: Y[k, i] = True
                 else:
-                    Y[k][index] = U[k][index] < p[index]
+                    for i in bundle: Y[k, i] = U[k, i] < p[i]
                     Y[k, bundle[0]] = False
-        return Y
+
+        return numpy.array(Y, dtype=bool)
 
     @classmethod
     def random(cls, d, p=None):

@@ -1,16 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""
-Binary model.
-"""
-
-"""
-\namespace binary.base
-$Author: christian.a.schafer@gmail.com $
-$Rev: 152 $
-$Date: 2011-10-10 10:51:51 +0200 (Mo, 10 Okt 2011) $
-"""
+""" Binary model. \namespace binary.base """
 
 import numpy
 cimport numpy
@@ -201,13 +192,12 @@ class BaseBinary(object):
             if ncpus == 0: job_server = None
         return ncpus, job_server
 
-
     def rvs_marginals(self, n, ncpus='autodetect'):
         """
             Prints the empirical mean and correlation to stdout.
             \param n sample size
         """
-        if 'pp' in sys.modules.keys() and ncpus > 1:
+        if ncpus > 1:
             job_server = utils.pp.Server(ncpus=ncpus, ppservers=())
             print 'rvstest running on %d cpus...\n' % job_server.get_ncpus()
         else: job_server = None
@@ -221,25 +211,16 @@ class BaseBinary(object):
             \return a string representation of the marginals 
         """
 
-        if 'pp' in sys.modules.keys() and ncpus > 1:
+        if ncpus > 1:
             job_server = utils.pp.Server(ncpus=ncpus, ppservers=())
         else: job_server = None
 
-        X = BaseBinary.state_space(self.d)
+        X = state_space(self.d)
         lpmf = self.lpmf(X, job_server=job_server)
         if lpmf is None: return None
 
         weights = numpy.exp(lpmf - lpmf.max())
         return sample2corr(X, weights)
-
-    @classmethod
-    def state_space(cls, d):
-        """ Enumerates the state space. \return array of binary vectors """
-        X = list()
-        for dec_vector in range(2 ** d):
-            bin_vector = dec2bin(dec_vector, d)
-            X.append(bin_vector)
-        return numpy.array(X)
 
     def getMean(self):
         """ Get expected value. \return p-vector """
@@ -252,8 +233,34 @@ class BaseBinary(object):
     mean = property(fget=getMean, doc="mathematical mean")
     r = property(fget=getRandom, doc="random components")
 
+    @classmethod
+    def test_properties(cls, d=None, M=None, n=1e4, rho=0.5, ncpus='autodetect'):
+        """
+            Tests functionality of the quadratic linear family class.
+            \param d dimension
+            \param n number of samples
+            \param phi dependency level in [0,1]
+            \param ncpus number of cpus 
+        """
 
-#---------------------------------------------------------- conversion functions
+        if M is None:
+            M = random_moments(d, rho=rho)
+        else:
+            d = M.shape[0]
+        mean, corr = moments2corr(M)
+        generator = cls.from_moments(mean, corr)
+        
+        print '\n' + '#' * 100 + '\n' + ('  %s  ' % generator.name).center(100, '#') + '\n'
+        print generator
+        
+        print ' given marginals '.center(100, '*')
+        print_moments(mean, corr)
+
+        print ' exact '.center(100, '*')
+        print_moments(generator.exact_marginals(ncpus))
+        
+        print (' simulation (n = %d) ' % n).center(100, '*')
+        print_moments(generator.rvs_marginals(n, ncpus))
 
 def bin2str(bin):
     """
@@ -284,8 +291,13 @@ def dec2bin(n, d=0):
     bin_vector.reverse()
     return numpy.array(bin_vector)
 
-
-#-------------------------------------------------------------- moment functions
+def state_space(d):
+    """ Enumerates the state space. \return array of binary vectors """
+    X = list()
+    for dec_vector in range(2 ** d):
+        bin_vector = dec2bin(dec_vector, d)
+        X.append(bin_vector)
+    return numpy.array(X)
 
 def random_moments(d, rho=1.0, n_cond=500, n_perm=None, boundary=0.01, verbose=False):
     """
@@ -306,6 +318,9 @@ def random_moments(d, rho=1.0, n_cond=500, n_perm=None, boundary=0.01, verbose=F
 
     # mean
     cdef numpy.ndarray[numpy.float64_t, ndim = 1] m = boundary + numpy.random.random(d) * (1.0 - 2 * boundary)
+
+    if rho == 0.0:
+        return numpy.diag(m * (1.0 - m)) + numpy.outer(m, m)
 
     # covariance of independent Bernoulli    
     cdef numpy.ndarray[numpy.float64_t, ndim = 2] C = numpy.diag(m - m * m)
@@ -378,7 +393,6 @@ def get_permutation(d):
         perm[i], perm[j] = perm[j], perm[i]
     return perm
 
-
 def corr2moments(mean, corr):
     """
         Converts a mean vector and correlation matrix to the corresponding
@@ -435,8 +449,6 @@ def print_moments(mean, corr=None):
     print 'mean:\n' + repr(mean)
     print 'correlation:\n' + repr(corr)
     if corr is None: print
-
-
 
 
 """

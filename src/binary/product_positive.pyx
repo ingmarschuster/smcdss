@@ -6,10 +6,10 @@
 import numpy
 cimport numpy
 
-import binary.product
-import binary.wrapper
+import product
+import binary.wrapper as wrapper
 
-class PositiveBinary(binary.product.ProductBinary):
+class PositiveBinary(product.ProductBinary):
     """ Binary parametric family with non-zero support."""
 
     def __init__(self, p, name='positive product family', long_name=__doc__):
@@ -21,11 +21,11 @@ class PositiveBinary(binary.product.ProductBinary):
         """
 
         # call super constructor
-        binary.product.ProductBinary.__init__(p=p, name=name, long_name=long_name)
+        super(PositiveBinary, self).__init__(p=p, name=name, long_name=long_name)
 
         # add dependent functions
-        self.pp_depfuncs += ('_rvslpmf_all',)
-        self.py_wrapper = binary.wrapper.positive_product()
+        self.py_wrapper = wrapper.product_positive()
+        self.pp_modules += ('binary.product_positive',)
 
         log_c = numpy.log(1.0 - numpy.cumprod(1.0 - p[::-1])[::-1]) # prob of gamma > 0 at component 1,..,d
         log_c = numpy.append(log_c, -numpy.inf)
@@ -45,7 +45,8 @@ class PositiveBinary(binary.product.ProductBinary):
             \param param parameters
             \return binary variables
         """
-        cdef int size, d, k, i
+        cdef Py_ssize_t size, d, k, i
+        
         if U is not None:
             size, d = U.shape
             Y = numpy.empty((size, d), dtype=bool)

@@ -15,9 +15,9 @@ import sys
 import time
 import utils
 
-import product
-import base
-import wrapper
+import binary.product as product
+import binary.base as base
+import binary.wrapper as wrapper
 
 class ConditionalsBinary(product.ProductBinary):
     """ Binary parametric family with glm conditionals. """
@@ -25,7 +25,7 @@ class ConditionalsBinary(product.ProductBinary):
     PRECISION = base.BaseBinary.PRECISION
     MAX_ENTRY_SUM = numpy.finfo(float).maxexp * log(2)
 
-    def __init__(self, A, name='conditionals family', long_name=__doc__):
+    def __init__(self, A, name='generic conditionals family', long_name=__doc__):
         """ 
             Constructor.
             \param A Lower triangular matrix holding regression coefficients
@@ -33,12 +33,10 @@ class ConditionalsBinary(product.ProductBinary):
             \param long_name long name
         """
 
-        p = ConditionalsBinary.link(numpy.diagonal(A))
+        p = self.link(numpy.diagonal(A))
 
         # call super constructor
         super(ConditionalsBinary, self).__init__(p=p, name=name, long_name=long_name)
-
-        self.py_wrapper = wrapper.conditionals()
 
         # add modules
         self.pp_modules = ('numpy', 'scipy.linalg',)
@@ -63,8 +61,7 @@ class ConditionalsBinary(product.ProductBinary):
         """
         cdef Py_ssize_t d = A.shape[0]
         cdef Py_ssize_t k, i, size
-        cdef double logprob
-        cdef double x
+        cdef double ax, cprob
 
         if U is not None:
             size = U.shape[0]
@@ -73,44 +70,44 @@ class ConditionalsBinary(product.ProductBinary):
         if Y is not None:
             size = Y.shape[0]
 
-        cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 1] L = numpy.zeros(size, dtype=numpy.float64)
+        cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 1] L = numpy.ones(size, dtype=numpy.float64)
 
         for k in xrange(size):
 
             for i in xrange(d):
                 # Compute log conditional probability that Y(i) is one
-                x = A[i, i]
-                for j in xrange(i):
-                    x += A[i, j] * Y[k, j]
-                logcprob = log(ConditionalsBinary.link(x))
+                ax = A[i, i]
+                for j in xrange(i): ax += A[i, j] * Y[k, j]
+                cprob = cls.link(ax)
 
                 # Generate the ith entry
-                if U is not None: Y[k, i] = log(U[k, i]) < logcprob
+                if U is not None:
+                    Y[k, i] = U[k, i] < cprob
 
                 # Add to log conditional probability
-                L[k] += logcprob
-                if not Y[k, i]: L[k] -= x
+                if Y[k, i]: L[k] *= cprob
+                else: L[k] *= (1 - cprob)
 
-        return numpy.array(Y, dtype=bool), L
+        return numpy.array(Y, dtype=bool), numpy.log(L)
 
     @classmethod
     def independent(cls, p):
         """
-            Constructs a logistic binary model with independent components.
+            Constructs a conditionals family with independent components.
             \param cls instance
             \param p mean
-            \return logistic model
+            \return conditionals model
         """
-        A = numpy.diag(ConditionalsBinary.ilink(p))
+        A = numpy.diag(cls.ilink(p))
         return cls(A)
 
     @classmethod
     def uniform(cls, d):
         """ 
-            Constructs a uniform logistic binary model.
+            Constructs a uniform conditionals family.
             \param cls instance
             \param d dimension
-            \return logistic model
+            \return conditionals family
         """
         A = numpy.zeros((d, d))
         return cls(A)
@@ -118,11 +115,11 @@ class ConditionalsBinary(product.ProductBinary):
     @classmethod
     def random(cls, d, dep=3.0):
         """ 
-            Constructs a random logistic binary model.
+            Constructs a random conditionals family.
             \param cls instance
             \param d dimension
             \param dep strength of dependencies [0,inf)
-            \return logistic model
+            \return conditionals family
         """
         cls = ConditionalsBinary.independent(p=numpy.random.random(d))
         A = numpy.random.normal(scale=dep, size=(d, d))
@@ -132,24 +129,24 @@ class ConditionalsBinary(product.ProductBinary):
         return cls
 
     @classmethod
-    def from_moments(cls, mean, corr, n=1e4, q=25.0, delta=0.005, verbose=False):
+    def from_moments(cls, mean, corr, n=1e4, q=25.0, delta=0.005, verbose=0):
         """ 
-            Constructs a logistic conditionals family from given mean and correlation.
+            Constructs a conditionals family from given mean and correlation.
             \param mean mean
             \param corr correlation
             \param n number of samples for Monte Carlo estimation
             \param q number of intermediate steps in Newton-Raphson procedure
             \param delta minimum absolute value of correlation coefficients
-            \return logistic conditionals family
+            \return conditionals family
         """
 
         ## dimension of binary family
         cdef Py_ssize_t d = mean.shape[0]
 
-        ## dimension of the current logistic regression
+        ## dimension of the current regression
         cdef Py_ssize_t c
 
-        ## dimension of the sparse logistic regression
+        ## dimension of the sparse regression
         cdef Py_ssize_t s
 
         ## iterators
@@ -158,11 +155,8 @@ class ConditionalsBinary(product.ProductBinary):
         ## minimum dimension for Monte Carlo estimates
         cdef Py_ssize_t min_c = int(numpy.log2(n))
 
-        ## probability of binary vector
-        cdef double prob
-
-        ## floating point variable
-        cdef double x, high, low
+        ## floating point variables
+        cdef double x, ax, link, dlink, high, low
 
         ## parameter matrix holding regression coefficients
         cdef numpy.ndarray[numpy.float64_t, ndim = 2] A = numpy.zeros((d, d), dtype=numpy.float64)
@@ -185,7 +179,7 @@ class ConditionalsBinary(product.ProductBinary):
         ## array holding random binary vectors
         cdef numpy.ndarray[numpy.int8_t, ndim = 2] Y = numpy.empty((0, 0), dtype=numpy.int8)
 
-        ## index vector for sparse logistic regression
+        ## index vector for sparse regression
         cdef numpy.ndarray[Py_ssize_t, ndim = 1] S = numpy.empty(0, dtype=numpy.int)
 
         ## index vector for intermediate steps in Newton-Raphson procedure
@@ -200,8 +194,6 @@ class ConditionalsBinary(product.ProductBinary):
         ## parameter for convex combination between target and independent moment vectors 
         cdef double phi
 
-
-
         # compute cross-moment for independent case
         for i in xrange(d):
             for j in xrange(i):
@@ -209,15 +201,15 @@ class ConditionalsBinary(product.ProductBinary):
                 I[j, i] = I[i, j]
 
         # initialize for component of A
-        A[0, 0] = ConditionalsBinary.ilink(M[0, 0])
+        A[0, 0] = cls.ilink(M[0, 0])
 
         # loop over dimensions
         for c in xrange(1, d):
             if verbose > 0: sys.stderr.write('\ndim: %d' % c)
 
             if c < min_c:
-                Y = numpy.array(ConditionalsBinary.state_space(c), dtype=numpy.int8)
-                pm = numpy.exp(ConditionalsBinary._rvslpmf_all(A=A[:c, :c], Y=Y)[1])
+                Y = numpy.array(base.state_space(c), dtype=numpy.int8)
+                pm = numpy.exp(cls._rvslpmf_all(A=A[:c, :c], Y=Y)[1])
             else:
                 Y = numpy.empty(shape=(n, c), dtype=numpy.int8)
                 U = numpy.random.random(size=(n, c))
@@ -228,11 +220,11 @@ class ConditionalsBinary(product.ProductBinary):
                     for i in xrange(c):
 
                         # compute the probability that Y(k,i) is one                    
-                        x = A[i, i]
-                        for j in xrange(i): x += A[i, j] * Y[k, j]
+                        ax = A[i, i]
+                        for j in xrange(i): ax += A[i, j] * Y[k, j]
 
                         # generate the entry Y(k,i)
-                        Y[k, i] = U[k, i] < 1.0 / (1.0 + exp(-x))
+                        Y[k, i] = U[k, i] < cls.link(ax)
 
             # filter components with high association for sparse regression
             S = numpy.append((abs(corr[c, :c]) > delta).nonzero(), c)
@@ -240,7 +232,7 @@ class ConditionalsBinary(product.ProductBinary):
 
             # initialize b with independent parameter
             a = numpy.zeros(s + 1, dtype=numpy.float64)
-            a[s] = ConditionalsBinary.ilink(M[c, c])
+            a[s] = cls.ilink(M[c, c])
             A[c, S] = a
 
             # set target moment vector and independent moment vector
@@ -249,9 +241,9 @@ class ConditionalsBinary(product.ProductBinary):
             # Newton-Raphson iteration
             for phi in Q:
 
-                for nr in xrange(ConditionalsBinary.MAX_ITERATIONS):
+                for nr in xrange(cls.MAX_ITERATIONS):
 
-                    if verbose > 1: sys.stderr.write('phi: %.3f, nr: %d, a: %s' % (phi, nr, repr(A)))
+                    if verbose > 1: sys.stderr.write('\nphi: %.3f, nr: %d, a: %s' % (phi, nr, repr(a)))
                     a_before = a.copy()
 
                     # compute f and J 
@@ -261,20 +253,29 @@ class ConditionalsBinary(product.ProductBinary):
                     # loop over all binary vectors
                     for k in xrange(Y.shape[0]):
 
-                        x = a[s]
-                        for i in xrange(s): x += a[i] * Y[k, S[i]]
+                        # compute sum
+                        ax = a[s]
+                        for i in xrange(s): ax += a[i] * Y[k, S[i]]
 
-                        prob = ConditionalsBinary.link(x) # link
-                        prob = min(max(prob, 1e-8), 1.0 - 1e-8)
-
-                        x = prob / float(n)
-                        if c < min_c: x *= n * pm[k]
+                        # link
+                        link = cls.link(ax)
+                        link = min(max(link, 1e-8), 1.0 - 1e-8)
+                        if c < min_c:
+                            x = link * pm[k]
+                        else:
+                            x = link / float(n)
+                        # update f
                         for i in xrange(s):
                             f[i] = f[i] + x * Y[k, S[i]]
                         f[s] = f[s] + x
 
-                        x = ConditionalsBinary.dlink(x) / float(n) # dlink
-                        if c < min_c: x *= n * pm[k]
+                        # derivative of link
+                        dlink = cls.dlink(ax)
+                        if c < min_c:
+                            x = dlink * pm[k]
+                        else:
+                            x = dlink / float(n)
+                        # update J
                         for i in xrange(s):
                             for j in xrange(s):
                                 J[i, j] += x * Y[k, S[i]] * Y[k, S[j]]
@@ -283,24 +284,24 @@ class ConditionalsBinary(product.ProductBinary):
                         J[s, s] += x
 
                     # subtract non-random parts
-                    f -= (phi * tM + (1.0 - phi) * tI)
+                    m = phi * tM + (1.0 - phi) * tI
 
                     # Newton update
                     try:
-                        a = scipy.linalg.solve(J, numpy.dot(J, a) - f, sym_pos=True)
+                        a -= scipy.linalg.solve(J, f - m, sym_pos=True)
                     except numpy.linalg.linalg.LinAlgError:
-                        sys.stderr.write('numerical error. adding 1e-8 on main diagonal.')
-                        a = scipy.linalg.solve(J + numpy.eye(s + 1) * 1e-8, numpy.dot(J, a) - f, sym_pos=False)
+                        sys.stderr.write('numerical error. adding 1e-8 on main diagonal.\n')
+                        a -= scipy.linalg.solve(J + numpy.eye(s + 1) * 1e-8, f - m, sym_pos=False)
 
                     # check for absolute sums in A
                     entry_sum = max(a[a > 0].sum(), -a[a < 0].sum())
-                    if entry_sum > ConditionalsBinary.MAX_ENTRY_SUM * (0.25 * s + 1):
+                    if entry_sum > cls.MAX_ENTRY_SUM * (0.25 * s + 1):
                         if verbose > 1: sys.stderr.write('stopped. a exceeding %.1f\n' % entry_sum)
                         nr = None
                         break
 
                     # check for convergence
-                    if numpy.allclose(a, a_before, rtol=0, atol=ConditionalsBinary.PRECISION):
+                    if numpy.allclose(a, a_before, rtol=0, atol=cls.PRECISION):
                         if verbose > 1: sys.stderr.write('a converged.\n')
                         A[c, S] = a
                         break
@@ -309,47 +310,18 @@ class ConditionalsBinary(product.ProductBinary):
                     if verbose: sys.stderr.write('phi: %.3f ' % phi)
                     break
 
-
-        if verbose: sys.stderr.write('\nlogistic conditionals family successfully constructed from moments.\n\n')
+        if verbose: sys.stderr.write('\nconditionals family successfully constructed from moments.\n\n')
 
         return cls(A)
 
     @classmethod
-    def test_properties(cls, d, n=1e4, rho=0.8, ncpus=1):
-        """
-            Tests functionality of the quadratic linear family class.
-            \param d dimension
-            \param n number of samples
-            \param phi dependency level in [0,1]
-            \param ncpus number of cpus 
-        """
-
-        mean, corr = base.moments2corr(base.random_moments(d, rho=rho))
-        print 'given marginals '.ljust(100, '*')
-        base.print_moments(mean, corr)
-
-        generator = ConditionalsBinary.from_moments(mean, corr)
-        print generator.name + ':'
-        print generator
-
-        print 'exact '.ljust(100, '*')
-        base.print_moments(generator.exact_marginals(ncpus))
-
-        print ('simulation (n = %d) ' % n).ljust(100, '*')
-        base.print_moments(generator.rvs_marginals(n, ncpus))
-
-    @classmethod
     def link(cls, x):
-        """ Logistic function 1/(1+exp(x)) \return logistic function """
-        return 1.0 / (1.0 + numpy.exp(-x))
+        pass
 
     @classmethod
     def dlink(cls, x):
-        """ Derivative of logistic function 1/(1+exp(x)) \return derivative of logistic function """
-        p = ConditionalsBinary.link(x)
-        return p * (1 - p)
+        pass
 
     @classmethod
     def ilink(cls, p):
-        """ Inverse of logistic function exp(1/(1-p)) \return logit function """
-        return numpy.log(p / (1.0 - p))
+        pass

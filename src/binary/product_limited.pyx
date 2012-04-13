@@ -4,19 +4,14 @@
 """ Binary parametric family with limited components. \namespace binary.limited """
 
 import numpy
+cimport numpy
 
 import scipy.special
-import binary.exchangeable
-import binary.wrapper
+import product_exchangeable
+import binary.wrapper as wrapper
 
-class LimitedBinary(binary.exchangeable.ExchangeableBinary):
+class LimitedBinary(product_exchangeable.ExchangeableBinary):
     """ Binary parametric family limited to vectors of norm not greater than q subsets. """
-
-    @classmethod
-    def log_binomial(cls, a, b):
-        return (scipy.special.gammaln(a + 1) -
-                scipy.special.gammaln(b + 1) -
-                scipy.special.gammaln(a - b + 1))
 
     def __init__(self, d, q, p=0.5, name='limited product family', long_name=__doc__):
         """ 
@@ -30,7 +25,9 @@ class LimitedBinary(binary.exchangeable.ExchangeableBinary):
 
         super(LimitedBinary, self).__init__(d=d, p=p, name=name, long_name=long_name)
 
-        self.py_wrapper = binary.wrapper.limited_product()
+        # add module
+        self.py_wrapper = wrapper.product_limited()
+        self.pp_modules += ('binary.product_limited',)
 
         # compute binomial probabilities up to q
         b = numpy.empty(q + 1, dtype=float)
@@ -44,9 +41,22 @@ class LimitedBinary(binary.exchangeable.ExchangeableBinary):
         self.q = q
         self.b = b.cumsum()
 
-
     def __str__(self):
         return 'd: %d, limit: %d, p: %.4f\n' % (self.d, self.q, self.p)
+
+    @classmethod
+    def from_moments(cls, mean, corr=None):
+        """ 
+            Construct a random family for testing.
+            \param mean mean vector
+        """
+        return cls.random(d=mean.shape[0], p=mean[0])
+
+    @classmethod
+    def log_binomial(cls, a, b):
+        return (scipy.special.gammaln(a + 1) - 
+                scipy.special.gammaln(b + 1) - 
+                scipy.special.gammaln(a - b + 1))
 
     @classmethod
     def _lpmf(cls, Y, q, logit_p):
@@ -63,29 +73,35 @@ class LimitedBinary(binary.exchangeable.ExchangeableBinary):
         return L
 
     @classmethod
-    def _rvs(cls, U, b):
+    def _rvs(cls, numpy.ndarray[dtype=numpy.float64_t, ndim=2] U,
+                  numpy.ndarray[dtype=numpy.float64_t, ndim=1] b):
         """ 
             Generates a random variable.
             \param U uniform variables
             \param param parameters
             \return binary variables
         """
-        size, d = U.shape
-        Y = numpy.zeros(U.shape, dtype=bool)
-
+        cdef Py_ssize_t size = U.shape[0]
+        cdef Py_ssize_t d = U.shape[1]
+        cdef Py_ssize_t i, j
+        
+        cdef numpy.ndarray[Py_ssize_t, ndim = 1] perm = numpy.arange(d, dtype=numpy.int)
+        cdef numpy.ndarray[dtype = numpy.int8_t, ndim = 2] Y = numpy.zeros((U.shape[0], U.shape[1]), dtype=numpy.int8)
+        
         for k in xrange(size):
-            perm = numpy.arange(d)
+            perm = numpy.arange(d, dtype=numpy.int)
             for i in xrange(d):
                 # pick an element in p[:i+1] with which to exchange p[i]
-                j = int(U[k][i] * (d - i))
+                j = int(U[k, i] * (d - i))
                 perm[d - 1 - i], perm[j] = perm[j], perm[d - 1 - i]
+            
             # draw the number of nonzero elements
+            for r in xrange(b.shape[0]):
+                if U[k, d - 1] < b[r]: break
 
-            for r, p in enumerate(b):
-                if U[k][d - 1] < p: break
+            for i in xrange(r): Y[k, perm[i]] = True
 
-            Y[k][perm[:r]] = True
-        return Y
+        return numpy.array(Y, dtype=bool)
 
     @classmethod
     def random(cls, d, p=None):

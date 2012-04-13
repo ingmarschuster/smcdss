@@ -1,17 +1,17 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with exchangeable components. \namespace binary.exchangeable """
+""" Binary parametric family with exchangeable components. \namespace binary.product_exchangeable """
 
 import numpy
 
-import base
-import binary.wrapper
+import binary.base as base
+import binary.wrapper as wrapper
 
 class ExchangeableBinary(base.BaseBinary):
     """ Binary parametric family with exchangeable components."""
 
-    def __init__(self, d, p, name='equable product family', long_name=__doc__):
+    def __init__(self, d, p, name='exchangeable product family', long_name=__doc__):
         """ 
             Constructor.
             \param p mean vector
@@ -23,14 +23,22 @@ class ExchangeableBinary(base.BaseBinary):
         super(ExchangeableBinary, self).__init__(d=d, name=name, long_name=long_name)
 
         # add module
-        self.py_wrapper = binary.wrapper.exchangeable_product()
-        self.pp_modules += ('binary.product',)
+        self.py_wrapper = wrapper.product_exchangeable()
+        self.pp_modules += ('binary.product_exchangeable',)
 
         self.p = p
         self.logit_p = numpy.log(p / (1.0 - p))
 
     def __str__(self):
         return 'd: %d, p: %.4f' % (self.d, self.p)
+
+    @classmethod
+    def from_moments(cls, mean, corr=None):
+        """ 
+            Construct a random family for testing.
+            \param mean mean vector
+        """
+        return cls(d=mean.shape[0], p=mean[0])
 
     @classmethod
     def _lpmf(cls, Y, logit_p):
