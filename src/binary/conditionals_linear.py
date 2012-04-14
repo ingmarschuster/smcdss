@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with linear conditionals. \namespace binary.qu_linear """
+""" Binary parametric family with linear conditionals. \namespace binary.conditionals_linear """
 
 import numpy
 

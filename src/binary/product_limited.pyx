@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with limited components. \namespace binary.limited """
+""" Binary parametric family with limited components. \namespace binary.product_limited """
 
 import numpy
 cimport numpy

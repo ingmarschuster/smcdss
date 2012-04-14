@@ -11,17 +11,17 @@ class wrapper():
         Y = self.rvs(U=U, param=param)
         return Y, self.lpmf(Y, param=param)
 
-class product_exchangeable(wrapper):
-    def lpmf(self, Y, param):
-        return binary.product_exchangeable.ExchangeableBinary._lpmf(Y=Y, logit_p=param.logit_p)
-    def rvs(self, U, param):
-        return binary.product_exchangeable.ExchangeableBinary._rvs(U=U, p=param.p)
-
 class product(wrapper):
     def lpmf(self, Y, param):
         return binary.product.ProductBinary._lpmf(numpy.array(Y, dtype=numpy.int8), p=param.p)
     def rvs(self, U, param):
         return binary.product.ProductBinary._rvs(U=U, p=param.p)
+
+class product_exchangeable(wrapper):
+    def lpmf(self, Y, param):
+        return binary.product_exchangeable.ExchangeableBinary._lpmf(Y=Y, logit_p=param.logit_p)
+    def rvs(self, U, param):
+        return binary.product_exchangeable.ExchangeableBinary._rvs(U=U, p=param.p)
 
 class product_positive(wrapper):
     def lpmf(self, Y, param):
@@ -70,24 +70,24 @@ class conditionals_linear(wrapper):
 class conditionals_arctan(wrapper):
     def lpmf(self, Y, param):
         return binary.conditionals_arctan.ArctanCondBinary._rvslpmf_all(
-                A=param.A, U=None, Y=numpy.array(Y, dtype=numpy.int8))[1]
+                A=param.A, Y=numpy.array(Y, dtype=numpy.int8))[1]
     def rvs(self, U, param):
         return self.rvslpmf(U, param)[0]
     def rvslpmf(self, U, param):
         return binary.conditionals_arctan.ArctanCondBinary._rvslpmf_all(
                 A=param.A, U=U)
 
-class qu_linear(wrapper):
+class quadratic_linear(wrapper):
     def lpmf(self, Y, param):
         return binary.quadratic_linear.QuLinearBinary._rvslpmf_all(
-                param.Beta, param.p, Y=Y)[1]
+                A=param.A, p=param.p, Y=numpy.array(Y, dtype=numpy.int8))[1]
     def rvs(self, U, param):
         return self.rvslpmf(U, param)[0]
     def rvslpmf(self, U, param):
         return binary.quadratic_linear.QuLinearBinary._rvslpmf_all(
-                param.Beta, param.p, U=U)
+                A=param.A, p=param.p, U=U)
 
-class qu_exponential(wrapper):
+class quadratic_exponential(wrapper):
     def lpmf(self, Y, param):
         return binary.quadratic_exponential.QuExpBinary._lpmf(Y, A=param.A)
 

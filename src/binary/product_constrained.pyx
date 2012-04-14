@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with constrained components. \namespace binary.constrained """
+""" Binary parametric family with constrained components. \namespace binary.product_constrained """
 
 import numpy
 cimport numpy

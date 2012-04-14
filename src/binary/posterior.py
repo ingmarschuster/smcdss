@@ -1,17 +1,10 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""
-Posterior distribution of a model selection problem.
-"""
-
-"""
-@namespace binary.posterior_bvs
-$Author: christian.a.schafer@gmail.com $
-$Rev: 160 $
-$Date: 2011-11-14 15:03:31 +0100 (lun., 14 nov. 2011) $
-@details Reads a dataset and construct the posterior probabilities of all linear models
-with variables regressed on the first column.
+""" Posterior distribution of a model selection problem.
+    \namespace binary.posterior
+    \details Reads a dataset and construct the posterior probabilities of all linear models
+             with variables regressed on the first column.
 """
 
 import numpy

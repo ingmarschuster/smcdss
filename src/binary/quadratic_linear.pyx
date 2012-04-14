@@ -1,9 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with quadratic form. \namespace binary.qu_linear"""
+""" Binary parametric family with quadratic form. \namespace binary.quadratic_linear """
 
 import numpy
+cimport numpy
+
+cdef extern from "math.h":
+    double log(double)
+
 import scipy.linalg
 import binary.base as base
 import binary.wrapper as wrapper
@@ -12,34 +17,31 @@ import binary.wrapper as wrapper
 class QuLinearBinary(base.BaseBinary):
     """ Binary parametric family with quadratic linear form. """
 
-    def __init__(self, a, Beta):
+    def __init__(self, a, A):
         """
             Constructor.
             \param a probability of zero
-            \param Beta matrix of coefficients
+            \param A matrix of coefficients
         """
-        super(QuLinearBinary, self).__init__(self, d=Beta.shape[0], name='quadratic linear binary', long_name=__doc__)
+        super(QuLinearBinary, self).__init__(d=A.shape[0], name='quadratic linear binary', long_name=__doc__)
 
         # add modules
-        self.pp_modules = ('numpy', 'scipy.linalg', 'binary.qu_linear')
+        self.py_wrapper = wrapper.quadratic_linear()
+        self.pp_modules += ('binary.quadratic_linear',)
 
         # add dependent functions
-        self.pp_depfuncs += ('_pmf',)
-
-        self.py_wrapper = wrapper.qu_linear()
-
-        #scipy.linalg.cholesky(Beta)
-
+        self.pp_depfuncs += ('_rvslpmf_all',)
+        
         # normalize parameters
-        z = 2 ** self.d * (a + 0.25 * (Beta.sum() + Beta.trace()))
+        z = 2 ** self.d * (a + 0.25 * (A.sum() + A.trace()))
         self.a = a / z
-        self.Beta = Beta / z
+        self.A = A / z
 
         ## probability of first entry
         self.p = self.mean[0]
 
     def __str__(self):
-        return 'd: %d, a:%.4f, Beta:\n%s' % (self.d, self.a, repr(self.Beta))
+        return 'd: %d, a:%.4f, A:\n%s' % (self.d, self.a, repr(self.A))
 
     def pmf_nonnegative(self, Y):
         """ 
@@ -60,29 +62,35 @@ class QuLinearBinary(base.BaseBinary):
         P = numpy.empty(Y.shape[0])
 
         for k in xrange(Y.shape[0]):
-            v = float(numpy.dot(numpy.dot(Y[k], self.Beta), Y[k].T))
+            v = float(numpy.dot(numpy.dot(Y[k], self.A), Y[k].T))
             P[k] = (self.a + v)
 
         if Y.shape[0] == 1: return P[0]
         else: return P
 
     @classmethod
-    def _rvslpmf_all(cls, Beta, p, U=None, Y=None):
+    def _rvslpmf_all(cls, numpy.ndarray[dtype=numpy.float64_t, ndim=2] A, double p,
+                          numpy.ndarray[dtype=numpy.float64_t, ndim=2] U=None,
+                          numpy.ndarray[dtype=numpy.int8_t, ndim=2] Y=None):
         """ 
             Generates a random variable.
             \param U uniform variables
-            \param param parameters
-            \return binary variables
+            \param A,p parameters
+            \param Y array of binary vectors
+            \return array of binary vectors, log-likelihood
         """
 
+        cdef Py_ssize_t size, d, i, k, m
+        cdef double tmp, prob, prob_previous, prob_cond
+
         if U is not None:
-            size, d = U.shape
-            Y = numpy.empty(U.shape, dtype=bool)
+            size, d = U.shape[0], U.shape[1]
+            Y = numpy.empty((size, d), dtype=numpy.int8)
 
         if Y is not None:
-            size, d = Y.shape
+            size, d = Y.shape[0], Y.shape[1]
 
-        L = numpy.empty(size, dtype=float)
+        cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 1] L = numpy.empty(size, dtype=numpy.float64)
 
         for k in xrange(size):
 
@@ -95,16 +103,16 @@ class QuLinearBinary(base.BaseBinary):
             else:
                 prob_previous = 1.0 - p
 
-            L[k] = numpy.log(prob_previous)
+            L[k] = log(prob_previous)
 
             for m in xrange(1, d):
 
                 # compute k - marginal with gamma(k) = 1
                 tmp = 0.0
                 for i in xrange(d):
-                    tmp = tmp + (2 * Y[k, i] * (i <= m - 1) + (i > m - 1)) * Beta[i, m]
+                    tmp += (2 * Y[k, i] * (i <= m - 1) + (i > m - 1)) * A[i, m]
+                tmp = tmp * 2.0 ** (d - (m + 2))
 
-                tmp = tmp * 2 ** (d - (m + 2))
                 prob = prob_previous / 2.0 + tmp
 
                 # compute conditional probability
@@ -120,14 +128,15 @@ class QuLinearBinary(base.BaseBinary):
                     if prob_cond == 0.0:
                         L[k] = -numpy.inf
                     else:
-                        L[k] += numpy.log(prob_cond)
+                        L[k] += log(prob_cond)
                 else:
-                    prob_previous = prob_previous - prob
+                    prob_previous -= prob
                     if prob_cond == 1.0:
                         L[k] = -numpy.inf
                     else:
-                        L[k] += numpy.log(1.0 - prob_cond)
-        return Y, L
+                        L[k] += log(1.0 - prob_cond)
+
+        return numpy.array(Y, dtype=bool), L
 
     @classmethod
     def random(cls, d):
@@ -136,9 +145,9 @@ class QuLinearBinary(base.BaseBinary):
             \param cls class
             \param d dimension
         """
-        Beta = numpy.random.standard_cauchy(size=(d, d))
-        Beta = numpy.dot(Beta.T, Beta)
-        return cls(0.0, Beta)
+        A = numpy.random.standard_cauchy(size=(d, d))
+        A = numpy.dot(A.T, A)
+        return cls(0.0, A)
 
     @classmethod
     def from_moments(cls, mean, corr):
@@ -166,9 +175,9 @@ class QuLinearBinary(base.BaseBinary):
         # solve moment equation
         x = scipy.linalg.solve(Z, s)
 
-        a, Beta = x[-1], v2m(x[:-1])
+        a, A = x[-1], v2m(x[:-1])
 
-        return cls(a, Beta)
+        return cls(a, A)
 
     @classmethod
     def from_data(cls, sample):
@@ -200,46 +209,14 @@ class QuLinearBinary(base.BaseBinary):
         Z[-1, -1] = 2.0
         return Z
 
-    @classmethod
-    def test_properties(cls, d, n=1e4, phi=0.8, ncpus=1):
-        """
-            Tests functionality of the quadratic linear family class.
-            \param d dimension
-            \param n number of samples
-            \param phi dependency level in [0,1]
-            \param ncpus number of cpus 
-        """
-
-        mean, corr = base.moments2corr(base.random_moments(d, phi=phi))
-        print 'given marginals '.ljust(100, '*')
-        base.print_moments(mean, corr)
-
-        generator = QuLinearBinary.from_moments(mean, corr)
-        print generator.name + ':'
-        print generator
-
-        print 'formula '.ljust(100, '*')
-        base.print_moments(generator.mean, generator.corr)
-
-        print 'exact \pi conditionals in [0,1] '.ljust(100, '*')
-        base.print_moments(generator.exact_marginals(ncpus))
-
-        print ('simulation \pi conditionals in [0,1] (n = %d) ' % n).ljust(100, '*')
-        base.print_moments(generator.rvs_marginals(n, ncpus))
-
-        print 'exact \pi non-negative '.ljust(100, '*')
-        X = generator.state_space(d)
-        mean, corr = base.sample2corr(X, generator.pmf_nonnegative(X))
-        base.print_moments(mean, corr)
-
     def _getMean(self):
         """ Get expected value of instance. \return mean """
-        return 0.5 + self.Beta.sum(axis=0) * 2 ** (self.d - 2)
+        return 0.5 + self.A.sum(axis=0) * 2 ** (self.d - 2)
 
     def getCov(self):
         """ Get covariance matrix. \return covariance matrix """
-        A = numpy.outer(numpy.ones(self.d), self.Beta.sum(axis=0))
-        S = 0.25 + (A + A.T + self.Beta) * 2 ** (self.d - 3)
+        A = numpy.outer(numpy.ones(self.d), self.A.sum(axis=0))
+        S = 0.25 + (A + A.T + self.A) * 2 ** (self.d - 3)
         mean = self.mean
         for i in range(self.d): S[i, i] = mean[i]
         return S - numpy.outer(mean, mean)

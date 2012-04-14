@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with non-zero support. \namespace binary.positive """
+""" Binary parametric family with non-zero support. \namespace binary.product_positive """
 
 import numpy
 cimport numpy

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """ Binary parametric family obtained via dichotomizing a multivariate Student.
-    \namespace binary.student_copula
+    \namespace binary.copula_student
     \details The correlation structure of the model is limited by the constraints of the elliptic Student copula.
 """
 
@@ -227,10 +227,3 @@ class _bvt(stats.rv_continuous):
         return p / float(n)
 
 bvt = _bvt(name='bvt', longname='A bivariate t-distribution', shapes='r')
-
-
-'''
-nu, dh, dk, r = StudentCopulaBinary.NU, -0.5, -0.5, 0.2
-print bvt.lower_MC(nu, dh, dk, r)
-print bvt.lower_DS(nu, dh, dk, r)
-'''

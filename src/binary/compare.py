@@ -23,11 +23,13 @@ OPTIONS:
 \namespace binary.compare
 """
 
-from binary.base import moments2corr, corr2moments, random_moments
-from binary.gaussian_copula import GaussianCopulaBinary
-from binary.student_copula import StudentCopulaBinary
-from binary.linear_cond import LinearCondBinary
-from binary.logistic_cond import LogisticCondBinary
+from base import moments2corr, corr2moments, random_moments
+from binary.copula_gaussian import GaussianCopulaBinary
+from binary.copula_student import StudentCopulaBinary
+from binary.conditionals_linear import LinearCondBinary
+from binary.conditionals_logistic import LogisticCondBinary
+from binary.conditionals_arctan import ArctanCondBinary
+from binary.quadratic_linear import QuLinearBinary
 
 import utils
 import getopt
@@ -36,6 +38,8 @@ import os
 import scipy.linalg
 import subprocess
 import sys
+
+generators = ['cond_arctan', 'qu_linear', 'cop_student', 'cop_gaussian', 'cond_logistic', 'cond_linear']
 
 def main():
     """ Main method. """
@@ -74,7 +78,7 @@ def main():
     f_name = os.path.expanduser('~/Documents/Data/bg/test_%d.csv' % d)
     if not os.path.isfile(f_name) or c:
         f = open(f_name, 'w')
-        f.write('rho,student,gaussian,logistic,linear\n')
+        f.write('rho,%s\n' % ','.join(generators))
         f.close()
 
     # start external processes
@@ -108,14 +112,13 @@ def main():
 
     # launch viewer
     if v:
-        f_name = os.path.expanduser('~/Documents/Data/bg/test_%d.pdf' % d)
-        if not os.path.isfile(f_name):
-            plot(d=d)
         if os.name == 'posix':
             viewer = 'okular'
         else:
             viewer = os.path.expanduser('~/Documents/Software/portable/viewer/PDFXCview')
-        subprocess.Popen([viewer, f_name])
+        for filename in os.listdir(os.path.expanduser('~/Documents/Data/bg')):
+            if not filename.endswith('_%d.pdf' % d): continue
+            subprocess.Popen([viewer, os.path.expanduser('~/Documents/Data/bg/%s' % filename)])
 
 
 def plot(d):
@@ -134,11 +137,13 @@ def compare(d, ticks=15, n=1e6):
     eps = 0.01
     delta = 0.005
     if d < 15: delta = 0.0
-    score = numpy.zeros((ticks + 1, 5), dtype=float)
-    score[:, 0] = numpy.linspace(0.0, 1.0, ticks + 1)
+    score = numpy.zeros((ticks + 1, len(generators) + 1), dtype=float)
+    score[0, 1:] = 1.0
+    score[1:, 0] = numpy.linspace(0.0, 1.0, ticks + 1)[1:]
     norm = lambda x: scipy.linalg.norm(x, ord=2)
+    utils.auxi.progress(0.0)
 
-    for i in xrange(ticks + 1):
+    for i in xrange(1, ticks + 1):
 
         utils.auxi.progress(score[i, 0])
 
@@ -152,17 +157,21 @@ def compare(d, ticks=15, n=1e6):
         # compute parametric families and reference loss
         loss['product'] = M - M_star
         generator = StudentCopulaBinary.from_moments(mean, corr, delta=delta)
-        loss['student'] = M - corr2moments(generator.mean, generator.corr)
+        loss['cop_student'] = M - corr2moments(generator.mean, generator.corr)
         generator = GaussianCopulaBinary.from_moments(mean, corr, delta=delta)
-        loss['gaussian'] = M - corr2moments(generator.mean, generator.corr)
-        generator = LogisticCondBinary.from_moments(mean, corr, delta=delta, verbose=False)
-        loss['logistic'] = M - corr2moments(*generator.rvs_marginals(n, 1))
+        loss['cop_gaussian'] = M - corr2moments(generator.mean, generator.corr)
+        generator = LogisticCondBinary.from_moments(mean, corr, delta=delta)
+        loss['cond_arctan'] = M - corr2moments(*generator.rvs_marginals(n, 1))
+        generator = ArctanCondBinary.from_moments(mean, corr, delta=delta)
+        loss['cond_logistic'] = M - corr2moments(*generator.rvs_marginals(n, 1))
         generator = LinearCondBinary.from_moments(mean, corr)
-        loss['linear'] = M - corr2moments(*generator.rvs_marginals(n, 1))
+        loss['cond_linear'] = M - corr2moments(*generator.rvs_marginals(n, 1))
+        generator = QuLinearBinary.from_moments(mean, corr)
+        loss['qu_linear'] = M - corr2moments(*generator.rvs_marginals(n, 1))
 
         ref = loss['product']
         ref = ref * (numpy.abs(ref) > eps)
-        for k, generator in enumerate(['student', 'gaussian', 'logistic', 'linear']):
+        for k, generator in enumerate(generators):
             gen = loss[generator]
             gen = gen * (numpy.abs(gen) > eps)
             score[i, k + 1] = (norm(ref) - norm(gen)) / norm(ref)
@@ -171,3 +180,106 @@ def compare(d, ticks=15, n=1e6):
 
 if __name__ == "__main__":
     main()
+
+
+"""
+
+# auxiliary function for adding legend
+legend.col <- function(colr, lev){
+
+  opar <- par
+  n <- length(colr)
+  bx <- par("usr")
+  box.cx <- c(bx[2] + (bx[2] - bx[1]) / 1000,
+  bx[2] + (bx[2] - bx[1]) / 1000 + (bx[2] - bx[1]) / 50)
+  box.cy <- c(bx[3], bx[3])
+  box.sy <- (bx[4] - bx[3]) / n
+  xx <- rep(box.cx, each = 2)
+  par(xpd = TRUE)
+  for(i in 1:n){
+    yy <- c(box.cy[1] + (box.sy * (i - 1)),
+    box.cy[1] + (box.sy * (i)),
+    box.cy[1] + (box.sy * (i)),
+    box.cy[1] + (box.sy * (i - 1)))
+    polygon(xx, yy, col = colr[i], border = colr[i])
+  }
+  rect(0,0,box.cx,1.02, col=NA, border='black',lwd=1.2)
+  rect(1,0,box.cx,1.02, col=NA, border='black',lwd=1.2)
+  par(new = TRUE)
+  plot(0, 0, type = "n", ylim = c(min(lev), max(lev)),
+       yaxt = "n", ylab = "", xaxt=  "n", xlab = "", frame.plot = FALSE)
+  axis(side=4, las=2, tick=FALSE, lwd=2)
+  par <- opar
+}
+
+
+#First read in the arguments listed at the command line
+args=(commandArgs(TRUE))
+
+if(length(args)==0){
+    print("No arguments supplied.")
+    ##supply default values
+    d = 3
+}else{
+    for(i in 1:length(args)){
+         eval(parse(text=args[[i]]))
+    }
+}
+
+csv_name=paste('~/Documents/Data/bg/test_',d,'.csv',sep='')
+
+Z=read.csv(csv_name)
+h=unique(Z$rho)
+n=length(h)
+colors = c('gold', 'skyblue', 'seagreen3', 'firebrick4', 'aquamarine2', 'lightpink3')
+family = c('cond_arctan', 'qu_linear', 'cop_student', 'cop_gaussian', 'cond_logistic', 'cond_linear')
+
+v = seq(0,1,length.out=n)
+nshades=20
+dist=seq(0.5,0,length.out=nshades)
+shades=grey(seq(0.97, 0.1, length.out=nshades))
+
+for (j in 1:length(family)) {
+
+  # transform data  
+  g=NULL
+  for (i in 1:n) {
+    g[i]=subset(Z,select=family[j], subset=Z[1]==h[i])
+  }
+  g=unlist(g)
+  dim(g)=c(length(g)/n,n)
+  
+  # PDF
+  pdf_name=paste('~/Documents/Data/bg/',family[j],'_',d,'.pdf',sep='')
+  pdf(file=pdf_name, height=3, width=5)
+  par(mar=c(2, 2.5, .6, 2.5), family='serif')
+
+  # set up empty plot
+  plot(0, xaxt='n', yaxt='n', xlim=c(0,1), ylim=c(0,1.02), yaxs="i", xaxs="i", type="n")
+  
+  # draw shades of quantiles
+  for (i in 1:nshades) {
+    q = apply(g, 2, function(x) quantile(x, .5+c(-dist[i], dist[i])))
+    xx = c(v, v[n:1])
+    yy = c(q[1,], rev(q[2,]))
+    polygon(xx, yy, col=shades[i], border=shades[i])
+  }
+
+  # draw grid
+  for (x in 1:15/15) {abline(v=x, lty=3, col='grey50')}
+  for (y in 1:10/10) {abline(h=y, lty=3, col='grey50')}
+  
+  # draw axis
+  axis(side=1,lwd=1.2)
+  axis(side=2,lwd=1.2,las=1)
+
+  # draw median
+  m = apply(g, 2, median)
+  lines(v, m, col=colors[j], lwd=2.5, type='b')
+  
+  # draw legend
+  legend.col(col=shades, lev=dist)
+  dev.off()
+}
+
+"""

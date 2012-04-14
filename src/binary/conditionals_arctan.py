@@ -5,8 +5,8 @@
 
 import numpy
 
-import binary.conditionals as conditionals
-import binary.wrapper as wrapper
+import conditionals
+import wrapper
 
 class ArctanCondBinary(conditionals.ConditionalsBinary):
     """ Binary parametric family with arctan conditionals. """
@@ -23,9 +23,8 @@ class ArctanCondBinary(conditionals.ConditionalsBinary):
         super(ArctanCondBinary, self).__init__(A=A, name=name, long_name=long_name)
 
         # add modules
-        self.pp_modules = ('numpy', 'scipy.linalg', 'binary.conditionals_arctan',)
-
         self.py_wrapper = wrapper.conditionals_arctan()
+        self.pp_modules += ('binary.conditionals_arctan',)
 
     @classmethod
     def link(cls, x):

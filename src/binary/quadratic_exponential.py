@@ -1,14 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with exponential quadratic form. \namespace binary.qu_exponential"""
+""" Binary parametric family with exponential quadratic form. \namespace binary.quadratic_exponential"""
 
 import numpy
 import scipy.linalg
 import scipy.stats
-import binary
-import binary.base as base
-import binary.wrapper as wrapper
+
+import base
+import wrapper
+import conditionals_logistic
 
 class QuExpBinary(base.BaseBinary):
     """ Binary parametric family with quadratic exponential term. """
@@ -21,7 +22,7 @@ class QuExpBinary(base.BaseBinary):
 
         super(QuExpBinary, self).__init__(A.shape[0], name=name, long_name=long_name)
         self.A = A
-        self.py_wrapper = wrapper.qu_exponential()
+        self.py_wrapper = wrapper.quadratic_exponential()
 
     @classmethod
     def independent(cls, p):
@@ -131,7 +132,7 @@ def calc_marginal(A):
         I.pop(k)
         d = len(I)
 
-    model = binary.conditionals_logistic.LogisticCondBinary(Beta)
+    model = conditionals_logistic.LogisticCondBinary(Beta)
     perm.reverse()
     model.v2m_perm = perm
     return model
@@ -152,6 +153,6 @@ def calc_logistic_model(A):
         Beta[i, :i + 1] = b
         perm.append(k)
 
-    model = logistic.LogisticCondBinary(Beta)
+    model = conditionals_logistic.LogisticCondBinary(Beta)
     model.m2v_perm = perm
     return model

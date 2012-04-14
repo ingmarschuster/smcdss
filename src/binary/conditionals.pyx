@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-""" Binary parametric family with logistic conditionals. \namespace binary.conditonal"""
+""" Binary parametric family with logistic conditionals. \namespace binary.conditonals"""
 
 import numpy
 cimport numpy
@@ -56,11 +56,12 @@ class ConditionalsBinary(product.ProductBinary):
         """
             All-purpose routine for sampling and point-wise evaluation.
             \param U uniform variables
-            \param param parameters
-            \return binary variables
+            \param A parameters
+            \param Y array of binary vectors
+            \return array of binary vectors, log-likelihood
         """
         cdef Py_ssize_t d = A.shape[0]
-        cdef Py_ssize_t k, i, size
+        cdef Py_ssize_t k, i, j, size
         cdef double ax, cprob
 
         if U is not None:
@@ -86,7 +87,7 @@ class ConditionalsBinary(product.ProductBinary):
 
                 # Add to log conditional probability
                 if Y[k, i]: L[k] *= cprob
-                else: L[k] *= (1 - cprob)
+                else: L[k] *= (1.0 - cprob)
 
         return numpy.array(Y, dtype=bool), numpy.log(L)
 

@@ -20,14 +20,16 @@ from binary.product_exchangeable import ExchangeableBinary
 from binary.product_constrained import ConstrProductBinary
 from binary.product_limited import LimitedBinary
 from binary.product_positive import PositiveBinary
+from binary.quadratic_linear import QuLinearBinary
 
 generator_classes = [ExchangeableBinary, ProductBinary, PositiveBinary, ConstrProductBinary, LimitedBinary,
                      StudentCopulaBinary, GaussianCopulaBinary,
-                     LogisticCondBinary, LinearCondBinary, ArctanCondBinary]
+                     LogisticCondBinary, LinearCondBinary, ArctanCondBinary,
+                     QuLinearBinary]
 
 n = 2e5
 d = 4
-rho = 1.0
+rho = 0.5
 ncpus = 2
 
 def main():

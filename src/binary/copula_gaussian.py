@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """ Binary parametric family obtained via dichotomizing a multivariate Gaussian.
-    \namespace binary.gaussian_copula
+    \namespace binary.copula_gaussian
     \details The correlation structure of the model is limited by the constraints of the elliptic Gaussian copula.
 """
 
