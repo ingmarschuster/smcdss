@@ -3,19 +3,19 @@
 
 """ Binary parametric family with quadratic form. \namespace binary.quadratic_linear """
 
+import binary.base as base
+import binary.wrapper as wrapper
 import numpy
+import scipy.linalg
 cimport numpy
 
 cdef extern from "math.h":
     double log(double)
 
-import scipy.linalg
-import binary.base as base
-import binary.wrapper as wrapper
-
-
 class QuLinearBinary(base.BaseBinary):
     """ Binary parametric family with quadratic linear form. """
+
+    name = 'quadratic linear family'
 
     def __init__(self, a, A):
         """
@@ -23,7 +23,7 @@ class QuLinearBinary(base.BaseBinary):
             \param a probability of zero
             \param A matrix of coefficients
         """
-        super(QuLinearBinary, self).__init__(d=A.shape[0], name='quadratic linear binary', long_name=__doc__)
+        super(QuLinearBinary, self).__init__(d=A.shape[0], name=QuLinearBinary.name, long_name=__doc__)
 
         # add modules
         self.py_wrapper = wrapper.quadratic_linear()

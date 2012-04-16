@@ -3,21 +3,18 @@
 
 """ Binary parametric family with logistic conditionals. \namespace binary.conditonals"""
 
+import binary.base as base
+import binary.product as product
+import binary.wrapper as wrapper
 import numpy
+import scipy.linalg
+import sys
 cimport numpy
 
 cdef extern from "math.h":
     double exp(double)
     double log(double)
 
-import scipy.linalg
-import sys
-import time
-import utils
-
-import binary.product as product
-import binary.base as base
-import binary.wrapper as wrapper
 
 class ConditionalsBinary(product.ProductBinary):
     """ Binary parametric family with glm conditionals. """
@@ -25,7 +22,9 @@ class ConditionalsBinary(product.ProductBinary):
     PRECISION = base.BaseBinary.PRECISION
     MAX_ENTRY_SUM = numpy.finfo(float).maxexp * log(2)
 
-    def __init__(self, A, name='generic conditionals family', long_name=__doc__):
+    name = 'generic conditionals family'
+
+    def __init__(self, A, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param A Lower triangular matrix holding regression coefficients
@@ -130,7 +129,7 @@ class ConditionalsBinary(product.ProductBinary):
         return cls
 
     @classmethod
-    def from_moments(cls, mean, corr, n=1e4, q=25.0, delta=0.005, verbose=0):
+    def from_moments(cls, mean, corr, n=1e6, q=25.0, delta=0.005, verbose=0):
         """ 
             Constructs a conditionals family from given mean and correlation.
             \param mean mean
@@ -291,12 +290,12 @@ class ConditionalsBinary(product.ProductBinary):
                     try:
                         a -= scipy.linalg.solve(J, f - m, sym_pos=True)
                     except numpy.linalg.linalg.LinAlgError:
-                        sys.stderr.write('numerical error. adding 1e-8 on main diagonal.\n')
+                        if verbose > 1: sys.stderr.write('numerical error. adding 1e-8 on main diagonal.\n')
                         a -= scipy.linalg.solve(J + numpy.eye(s + 1) * 1e-8, f - m, sym_pos=False)
 
                     # check for absolute sums in A
                     entry_sum = max(a[a > 0].sum(), -a[a < 0].sum())
-                    if entry_sum > cls.MAX_ENTRY_SUM * (0.25 * s + 1):
+                    if entry_sum > cls.MAX_ENTRY_SUM * (0.1 * s + 1):
                         if verbose > 1: sys.stderr.write('stopped. a exceeding %.1f\n' % entry_sum)
                         nr = None
                         break

@@ -14,7 +14,9 @@ import conditionals_logistic
 class QuExpBinary(base.BaseBinary):
     """ Binary parametric family with quadratic exponential term. """
 
-    def __init__(self, A, name='quadratic exponential binary', long_name=__doc__):
+    name = 'quadratic exponential binary'
+
+    def __init__(self, A, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param A matrix of coefficients
@@ -22,8 +24,11 @@ class QuExpBinary(base.BaseBinary):
 
         super(QuExpBinary, self).__init__(A.shape[0], name=name, long_name=long_name)
         self.A = A
+        
+        # add modules
         self.py_wrapper = wrapper.quadratic_exponential()
-
+        self.pp_modules += ('binary.quadratic_exponential',)
+        
     @classmethod
     def independent(cls, p):
         """

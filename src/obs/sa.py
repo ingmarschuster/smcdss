@@ -23,7 +23,7 @@ class sa(ubqo.ubqo):
     name = 'SA'
     header = ['NO_MOVES', 'ACC_RATE']
     def run(self):
-        return solve_sa(f=binary.QuExpBinary(self.A), n=self.v['SA_MAX_ITER'], m=self.v['SA_MAX_TIME'])
+        return solve_sa(f=binary.qu_exponential.QuExpBinary(self.A), n=self.v['SA_MAX_ITER'], m=self.v['SA_MAX_TIME'])
 
 def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
     """
@@ -41,7 +41,7 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
     t = time.time()
     a, k, s, v = 0, 0, 0, 1e-10
     best_obj, best_soln = -numpy.inf, None
-    curr_soln = binary.ProductBinary.uniform(d=f.d).rvs()
+    curr_soln = binary.product.ProductBinary.uniform(d=f.d).rvs()
     curr_obj = f.lpmf(curr_soln)
 
     while True:
@@ -57,11 +57,11 @@ def solve_sa(f, n=numpy.inf, m=numpy.inf, verbose=True):
         # show progress bar
         if verbose:
             if r - s >= 0.01:
-                utils.aux.progress(r, 'ar: %.3f, obj: %.1f, time %s' % (a / float(k), best_obj, utils.aux.time(time.time() - t)))
+                utils.auxi.progress(r, 'ar: %.3f, obj: %.1f, time %s' % (a / float(k), best_obj, utils.auxi.time(time.time() - t)))
                 s = r
 
         if r > 1:
-            if verbose: utils.aux.progress(1.0, ' obj: %.1f, time %s' % (best_obj, utils.aux.time(time.time() - t)))
+            if verbose: utils.auxi.progress(1.0, ' obj: %.1f, time %s' % (best_obj, utils.auxi.time(time.time() - t)))
             break
 
         # generate proposal

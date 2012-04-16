@@ -35,14 +35,19 @@ import os
 import time
 import utils
 import binary
-import obs
 import pp
+import obs
+import obs.gls
+import obs.sa
+import obs.rls
+import obs.smca
+import utils.logger
 
 def main():
 
     # Parse command line options.
     try:
-        opts, args = getopt.getopt(sys.argv[1:], 'hreclvm:a:p:f:')
+        opts, args = getopt.getopt(sys.argv[1:], 'hreclvdm:a:p:f:')
     except getopt.error, msg:
         print msg
         sys.exit(2)
@@ -52,7 +57,7 @@ def main():
 
     # Check for valid argument
     if len(args) == 0:
-        if '-h' in opts:
+        if '-h' in noargs:
             print __doc__
         else:
             print 'No file specified.'
@@ -115,17 +120,26 @@ def main():
     for o, a in opts:
         if o == '-f':
             if a == 'gaussian':
-                model = binary.GaussianCopulaBinary
+                model = binary.gaussian_copula.GaussianCopulaBinary
             if a == 'logistic':
-                model = binary.LogisticBinary
+                model = binary.logistic_cond.LogisticBinary
             if a == 'product':
-                model = binary.ProductBinary
+                model = binary.product.ProductBinary
+            if a == 'equ':
+                model = binary.product.EquableProductBinary
 
     # Change algorithm on command line.
     for o, a in opts:
         if o == '-a':
+            obs.v['ALGO_NAME'] = a.upper()
             if a == 'sa':
                 obs.v['RUN_ALGO'] = obs.sa.sa
+                obs.v['RUN_CPUS'] = None
+            if a == 'gls':
+                obs.v['RUN_ALGO'] = obs.gls.gls
+                obs.v['RUN_CPUS'] = None
+            if a == 'rls':
+                obs.v['RUN_ALGO'] = obs.rls.rls
                 obs.v['RUN_CPUS'] = None
             if a == 'scip':
                 obs.v['RUN_ALGO'] = obs.scip.scip
@@ -153,6 +167,21 @@ def main():
     if '-v' in noargs:
         if not os.path.isfile(os.path.join(RUN_FOLDER, 'plot_p%02d.pdf' % obs.v['RUN_PROBLEM'])): plot(v=obs.v)
         subprocess.Popen([obs.v['SYS_VIEWER'], os.path.join(RUN_FOLDER, 'plot_p%02d.pdf' % obs.v['RUN_PROBLEM'])])
+
+    # delete algorithm.
+    if '-d' in noargs:
+        delete(v=obs.v)
+
+def delete(v):
+    filename = os.path.join(v['RUN_FOLDER'], 'result_p%02d.csv' % v['RUN_PROBLEM']).replace('\\', '\\\\')
+    f = open(filename, 'Ur')
+    s = ''
+    for line in f:
+        if not ',' + v['ALGO_NAME'] + ',' in line: s += line
+    f.close()
+    f = open(filename, 'w')
+    f.write(s)
+    f.close()
 
 def run(v, verbose=False):
     """
@@ -205,7 +234,7 @@ def run(v, verbose=False):
 
         result = v['RUN_ALGO'].run()
 
-        if v['RUN_ALGO'].name in ['CE', 'SMC']: model = v[v['RUN_ALGO'].name.upper() + '_BINARY_MODEL'].name
+        if v['RUN_ALGO'].name in ['CE', 'SMC']: model = str(v[v['RUN_ALGO'].name.upper() + '_BINARY_MODEL'])
         else: model = 'none'
 
         # Write result to result.csv
@@ -225,13 +254,12 @@ def run(v, verbose=False):
                     print 'Failed to write to %s.' % RESULT_FILE
 
 def plot(v):
-
     # Open R-template.
     title = 'suite: %(RUN_TESTSUITE)s, p: %(RUN_PROBLEM)s, dim:' % v
     if not v['EVAL_TITLE']: title = ''
 
     colors = ', '.join(["'" + str(x) + "'" for x in v['EVAL_COLOR']])
-    mar = ', '.join([str(x) for x in v['EVAL_INNER_MARGIN']])
+    mar = '6.2, 3.5, 0.75, 0' #', '.join([str(x) for x in v['EVAL_INNER_MARGIN']])
 
     testsuite, problem = v['RUN_TESTSUITE'], v['RUN_PROBLEM']
 

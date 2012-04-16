@@ -19,7 +19,9 @@ import ConfigParser
 from numpy import inf
 
 # binary parametric families
-from binary import LogisticBinary as logistic, ProductBinary as product, GaussianCopulaBinary as gaussian
+from binary.conditionals_logistic import LogisticCondBinary as logistic
+from binary.product import ProductBinary as product
+from binary.copula_gaussian import GaussianCopulaBinary as gaussian
 
 # integration algorithms
 from ibs.smc import smc, univariate
@@ -49,7 +51,7 @@ def read_config(file, v):
 
     # load default config files
     if file in ['ibs', 'obs', 'cpd']:
-        file = os.path.join(path, 'src', file + '_default')
+        file = os.path.join(path, file + '_default')
     if not file[-4:] == '.ini':file += '.ini'
 
     config = ConfigParser.SafeConfigParser()

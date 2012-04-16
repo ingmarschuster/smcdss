@@ -13,7 +13,9 @@ import binary.wrapper as wrapper
 class LinearCondBinary(conditionals.ConditionalsBinary):
     """ Binary parametric family with linear conditionals. """
 
-    def __init__(self, A, name='linear conditionals family', long_name=__doc__):
+    name='linear conditionals family'
+
+    def __init__(self, A, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param A Lower triangular matrix holding regression coefficients

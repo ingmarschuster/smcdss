@@ -1,26 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""
-Data processing and sampling.
-"""
+""" Data processing and sampling. \utils.data """
 
-"""
-@namespace utils.data
-$Author$
-$Rev$
-$Date$
-@details
-"""
-
+import copy
+import numpy
 import pickle
-from numpy import *
-from utils.aux import *
 
 class data(object):
     def __init__(self, X=[], w=[]):
-        """
-            Data class.
+        """ Data class.
             \param X data
             \param w weights  
         """
@@ -39,7 +28,7 @@ class data(object):
 
     def fraction(self, fraction=1.0):
         return data(X=self.X[self.order[0:int(self.size * fraction)]], \
-                    w=array(self._W)[self.order[0:int(self.size * fraction)]])
+                    w=numpy.array(self._W)[self.order[0:int(self.size * fraction)]])
 
     def getData(self):
         """
@@ -47,7 +36,7 @@ class data(object):
             \return data array.
         """
         if isinstance(self._X, list):
-            return array(self._X)
+            return numpy.array(self._X)
         else:
             return self._X
 
@@ -61,11 +50,11 @@ class data(object):
         """
         if fraction == 1.0:
             if order:
-                return array(self.X[self.order], dtype=dtype)
+                return numpy.array(self.X[self.order], dtype=dtype)
             else:
-                return array(self.X, dtype=dtype)
+                return numpy.array(self.X, dtype=dtype)
         else:
-            return array(self.X[self.order[0:int(self.size * fraction)]], dtype=dtype)
+            return numpy.array(self.X[self.order[0:int(self.size * fraction)]], dtype=dtype)
 
     def getNWeights(self):
         """
@@ -73,9 +62,9 @@ class data(object):
             @remark If weights are negative, the function returns the normalized exponential weights.
             \return normalized weights
         """
-        if not self.isWeighted(): return ones(self.size) / float(self.size)
-        w = array(self._W)
-        if w.min() < 0.0: w = exp(self._W - w.max())
+        if not self.isWeighted(): return numpy.ones(self.size) / float(self.size)
+        w = numpy.array(self._W)
+        if w.min() < 0.0: w = numpy.exp(self._W - w.max())
         w = w / w.sum()
         return w / w.sum()
 
@@ -107,7 +96,7 @@ class data(object):
             self.__init__()
         else:
             self.__init__(X=self.X[self.order[0:int(self.size * fraction)]], \
-                          w=array(self._W)[self.order[0:int(self.size * fraction)]])
+                          w=numpy.array(self._W)[self.order[0:int(self.size * fraction)]])
 
     def getD(self):
         """
@@ -184,7 +173,7 @@ class data(object):
             \param weight compute weighted variance
             \param fraction use only upper fraction of the ordered data
         """
-        return diag(self.getCov(weight=weight, fraction=fraction))
+        return numpy.diag(self.getCov(weight=weight, fraction=fraction))
 
     def getEss(self):
         """
@@ -199,51 +188,37 @@ class data(object):
             \return index set for the data in ascending order according to the weights.
         """
         if self.__order is None: self.__sort()
-        if self.__order is None: self.__order = range(size)
+        if self.__order is None: self.__order = range(self.size)
         return self.__order
 
     def __sort(self):
         """
             Sets the index for the data in ascending order according to the weights.
         """
-        self.__order = array(self._W).argsort(axis=0).tolist()
+        self.__order = numpy.array(self._W).argsort(axis=0).tolist()
         self.__order.reverse()
 
-    def assign_weights(self, f, verbose=False):
+    def assign_weights(self, f):
         """
             Evaluates the value of c*exp(f(x)) for each sample x.
             \param f a real-valued function on the sampling space 
         """
 
-        if verbose:
-            t = time.clock()
-            bars = 20
-            drawn = 0
-            print 'Evaluating ' + f.name + '...'
-            sys.stdout.write('[' + bars * ' ' + "]" + "\r" + "[")
-            sys.stdout.flush()
-
         v = self._W
         k = len(v)
-        X = array(self._X)[k:]
+        X = numpy.array(self._X)[k:]
         self.nW = []
 
         # Apply in lexicographical order to avoid extra evaluation of f.
         # lexorder = self.lexorder(X) -- use the numpy function instead
-        lexorder = lexsort(X.T)
+        lexorder = numpy.lexsort(X.T)
         weight = f.lpmf(X[lexorder[0]])
         for index in range(self.size - k):
             if not (X[lexorder[index]] == X[lexorder[index - 1]]).all():
                 weight = f.lpmf(X[lexorder[index]])
             self._W.append(weight)
-            if verbose:
-                n = bars * (index + 1) / (self.size - k) - drawn
-                if n > 0:
-                    sys.stdout.write(n * "-")
-                    drawn += n
-        self._W = array(self._W)
-        self._W = v + list(self._W[argsort(lexorder)])
-        if verbose: print ']\nDone. %i evaluation in %.2f seconds.\n' % (self.size - k, time.clock() - t)
+        self._W = numpy.array(self._W)
+        self._W = v + list(self._W[numpy.argsort(lexorder)])
 
     def dichotomize_weights(self, f, fraction):
         w = f.lpmf(numpy.array(self._X))
@@ -259,7 +234,7 @@ class data(object):
         W = self.nW
 
         # order the data array
-        lexorder = lexsort(array(X).T)
+        lexorder = numpy.lexsort(numpy.array(X).T)
 
         # check if all entries are equal
         if W[lexorder[0]] == W[lexorder[-1]]:
@@ -273,12 +248,12 @@ class data(object):
         x, w = X[lexorder[0]], W[lexorder[0]]
         
         count = 1
-        for index in append(lexorder[1:], lexorder[0]):
+        for index in numpy.append(lexorder[1:], lexorder[0]):
             if (x == X[index]).all():
                 count += 1
             else:
                 self._X += [x]
-                self._W += [log(w * count)]
+                self._W += [numpy.log(w * count)]
                 x = X[index]
                 w = W[index]
                 count = 1
@@ -366,7 +341,7 @@ def calc_mean(X, w=None):
     if w is None:
         return X.sum(axis=0) / float(X.shape[0])
     else:
-        return (w[:, newaxis] * X).sum(axis=0)
+        return (w[:, numpy.newaxis] * X).sum(axis=0)
 
 def calc_cov(X, w=None):
     """
@@ -377,11 +352,11 @@ def calc_cov(X, w=None):
     """
     if w is None:
         n = float(X.shape[0])
-        mean = calc_mean(X)[newaxis, :]
-        return (dot(X.T, X) - n * dot(mean.T, mean)) / float(n - 1)
+        mean = calc_mean(X)[numpy.newaxis, :]
+        return (numpy.dot(X.T, X) - n * numpy.dot(mean.T, mean)) / float(n - 1)
     else:
-        mean = calc_mean(X, w)[newaxis, :]
-        return (dot(X.T, w[:, newaxis] * X) - dot(mean.T, mean)) / (1 - power(w, 2).sum())
+        mean = calc_mean(X, w)[numpy.newaxis, :]
+        return (numpy.dot(X.T, w[:, numpy.newaxis] * X) - numpy.dot(mean.T, mean)) / (1 - numpy.power(w, 2).sum())
 
 def calc_cor(X, w=None):
     """
@@ -391,9 +366,9 @@ def calc_cor(X, w=None):
         \return correlation matrix
     """
     d = X.shape[1]
-    cov = calc_cov(X, w) + 1e-10 * eye(d)
-    var = cov.diagonal()[newaxis, :]
-    return cov / sqrt(dot(var.T, var))
+    cov = calc_cov(X, w) + 1e-10 * numpy.eye(d)
+    var = cov.diagonal()[numpy.newaxis, :]
+    return cov / numpy.sqrt(numpy.dot(var.T, var))
 
 def calc_norm(v, p=2.0):
     return pow(pow(abs(v), p).sum(axis=0), 1.0 / p)

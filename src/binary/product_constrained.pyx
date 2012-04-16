@@ -12,7 +12,9 @@ import binary.wrapper as wrapper
 class ConstrProductBinary(product.ProductBinary):
     """ Binary parametric family constrained to vectors that verify certain interactions. """
 
-    def __init__(self, p, constrained=None, name='constrained product family', long_name=__doc__):
+    name='constrained product family'
+
+    def __init__(self, p, constrained=None, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param d dimension

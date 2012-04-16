@@ -13,7 +13,9 @@ import binary.wrapper as wrapper
 class ProductBinary(product_exchangeable.ExchangeableBinary):
     """ Binary parametric family with independent components."""
 
-    def __init__(self, p, name='product family', long_name=__doc__):
+    name = 'product family'
+
+    def __init__(self, p, name=name, long_name=__doc__):
         """
             Constructor.
             \param p mean vector
@@ -23,7 +25,7 @@ class ProductBinary(product_exchangeable.ExchangeableBinary):
 
         if isinstance(p, float): p = [p]
         p = numpy.array(p, dtype=float)
-        
+
         # call super constructor
         super(ProductBinary, self).__init__(d=p.shape[0], p=0.5, name=name, long_name=long_name)
 
@@ -104,7 +106,7 @@ class ProductBinary(product_exchangeable.ExchangeableBinary):
         """
         return cls(sample.mean)
 
-    def renew_from_data(self, sample, lag=0.0, verbose=False):
+    def renew_from_data(self, X, weights, lag=0.0, verbose=False):
         """ 
             Updates the product model from data.
             \param cls class
@@ -112,8 +114,8 @@ class ProductBinary(product_exchangeable.ExchangeableBinary):
             \param lag lag
             \param verbose detailed information
         """
-        p = sample.getMean(weight=True)
-        self.param['p'] = (1 - lag) * p + lag * self.p
+        p = base.sample2mean(X, weights=None)
+        self.p = (1.0 - lag) * p + lag * self.p
 
     def _getMean(self):
         """ Get expected value of instance. \return p-vector """

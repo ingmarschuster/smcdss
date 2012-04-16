@@ -11,7 +11,9 @@ import wrapper
 class ArctanCondBinary(conditionals.ConditionalsBinary):
     """ Binary parametric family with arctan conditionals. """
 
-    def __init__(self, A, name='arctan conditionals family', long_name=__doc__):
+    name = 'arctan conditionals family'
+
+    def __init__(self, A, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param A Lower triangular matrix holding regression coefficients

@@ -11,7 +11,9 @@ import binary.wrapper as wrapper
 class ExchangeableBinary(base.BaseBinary):
     """ Binary parametric family with exchangeable components."""
 
-    def __init__(self, d, p, name='exchangeable product family', long_name=__doc__):
+    name = 'exchangeable product family'
+
+    def __init__(self, d, p, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param p mean vector
@@ -78,7 +80,7 @@ class ExchangeableBinary(base.BaseBinary):
 
     def _getMean(self):
         """ Get expected value of instance. \return p-vector """
-        return self.param['p'] * numpy.ones(self.param['d'])
+        return self.p * numpy.ones(self.d)
 
     def _getRandom(self, eps=0.0):
         return range(self.d)

@@ -17,7 +17,9 @@ import time
 class CopulaBinary(product.ProductBinary):
     """ Binary parametric family obtained via dichotomizing a multivariate auxiliary distribution. """
 
-    def __init__(self, p, R, delta=None, name='Copula family', long_name=__doc__):
+    name = 'copula family'
+
+    def __init__(self, p, R, delta=None, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param p mean
@@ -97,14 +99,15 @@ class CopulaBinary(product.ProductBinary):
         return cls(mean.copy(), corr.copy(), delta=delta)
 
     @classmethod
-    def from_data(cls, sample, verbose=False):
+    def from_data(cls, X, weights, verbose=False):
         """ 
             Construct a auxiliary copula family from data.
             \param sample a sample of binary data
         """
-        return cls(sample.mean, sample.cor, verbose=verbose)
+        mean, corr = base.sample2corr(X, weights)
+        return cls(mean, corr)
 
-    def renew_from_data(self, sample, lag=0.0, verbose=False, **param):
+    def renew_from_data(self, X, weights, lag=0.0, verbose=False, **param):
         """ 
             Re-parameterizes the auxiliary copula family from data.
             \param sample a sample of binary data
@@ -112,9 +115,8 @@ class CopulaBinary(product.ProductBinary):
             \param verbose verbose     
             \param param parameters
         """
-        self.R = sample.getCor(weight=True)
-        newP = sample.getMean(weight=True)
-        self.p = (1 - lag) * newP + lag * self.p
+        self.R, new_mean = base.sample2corr(X, weights)
+        self.p = (1 - lag) * new_mean + lag * self.p
 
         ## mean of hidden stats.normal distribution
         self.mu = stats.norm.ppf(self.p)

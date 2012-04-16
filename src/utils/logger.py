@@ -1,19 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""
-Logging stdout into log files.
-"""
+""" Logging stdout into log files. @namespace utils.logger """
 
-"""
-@namespace utils.logger
-$Author$
-$Rev$
-$Date$
-@details
-"""
-
-import time, os
+import time
 import numpy
 
 class Logger:
@@ -22,10 +12,7 @@ class Logger:
         but still allow them to be printed on the screen.
     """
     def __init__(self, stdout, filename):
-        for i in xrange(1, 100):
-            if not os.path.isfile(filename + '%0*d.txt' % (2, i)):
-                filename += '%0*d.txt' % (2, i)
-                break
+        filename += '%d.txt' % numpy.random.randint(low=0, high=10e8)
 
         self.stdout = stdout
         self.logfile = file(filename, 'w')

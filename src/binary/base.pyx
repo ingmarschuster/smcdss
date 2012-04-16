@@ -4,23 +4,26 @@
 """ Binary model. \namespace binary.base """
 
 import numpy
-cimport numpy
-
-import sys
-import utils
 import scipy.linalg
+import sys
+import parallel.pp as pp
+cimport numpy
 
 class BaseBinary(object):
     """ Binary parametric family. """
 
     ## Error allowed for Newton iterates.
     PRECISION = 1e-5
+    
     ## Maximum number of Newton iterations.
     MAX_ITERATIONS = 50
+    
     ## Entry gamma_i is considered constant if p_i<MIN_MARGINAL_PROB or 1-p_i<MIN_MARGINAL_PROB
     MIN_MARGINAL_PROB = 1e-10
 
-    def __init__(self, d, name='binary family', long_name=__doc__):
+    name = 'binary family'
+
+    def __init__(self, d, name=name, long_name=__doc__):
         """
             Constructor.
             \param name name
@@ -198,7 +201,7 @@ class BaseBinary(object):
             \param n sample size
         """
         if ncpus > 1:
-            job_server = utils.pp.Server(ncpus=ncpus, ppservers=())
+            job_server = pp.Server(ncpus=ncpus, ppservers=())
             print 'rvstest running on %d cpus...\n' % job_server.get_ncpus()
         else: job_server = None
 
@@ -212,7 +215,7 @@ class BaseBinary(object):
         """
 
         if ncpus > 1:
-            job_server = utils.pp.Server(ncpus=ncpus, ppservers=())
+            job_server = pp.Server(ncpus=ncpus, ppservers=())
         else: job_server = None
 
         X = state_space(self.d)
@@ -299,7 +302,7 @@ def state_space(d):
         X.append(bin_vector)
     return numpy.array(X)
 
-def random_moments(d, rho=1.0, n_cond=500, n_perm=None, boundary=0.01, verbose=False):
+def random_moments(d, rho=1.0, n_cond=None, n_perm=None, boundary=0.01, verbose=False):
     """
         Creates a random cross-moments matrix that is consistent with the
         general constraints on binary data.
@@ -308,7 +311,8 @@ def random_moments(d, rho=1.0, n_cond=500, n_perm=None, boundary=0.01, verbose=F
         \return M cross-moment matrix
     """
 
-    if n_perm is None: n_perm = 10 * int(d)
+    if n_perm is None: n_perm = int(d * numpy.log(d))
+    if n_cond is None: n_cond = 10 * n_perm
 
     cdef Py_ssize_t i, j , k
     cdef double upper, lower, adjustment, det, det_j
@@ -419,6 +423,19 @@ def moments2corr(M):
     var = adj_mean * (1.0 - adj_mean)
     corr = (M - numpy.outer(adj_mean, adj_mean)) / numpy.sqrt(numpy.outer(var, var))
     return mean, corr
+
+def sample2mean(X, weights=None):
+    """
+        Computes mean vector of a weighted sample.
+        \return mean vector
+        \return correlation matrix 
+    """
+    # weights
+    if weights is None: weights = numpy.ones(X.shape[0])
+    weights /= weights.sum()
+
+    # mean vector
+    return numpy.average(X, axis=0, weights=weights)
 
 def sample2corr(X, weights=None):
     """

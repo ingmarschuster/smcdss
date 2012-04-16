@@ -12,7 +12,9 @@ import binary.wrapper as wrapper
 class PositiveBinary(product.ProductBinary):
     """ Binary parametric family with non-zero support."""
 
-    def __init__(self, p, name='positive product family', long_name=__doc__):
+    name = 'positive product family'
+
+    def __init__(self, p, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param p mean vector

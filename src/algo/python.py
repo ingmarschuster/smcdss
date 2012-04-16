@@ -67,12 +67,3 @@ def _logistic_all(param, U=None, gamma=None):
             if not gamma[k, i]: L[k] -= sum
 
     return gamma, L
-
-def logistic_lpmf(gamma, param):
-    return utils.python._logistic_all(param, gamma=gamma)[1]
-
-def logistic_rvs(U, param):
-    return utils.python._logistic_all(param, U=U)[0]
-
-def logistic_rvslpmf(U, param):
-    return utils.python._logistic_all(param, U=U)

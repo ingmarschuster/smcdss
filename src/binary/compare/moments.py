@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Runs and evaluates a comparison of parametric families for sampling multivariate
-binary data with given correlations.
+Cross-moment comparison of parametric families.
 
 @verbatim
 USAGE:
@@ -16,30 +15,26 @@ OPTIONS:
         -e    evaluate results
         -v    open plot with standard viewer
         -m    start multiple processes
+        -n    number of samples
+        -t    numer of ticks
 @endverbatim
 """
 
 """
-\namespace binary.compare
+@namespace binary.compare.moments
 """
 
-from base import moments2corr, corr2moments, random_moments
-from binary.copula_gaussian import GaussianCopulaBinary
-from binary.copula_student import StudentCopulaBinary
-from binary.conditionals_linear import LinearCondBinary
-from binary.conditionals_logistic import LogisticCondBinary
-from binary.conditionals_arctan import ArctanCondBinary
-from binary.quadratic_linear import QuLinearBinary
-
-import utils
+from __init__ import *
+from binary.base import moments2corr, corr2moments, random_moments
 import getopt
 import numpy
 import os
 import scipy.linalg
 import subprocess
 import sys
+import utils.auxi
 
-generators = ['cond_arctan', 'qu_linear', 'cop_student', 'cop_gaussian', 'cond_logistic', 'cond_linear']
+generators = ['cop_student', 'cop_gaussian', 'cond_logistic', 'cond_arctan', 'cond_linear']
 
 def main():
     """ Main method. """
@@ -121,17 +116,6 @@ def main():
             subprocess.Popen([viewer, os.path.expanduser('~/Documents/Data/bg/%s' % filename)])
 
 
-def plot(d):
-    cbg_dir = os.path.expanduser('~/Documents/Data/bg')
-    if os.name == 'posix':
-        R = 'R'
-    else:
-        R = os.path.expanduser('~/Documents/Software/portable/r/App/R-2.11.1/bin/R.exe')
-    subprocess.Popen([R, 'CMD', 'BATCH', '--vanilla', '--args d=%d' % d,
-                      os.path.join(cbg_dir, 'plot.R'),
-                      os.path.join(cbg_dir, 'plot.Rout')]).wait()
-
-
 def compare(d, ticks=15, n=1e6):
 
     eps = 0.01
@@ -166,8 +150,6 @@ def compare(d, ticks=15, n=1e6):
         loss['cond_logistic'] = M - corr2moments(*generator.rvs_marginals(n, 1))
         generator = LinearCondBinary.from_moments(mean, corr)
         loss['cond_linear'] = M - corr2moments(*generator.rvs_marginals(n, 1))
-        generator = QuLinearBinary.from_moments(mean, corr)
-        loss['qu_linear'] = M - corr2moments(*generator.rvs_marginals(n, 1))
 
         ref = loss['product']
         ref = ref * (numpy.abs(ref) > eps)
@@ -178,9 +160,19 @@ def compare(d, ticks=15, n=1e6):
 
     return score
 
+
+def plot(d):
+    cbg_dir = os.path.expanduser('~/Documents/Data/bg')
+    if os.name == 'posix':
+        R = 'R'
+    else:
+        R = os.path.expanduser('~/Documents/Software/portable/r/App/R-2.11.1/bin/R.exe')
+    subprocess.Popen([R, 'CMD', 'BATCH', '--vanilla', '--args d=%d' % d,
+                      os.path.join(cbg_dir, 'plot.R'),
+                      os.path.join(cbg_dir, 'plot.Rout')]).wait()
+
 if __name__ == "__main__":
     main()
-
 
 """
 

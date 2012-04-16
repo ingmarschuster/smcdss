@@ -47,6 +47,16 @@ class product_limited(wrapper):
     def rvs(self, U, param):
         return binary.product_limited.LimitedBinary._rvs(U, param.b)
 
+class product_cube(wrapper):
+    def lpmf(self, Y, param):
+        return binary.product_cube.CubeBinary._rvslpmf_all(
+                p=param.p, size=param.size, Y=Y)[1]
+    def rvs(self, U, param):
+        return self.rvslpmf(U, param)[0]
+    def rvslpmf(self, U, param):
+        return binary.product_cube.CubeBinary._rvslpmf_all(
+                p=param.p, size=param.size, U=U)
+
 class conditionals_logistic(wrapper):
     def lpmf(self, Y, param):
         return binary.conditionals_logistic.LogisticCondBinary._rvslpmf_all(
@@ -107,10 +117,10 @@ class copula_student(wrapper):
     def rvslpmf(self, V, param):
         return self.rvs(V, param), None
 
-class posterior(wrapper):
+class posterior_bic(wrapper):
     def lpmf(self, Y, param):
-        return binary.posterior.Posterior._lpmf(Y, param)
-    def rvs(self, V, param):
-        raise NotImplementedError('Random variable generation not possible.')
-    def rvslpmf(self, V, param):
-        raise NotImplementedError('Random variable generation not possible.')
+        return binary.posterior_bic.PosteriorBIC._lpmf(Y, param)
+
+class posterior_bvs(wrapper):
+    def lpmf(self, Y, param):
+        return binary.posterior_bvs.PosteriorBVS._lpmf(Y, param)

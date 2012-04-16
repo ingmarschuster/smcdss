@@ -14,10 +14,10 @@ $Date$
 """
 
 import time
-import utils
 import numpy
 import binary
 import ubqo
+import utils
 
 class bf(ubqo.ubqo):
     header = []
@@ -46,7 +46,7 @@ def solve_bf(f, best_obj= -numpy.inf, gamma=None, index=None):
     best_soln = gamma.copy()
     if d > 0:
         for dec in xrange(2 ** d):
-            bin = utils.aux.dec2bin(dec, d)
+            bin = utils.auxi.dec2bin(dec, d)
             gamma[index] = bin
             v = f.lpmf(gamma)
             if v > best_obj:

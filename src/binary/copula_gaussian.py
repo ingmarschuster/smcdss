@@ -16,8 +16,9 @@ class GaussianCopulaBinary(copula.CopulaBinary):
     """ Binary parametric family obtained via dichotomizing a multivariate Gaussian. """
 
     NU = 1.0
-
-    def __init__(self, p, R, delta=None, name='Gaussian copula family', long_name=__doc__):
+    name='gaussian copula family'
+    
+    def __init__(self, p, R, delta=None, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param p mean

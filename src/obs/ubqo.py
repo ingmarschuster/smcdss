@@ -19,13 +19,7 @@ OPTIONS:
 @endverbatim
 """
 
-"""
-@namespace obs.ubqo
-$Author$
-$Rev$
-$Date$
-@details
-"""
+""" @namespace obs.ubqo """
 
 import getopt
 import sys
@@ -79,7 +73,7 @@ def read_problem(testsuite, problem):
     path = os.path.join(obs.v['DATA_PATH'], testsuite, testsuite + '_%02d.dat' % problem)
 
     # read matrix
-    file = open(path, 'r')
+    file = open(path, 'Ur')
     primal_bound, dual_bound, d = eval(file.readline()), eval(file.readline()), int(file.readline())
     A = numpy.zeros(shape=(d, d))
     for j in xrange(d):

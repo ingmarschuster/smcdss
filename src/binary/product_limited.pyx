@@ -13,7 +13,9 @@ import binary.wrapper as wrapper
 class LimitedBinary(product_exchangeable.ExchangeableBinary):
     """ Binary parametric family limited to vectors of norm not greater than q subsets. """
 
-    def __init__(self, d, q, p=0.5, name='limited product family', long_name=__doc__):
+    name = 'limited product family'
+
+    def __init__(self, d, q, p=0.5, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param d dimension

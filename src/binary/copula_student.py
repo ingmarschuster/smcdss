@@ -16,8 +16,9 @@ class StudentCopulaBinary(copula.CopulaBinary):
     """ Binary parametric family obtained via dichotomizing a multivariate Student. """
 
     NU = 3.0
+    name='student copula family'
 
-    def __init__(self, p, R, delta=None, name='Student copula family', long_name=__doc__):
+    def __init__(self, p, R, delta=None, name=name, long_name=__doc__):
         """ 
             Constructor.
             \param p mean

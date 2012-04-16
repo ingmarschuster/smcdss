@@ -6,12 +6,17 @@
 legend = %(legend)s
 counts = %(counts)s
 type   = '%(type)s'
-algos  = c('SA', 'CE', 'SMC')
+algos  = c('CE', 'SMC', 'SMCL', 'SA', 'RLS')
 models = c('product', 'logistic', 'gaussian')
 colors = c(%(colors)s)
-n      = c('SA'=0, 'CE'=0, 'SMC'=0, 'gaussian'=0, 'logistic'=0, 'product'=0)
-m      = c('SA'=0, 'CE'=0, 'SMC'=0, 'gaussian'=0, 'logistic'=0, 'product'=0)
+n      = c('SA'=0, 'CE'=0, 'SMC'=0, 'SMCL'=0, 'RLS'=0, 'gaussian'=0, 'logistic'=0, 'product'=0)
+m      = c('SA'=0, 'CE'=0, 'SMC'=0, 'SMCL'=0, 'RLS'=0, 'gaussian'=0, 'logistic'=0, 'product'=0)
 primal_bound = %(primal_bound)s
+
+shaded=NULL
+for (i in 1:length(colors)) {
+	shaded[i]=rgb(t(col2rgb(colors[i])*0.2/100))
+}
 
 # number of exact bars
 exact=%(exact)s
@@ -20,7 +25,7 @@ bars=%(bars)s
 # number of aggregated bars
 ntotal=%(n)d
 # digits of percentage
-digits=5
+digits=3
 
 # read data
 data=read.csv('%(resultfile)s')
@@ -48,17 +53,18 @@ if (length(breaks)<=exact+1) {
 } else {
 	aggre=min(bars-exact,length(breaks)-exact)
 	breaks=breaks[order(breaks, decreasing=TRUE)]
-	aggre=seq(max(breaks[exact:length(breaks)]),min(breaks),length.out=aggre)[2:aggre]
+	aggre=seq(max(breaks[exact:length(breaks)]),min(breaks),length.out=aggre-1)
 	breaks=c(breaks[1:exact],aggre)
-	names=format(breaks[1:exact],digits=digits)
+	names=format(round(breaks[1:exact],digits=digits))
 	for (i in (exact+1):(exact+length(aggre)-1)) {
-		if (breaks[i]<0) names[i]=''
-		else names[i]=paste(format(breaks[i],digits=digits),'<')
+    print(breaks[i+1])
+		if (breaks[i+1]<=0) names[i]='0.000<'
+		else names[i]=paste(format(round(breaks[i+1], digits=digits)),'<',sep='')
 	}
 }
 
 # PDF
-pdf(file='%(pdffile)s', height=2.5, width=2+0.175*length(breaks))
+pdf(file='%(pdffile)s', height=6, width=2+0.5*length(breaks))
 par(mar=c(%(mar)s), family='serif')
 
 # construct kernel density estimates
@@ -66,57 +72,79 @@ hist_single=list()
 if (type=='algo') {
 	for(algo in algos) {
 		# select results generated from algo
-		algodata=subset(probdata['OBJ'], probdata['ALGO'] == algo)
-		if (dim(algodata)[1] > 0) {
+		algodata=as.list(subset(probdata['OBJ'], probdata['ALGO'] == algo))
+		if (length(algodata$OBJ) > 0) {
 			# select number of test runs
-			n[algo]=dim(algodata)[1]
-			m[algo]=length(unique(algodata$OBJ))
+			algodata=algodata$OBJ[1:min(length(algodata$OBJ),ntotal)]
+			n[algo]=length(algodata)
+			m[algo]=length(unique(algodata))
+
+			# select inverted counts
+			hist_single[[algo]]=hist(algodata, plot=FALSE, breaks=breaks)$counts[(length(breaks)-1):1]
 		}
-		# select inverted counts
-		hist_single[[algo]]=hist(algodata$OBJ, plot=FALSE, breaks=breaks)$counts[(length(breaks)-1):1]
 	}
 }
 if (type=='model') {
 	for(model in models) {
 		# select results generated from algo
-		modeldata=subset(probdata['OBJ'], probdata['MODEL'] == model)
-		if (dim(modeldata)[1] > 0) {
+		modeldata=as.list(subset(probdata['OBJ'], probdata['MODEL'] == model))
+		if (length(modeldata$OBJ) > 0) {
 			# select number of test runs
-			n[model]=dim(modeldata)[1]
-			m[model]=length(unique(modeldata$OBJ))
+			modeldata=modeldata$OBJ[1:min(length(modeldata$OBJ),ntotal)]
+			n[model]=length(modeldata)
+			m[model]=length(unique(modeldata))
 		}
 		# select inverted counts
-		hist_single[[model]]=hist(modeldata$OBJ, plot=FALSE, breaks=breaks)$counts[(length(breaks)-1):1]
+		hist_single[[model]]=hist(modeldata, plot=FALSE, breaks=breaks)$counts[(length(breaks)-1):1]
 	}
 }
 
 # plot multi-histogram
-hist_multi=rbind(hist_single[[1]], hist_single[[2]], hist_single[[3]])
+hist_multi=NULL
+for (i in 1:length(hist_single)) {
+  hist_multi=rbind(hist_multi, hist_single[[i]])
+}
+
+# plot bars and axis
 barplot(hist_multi, names=names, axis.lty=0, tck=0.01, las=2,
-		main=title, cex.names=0.5, cex.axis=0.75, col=colors, mgp=c(3, 0.25, 0),
-		xaxs='i', xlim=c(-1, length(breaks)*1.175))
+		main=title, cex.names=2.5, cex.axis=2.5, border=FALSE, col=colors, mgp=c(3, 0.25, 0),
+		space=0.1, xaxs='i', xlim=c(-.25, length(breaks)+2))
+
+# plot vertical lines and border
+barplot(hist_multi, axes=FALSE, angle=c(30,60,90,-60,-30), border=shaded,
+		col=shaded, density=15, space=0.1, xlim=c(-.25, length(breaks)+2), add=TRUE)
 
 # add legend
 if (counts) {
 	if (type=='algo') {
-		vlegend=c(paste('Simulated Annealing',' [', m['SA'], '/', n['SA'], ']', sep=''),
-                  paste('Cross Entropy',' [', m['CE'], '/', n['CE'], ']', sep=''),
-				  paste('Sequential Monte Carlo',' [', m['SMC'], '/', n['SMC'], ']', sep=''))
+		vlegend=c(paste('Cross-entropy',' [', m['CE'], '/', n['CE'], ']', sep=''),
+				  paste('SMC parametric',' [', m['SMC'], '/', n['SMC'], ']', sep=''),
+				  paste('SMC symmetric',' [', m['SMCL'], '/', n['SMCL'], ']', sep=''),
+				  paste('Simulated annealing',' [', m['SA'], '/', n['SA'], ']', sep=''),
+				  paste('1-opt local search',' [', m['RLS'], '/', n['RLS'], ']', sep=''))
 	} else {
 		vlegend=c(paste('Product model',' [', m['product'], '/', n['product'], ']', sep=''),
-				  paste('Logistic conditional model',' [', m['logistic'], '/', n['logistic'], ']', sep=''),
+				  paste('Logistic conditionals model',' [', m['logistic'], '/', n['logistic'], ']', sep=''),
 				  paste('Gaussian copula model',' [', m['gaussian'], '/', n['gaussian'], ']', sep=''))
 	}
 } else {
 	if (type=='algo') {
-		vlegend=c(paste('Simulated Annealing', sep=''),
-				  paste('Cross Entropy', sep=''),
-				  paste('Sequential Monte Carlo', sep=''))
+		vlegend=c(paste('Cross-entropy', sep=''),
+				  paste('SMC parametric', sep=''),
+				  paste('SMC symmetric', sep=''),
+				  paste('Simulated annealing', sep=''),
+				  paste('1-opt local search', sep=''))
 	} else {
 		vlegend=c(paste('Product model', sep=''),
-				  paste('Logistic conditional model', sep=''),
+				  paste('Logistic conditionals model', sep=''),
 				  paste('Gaussian copula model', sep=''))
 	}
 }
-if (legend) legend(x='topright', inset=0.05, cex=1.5, fill=colors, legend=vlegend)
+if (legend) {
+  inv=length(colors):1
+  legend(x='topright', inset=0.05, cex=2.5,
+         fill=colors[inv], legend=vlegend[inv])
+  legend(x='topright', inset=0.05, cex=2.5, border=shaded[inv],
+         fill=shaded[inv], angle=c(30,60,90,-60,-30)[inv], density=15, legend=vlegend[inv])
+}
 dev.off()
