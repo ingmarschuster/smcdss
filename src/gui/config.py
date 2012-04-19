@@ -7,7 +7,7 @@ GUI config.
 """
 
 from binary.conditionals_logistic import LogisticCondBinary
-from binary.posterior_bic import PosteriorBIC
+from binary.posterior_ml import PosteriorML
 from binary.posterior_bvs import PosteriorBVS
 from binary.product import ProductBinary
 import Tkinter as tk
@@ -150,18 +150,9 @@ class GuiConfig(tk.Toplevel):
             self.master.default = import_config(self.filename)
             self.master.refresh_run_file()
         else:
-            myconfig = copy.deepcopy(self.myconfig)
-            for section in myconfig.itervalues():
-                for subsection in section.itervalues():
-                    for key in subsection:
-                        default = self.default[section.name][subsection.name][key]
-                        if subsection[key] == default:
-                            subsection.pop(key)
-                    if len(subsection) == 0: subsection.parent.pop(subsection.name)
-                if len(section) == 0: section.parent.pop(section.name)
-            GuiConfig.remove_comments(myconfig)
-            myconfig.write()
-            self.master.config = import_config(self.filename)
+            write_config(self.myconfig, self.default)
+            self.master.myconfig = import_config(self.filename)
+        self.master.set_bar_color(self.master.myconfig['layout/color'])
 
     @staticmethod
     def read_entries(section, key, entries):
@@ -286,6 +277,31 @@ class PathEntryField(pmw.EntryField):
 
             self.setvalue(filename)
 
+def write_config(config, default=None):
+    '''
+        Write a configuration csv-file.
+    '''
+    # get default
+    default_filename = get_default_filename()
+
+    # save and return if config is default
+    if config.filename == default_filename:
+        config.write()
+        return
+    if default is None:
+        default = configobj.ConfigObj(get_default_filename())
+
+    myconfig = copy.deepcopy(config)
+    for section in myconfig.itervalues():
+        for subsection in section.itervalues():
+            for key in subsection:
+                default_key = default[section.name][subsection.name][key]
+                if subsection[key] == default_key:
+                    subsection.pop(key)
+            if len(subsection) == 0: subsection.parent.pop(subsection.name)
+        if len(section) == 0: section.parent.pop(section.name)
+    GuiConfig.remove_comments(myconfig)
+    myconfig.write()
 
 def read_config(filename, default=None):
     '''
@@ -304,6 +320,7 @@ def read_config(filename, default=None):
             if not sparse[section].has_key(subsection): continue
             myconfig[section][subsection].update(sparse[section][subsection])
     myconfig.walk(convert_path, raise_errors=True, call_on_sections=False)
+
     return myconfig
 
 
@@ -345,6 +362,13 @@ def import_config(filename, config={}):
         config['smc/binary_model'] = ProductBinary
     if config['smc/binary_model'] == 'logistic':
         config['smc/binary_model'] = LogisticCondBinary
+
+    # Update configuration dictionary.
+    config['run/file'] = filename
+    config['run/name'] = os.path.splitext(os.path.basename(filename))[0]
+    config['run/folder'] = os.path.join(config['path/run'], config['run/name'])
+    config['eval/file'] = os.path.join(config['run/folder'], config['run/name'], filename)
+    config['log_id'] = '0'
 
     return config
 
@@ -419,23 +443,89 @@ def import_data(config):
                                 for col in free_header if '.x.' in col] if not icol[1] == icol[2]])
 
     # overwrite data dependent place holders
-    if config['prior/model_maxsize_hp'] in ['n', '']:
-        config['prior/model_maxsize_hp'] = config['data/max_obs']
-    if config['prior/var_dispersion'] in ['n', '']:
+    if config['prior/model_inclprob'] is None:
+        config['prior/model_inclprob'] = 0.5
+        config['prior/model_maxsize'] = config['data/max_obs']
+    if config['prior/model_maxsize'] in ['n', '', None]:
+        config['prior/model_maxsize'] = config['data/max_obs']
+    if config['prior/var_dispersion'] in ['n', '', None]:
         config['prior/var_dispersion'] = config['data/max_obs']
- 
-    if config['prior/criterion'] == 'bic':
-        Posterior = PosteriorBIC
-    else:
+
+    if config['prior/criterion'].lower() == 'bayes':
         Posterior = PosteriorBVS
+    else:
+        Posterior = PosteriorML
 
     config.update({'data/header' : header,
                    'data/free_header' : free_header,
                    'data/static_header' : static_header,
                    'f': Posterior(y=sample[:, 0], Z=sample[:, 1:], config=config)})
-
     return config
 
+'''
+
+def readGroups(v):
+    """ 
+        Reads the data file and a group file to set up a random effect model.
+        \param v parameters
+    """
+    # open the data file to load the marker positions
+    DATA_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_DATA_FILE'])
+    if not DATA_FILE[-4:].lower() == '.csv': DATA_FILE += '.csv'
+    dreader = csv.reader(open(DATA_FILE, 'rU'), delimiter=',')
+    DATA_HEADER = dreader.next()
+
+    # open the group file to load all group information
+    GROUP_FILE = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_GROUP_FILE'])
+    if not GROUP_FILE[-4:].lower() == '.csv': GROUP_FILE += '.csv'
+    greader = csv.reader(open(GROUP_FILE, 'rU'), delimiter=',')
+    greader.next()
+    GROUPS_HEADER = list()
+    GROUPS_ALL = dict()
+    for g in greader:
+        if not len(g) > 0: continue
+        GROUPS_HEADER += [g[0]]
+        GROUPS_ALL.update({g[0]:{'start':g[1], 'end':g[2]}})
+
+    # pick groups from setup file
+    gindex = list()
+    for grange in v['DATA_GROUPS'].split('+'):
+        grange = grange.split(':')
+        if len(grange) == 1:grange += [grange[0]]
+        for i in xrange(2):
+            if grange[i].isdigit(): grange[i] = int(grange[i]) - 1
+            elif grange[i] == 'inf': grange[i] = len(GROUPS_HEADER) - 1
+            else: grange[i] = GROUPS_HEADER.index(grange[i])
+        gindex += range(grange[0], grange[1] + 1)
+
+    GROUPS_HEADER = [GROUPS_HEADER[i] for i in gindex]
+    GROUPS = list()
+    for group in GROUPS_HEADER:
+        try:
+            GROUPS += [{'start':DATA_HEADER.index(GROUPS_ALL[group]['start']), 'end':DATA_HEADER.index(GROUPS_ALL[group]['end'])}]
+        except:
+            print "Covariate %s in group %s was not found. Aborted." % (GROUPS_ALL[group]['start'], group)
+            sys.exit(0)
+
+    # pick data for the groups
+    cindex = list()
+    for group in GROUPS: cindex += range(group['start'], group['end'] + 1)
+    if not isinstance(v['DATA_EXPLAINED'], str): Y_pos = v['DATA_EXPLAINED'] - 1
+    else: Y_pos = DATA_HEADER.index(v['DATA_EXPLAINED'])
+
+    sample = numpy.array([numpy.array([eval(x) for x in [row[Y_pos]] + [row[i] for i in cindex]])
+                          for row in dreader if len(row) > 0 and not row[Y_pos] == 'NA'])
+
+    # use just the first DATA_MAX_OBS observations
+    v['DATA_MAX_OBS'] = min(v['DATA_MAX_OBS'], sample.shape[0])
+    sample = sample[:v['DATA_MAX_OBS'], :]
+
+    # initialize posterior
+    v.update({'GROUPS':GROUPS, 'DATA_HEADER' : GROUPS_HEADER})
+    v.update({'f': binary.posterior.Posterior(Y=sample[:, 0], X=sample[:, 1:], param=v)})
+    return v
+
+'''
 
 
 def convert_path(section, key):

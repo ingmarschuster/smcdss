@@ -66,6 +66,9 @@ class conditionals_logistic(wrapper):
     def rvslpmf(self, U, param):
         return binary.conditionals_logistic.LogisticCondBinary._rvslpmf_all(
                 A=param.A, U=U)
+    def calc_log_regr(self, y, Z, ZW, init, weights=None, verbose=False):
+        return binary.conditionals_logistic.LogisticCondBinary.calc_log_regr(
+                y=y, Z=Z, ZW=ZW, init=init, weights=weights, verbose=verbose)
 
 class conditionals_linear(wrapper):
     def lpmf(self, Y, param):
@@ -117,10 +120,14 @@ class copula_student(wrapper):
     def rvslpmf(self, V, param):
         return self.rvs(V, param), None
 
-class posterior_bic(wrapper):
+class posterior_ml(wrapper):
     def lpmf(self, Y, param):
-        return binary.posterior_bic.PosteriorBIC._lpmf(Y, param)
+        return binary.posterior_ml.PosteriorML._lpmf(Y, param)
 
 class posterior_bvs(wrapper):
     def lpmf(self, Y, param):
         return binary.posterior_bvs.PosteriorBVS._lpmf(Y, param)
+    
+class posterior_link(wrapper):
+    def lpmf(self, Y, param):
+        return binary.posterior_link.PosteriorLink._lpmf(Y, param)

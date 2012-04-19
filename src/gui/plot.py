@@ -1,12 +1,9 @@
 # -*- coding: utf-8 -*-
 
 """
-GUI plots.
-"""
-
-"""
-@namespace ibs.ibs_plot
-@details GUI.
+    GUI plots.
+    @namespace ibs.ibs_plot
+    @details GUI.
 """
 
 import Tkinter as tk
@@ -21,28 +18,32 @@ import utils.pmw.Pmw as pmw
 TOP_BORDER = 10
 BOTTOM_BORDER = 10
 LEFT_BORDER = 40
-RIGHT_BORDER = 30
-BARPLOT_COLORS = ['#33ffff']
-GRAPH_PLOTCHARS = ['x', 'o']
-GRAPH_COLORS = ['#990000', '#009900']
-
+RIGHT_BORDER = 10
+GRAPH_PLOTCHARS = ['x', 'o', '']
+GRAPH_COLORS = ['#990000', '#009900', '#5555EE']
+CHAR_HEIGHT = 15.0
+CHAR_WIDTH = 5.0
 GREEK_RHO = u'\u03C1'
 
+class GuiPlot(tk.Toplevel, object):
 
-class GuiPlot(tk.Toplevel):
+    name = 'Plot'
 
-    def __init__(self, master, x=10, y=10, w=400, h=400, labels=None, legend=None):
+    def __init__(self, master, x=10, y=10, w=400, h=400, title='', labels=None, legend=None):
 
         tk.Toplevel.__init__(self, master, height=h, width=w)
         self.geometry('+%d+%d' % (x, y))
+        self.title(self.name + ' - ' + title)
 
         self.legend = legend
-        self.labels = labels
 
         self.values = None
         self.pressed_ctrl = False
         self.pressed_alt = False
         self.wheel_event = False
+
+        # compute space for labels
+        self.labels = labels
 
         # setup scrolled canvas
         self.sc = pmw.ScrolledCanvas(self, borderframe=1)
@@ -51,8 +52,10 @@ class GuiPlot(tk.Toplevel):
         self.sc.pack(fill='both', expand=1)
 
         # initialize empty plot
-        self.plot_height = h - TOP_BORDER - BOTTOM_BORDER
         self.plot_width = w - LEFT_BORDER - RIGHT_BORDER
+        self.compute_label_height()
+        self.plot_height = h - TOP_BORDER - BOTTOM_BORDER - self.label_height
+
         self.draw_axis()
         self.sc.resizescrollregion()
 
@@ -67,6 +70,14 @@ class GuiPlot(tk.Toplevel):
 
         self.protocol("WM_DELETE_WINDOW", self.close_window)
 
+    def compute_label_height(self):
+        if self.labels is None:
+            self.label_height = 0
+            return
+        if self.plot_width == 0: return
+        box_width = self.plot_width / float(len(self.labels) * CHAR_WIDTH)
+        self.label_height = max([1.0] + [len(str(label)) / box_width for label in self.labels]) * CHAR_HEIGHT
+
     def set_pressed_ctrl(self, mode):
         self.pressed_ctrl = mode
 
@@ -77,6 +88,9 @@ class GuiPlot(tk.Toplevel):
         self.wheel_event = True
         if self.pressed_ctrl:
             self.plot_width -= change * 25
+            self.plot_height += self.label_height
+            self.compute_label_height()
+            self.plot_height -= self.label_height
             self.draw_axis()
             self.redraw()
             self.sc.resizescrollregion()
@@ -87,8 +101,9 @@ class GuiPlot(tk.Toplevel):
 
     def resize_window_handler(self, event):
         if self.pressed_ctrl and not self.wheel_event:
-            self.plot_height = event.height - TOP_BORDER - BOTTOM_BORDER
             self.plot_width = event.width - LEFT_BORDER - RIGHT_BORDER
+            self.compute_label_height()
+            self.plot_height = event.height - TOP_BORDER - BOTTOM_BORDER - self.label_height
             self.draw_axis()
             self.redraw()
             self.sc.resizescrollregion()
@@ -100,6 +115,16 @@ class GuiPlot(tk.Toplevel):
     def draw_axis(self):
         # remove old axis
         self.c.delete('axis')
+
+        # add labels
+        if not self.labels is None:
+            n = len(self.labels)
+            box_width = self.plot_width / float(n)
+            for i, x in enumerate(numpy.linspace(box_width, self.plot_width, n)):
+                self.c.create_text(LEFT_BORDER + x - box_width / 2.0,
+                              TOP_BORDER + self.plot_height + BOTTOM_BORDER - 8,
+                              text=self.labels[i], tag='axis', width=box_width, font=('system', 6),
+                              anchor=tk.N)
 
         # add axis
         self.c.create_line(LEFT_BORDER - 10,
@@ -117,34 +142,31 @@ class GuiPlot(tk.Toplevel):
                           TOP_BORDER + y, stipple="gray25", fill="#000077", tag='axis')
             self.c.create_text(3, TOP_BORDER + y, text=str(1 - i / 10.0), anchor=tk.W, tag='axis')
 
-        # add labels
-        if not self.labels is None:
-            n = self.labels.shape[0]
-            box_width = self.plot_width / float(n)
-            for i, x in enumerate(numpy.linspace(box_width, self.plot_width, n)):
-                self.c.create_text(LEFT_BORDER + x - box_width / 2.0,
-                              TOP_BORDER + self.plot_height + BOTTOM_BORDER,
-                              text=self.labels[i], tag='axis', width=3, anchor=tk.N)
-
-        # add legend
+    def draw_legend(self):
+        '''
+            Add legend.
+        '''
         if not self.legend is None:
             n = len(self.legend)
             self.c.create_rectangle(LEFT_BORDER + 5,
-                                    TOP_BORDER + self.plot_height - (n + 1) * 22 - 20,
+                                    TOP_BORDER + self.plot_height - (n + 1) * 22 + 10,
                                     LEFT_BORDER + 120,
-                                    TOP_BORDER + self.plot_height - 20,
+                                    TOP_BORDER + self.plot_height - 10,
                                     fill='white', tags='axis')
             for i in xrange(n):
                 self.c.create_text(LEFT_BORDER + 10,
-                                   TOP_BORDER + self.plot_height + (i - n) * 22 - 20,
+                                   TOP_BORDER + self.plot_height + (i - n) * 22,
                                    fill=GRAPH_COLORS[i], tags='axis',
                                    text=self.legend[i], anchor=tk.W)
 
 class GuiBarPlot(GuiPlot):
 
-    def __init__(self, master, x=10, y=10, w=400, h=400, labels=None):
-        GuiPlot.__init__(self, master, x, y, w, h, labels=labels)
-        self.title('Barplot')
+    name = 'Barplot'
+
+    def __init__(self, master, x=10, y=10, w=400, h=400, title='', labels=None, bar_color='#33ffff'):
+
+        super(GuiBarPlot, self).__init__(master, x, y, w, h, title, labels=labels)
+        self.bar_color = bar_color
 
     def close_window(self):
         self.master.mybarplot = None
@@ -161,15 +183,17 @@ class GuiBarPlot(GuiPlot):
             self.c.create_rectangle(LEFT_BORDER + x - box_width,
                                TOP_BORDER + (1.0 - self.values[i]) * self.plot_height,
                                LEFT_BORDER + x,
-                               TOP_BORDER + self.plot_height, fill=BARPLOT_COLORS[0], tags='graph')
+                               TOP_BORDER + self.plot_height, fill=self.bar_color, tags='graph')
 
         self.c.update()
 
 class GuiGraph(GuiPlot):
 
-    def __init__(self, master, x=10, y=10, w=400, h=400, legend=None):
-        GuiPlot.__init__(self, master, x, y, w, h, legend=legend)
-        self.title('Graph')
+    name = 'Graph'
+
+    def __init__(self, master, x=10, y=10, w=400, h=400, title='', legend=None):
+        super(GuiGraph, self).__init__(master, x, y, w, h, title, legend=legend)
+        self.lines = None
 
     def close_window(self):
         self.master.mygraph = None
@@ -178,6 +202,18 @@ class GuiGraph(GuiPlot):
     def redraw(self):
         # remove old graph
         self.c.delete('graph')
+
+        # add lines
+        for j, graph in enumerate(self.lines):
+            n = sum(graph)
+            box_width = self.plot_width / float(n)
+            for k in numpy.cumsum(numpy.array(graph)):
+                self.c.create_line(LEFT_BORDER + k * box_width,
+                                   TOP_BORDER + self.plot_height,
+                                   LEFT_BORDER + k * box_width,
+                                   TOP_BORDER,
+                                   fill=GRAPH_COLORS[-1], tags='graph', width=2)
+        self.draw_legend()
 
         # add graphs
         for i, graph in enumerate(self.values):
@@ -197,23 +233,25 @@ class GuiGraph(GuiPlot):
         self.c.update()
 
 
-def plot_R(v, verbose=True):
+def plot_R(myconfig):
     """ 
         Create pdf-boxplots from run files.
         \param v parameters
     """
 
-    if not os.path.isfile(os.path.join(v['RUN_FOLDER'], 'result.csv')):
-        print 'No file %s found.' % os.path.join(v['RUN_FOLDER'], 'result.csv')
-        sys.exit(2)
-    result_file = open(os.path.join(v['RUN_FOLDER'], 'result.csv'), 'rU')
+    if not os.path.isfile(os.path.join(myconfig['run/folder'], 'result.csv')):
+        sys.stdout.write('\rNo file %s found.' % os.path.join(myconfig['run/folder'], 'result.csv'))
+        return False
+    result_file = open(os.path.join(myconfig['run/folder'], 'result.csv'), 'rU')
     reader = csv.reader(result_file, delimiter=',')
 
     # Read header names.
     data_header = reader.next()
     d = data_header.index('LOG_FILE')
-    if v['EVAL_NAMES']: v['EVAL_NAMES'] = data_header[:d]
-    else:               v['EVAL_NAMES'] = range(1, d + 1)
+    if myconfig['layout/names']:
+        myconfig['layout/names'] = data_header[:d]
+    else:
+        myconfig['layout/names'] = range(1, d + 1)
 
     # Prepare header.
     config = dict(TIME=[], NO_EVALS=[], LENGTH=[], NO_MOVES=[], ACC_RATE=[])
@@ -225,7 +263,7 @@ def plot_R(v, verbose=True):
     # Read data.
     X = list()
     for i, row in enumerate(reader):
-        if i == v['EVAL_MAX_DATA']: break
+        if i == myconfig['layout/max_data']: break
         X += [numpy.array([float(x) for x in row[:d]])]
         for key in config.keys():
             if config[key][0] > -1: config[key][1] += float(row[config[key][0]])
@@ -233,11 +271,11 @@ def plot_R(v, verbose=True):
     X = numpy.array(X)
 
     if len(X) == 0:
-        print 'Empty file %s.' % os.path.join(v['RUN_FOLDER'], 'result.csv')
+        print 'Empty file %s.' % os.path.join(myconfig['run/folder'], 'result.csv')
         sys.exit(0)
 
     # Read effects.
-    data_filename = os.path.join(v['SYS_ROOT'], v['DATA_PATH'], v['DATA_DATA_FILE'])
+    data_filename = os.path.join(myconfig['path/root'], myconfig['path/data'], myconfig['data/csv_file'])
     if not data_filename[-4:].lower() == '.csv': data_filename += '.csv'
     effect_filename = os.path.join(data_filename.replace('.csv', '_effects.csv'))
     effects = list()
@@ -256,86 +294,84 @@ def plot_R(v, verbose=True):
         effects = numpy.array(effects)
         effects[:, 1] /= numpy.abs(effects[:, 1]).max()
 
-
     # Compute averages.
     n = X.shape[0]
     d = X.shape[1]
     for key in config.keys(): config[key] = config[key][1] / float(n)
     config['TIME'] = str(datetime.timedelta(seconds=int(config['TIME'])))
-    v.update(config)
+    myconfig.update(config)
 
     # Compute quantiles for the box plot.
     A = numpy.zeros((5, d))
-    box = v['EVAL_BOXPLOT']
+    box = myconfig['layout/boxplot']
     X.sort(axis=0)
     for i in xrange(d):
         A[0][i] = X[:, i][0]
         for j, q in [(1, 1.0 - box), (2, 0.5), (3, box), (4, 1.0)]:
             A[j][i] = X[:, i][int(q * n) - 1] - A[:j + 1, i].sum()
 
-    # Determine algorithm (might have been set on command line)
-    algo = v['RUN_ALGO'].__name__
-    if v['EVAL_FILE'][-8:] == 'mcmc.ini': algo = 'mcmc'
-    if v['EVAL_FILE'][-9:] == 'amcmc.ini': algo = 'amcmc'
-
     colors = {'smc':'gold', 'mcmc':'firebrick', 'amcmc':'skyblue'}
-    if v['EVAL_COLOR'] is None: v['EVAL_COLOR'] = colors[algo] + ['1', '3'][v['DATA_MAIN_EFFECTS']]
+    if myconfig['layout/color'] is None:
+        myconfig['layout/color'] = colors[myconfig['run/algo']] + ['1', '3'][myconfig['data/main_effects']]
 
     # Format title.   
     title = 'ALGO %s, DATA %s, POSTERIOR %s, DIM %i, RUNS %i, TIME %s, NO_EVALS %.1f' % \
-            (algo, v['DATA_DATA_FILE'], v['PRIOR_CRITERION'], d, n, v['TIME'], v['NO_EVALS'])
+            (myconfig['run/algo'], myconfig['data/csv_file'], myconfig['prior/criterion'],
+             d, n, myconfig['TIME'], myconfig['NO_EVALS'])
     if config['LENGTH'] > 0:
         title += '\nKERNEL %s, LENGTH %.1f, NO_MOVES %.1f, ACC_RATE %.3f' % \
-            (v['MCMC_KERNEL'].__name__, v['LENGTH'], v['NO_MOVES'], v['ACC_RATE'])
-    if verbose: print title + '\n'
+            (myconfig['mcmc/kernel'].__name__, myconfig['length'], myconfig['no_moves'], myconfig['acc_rate'])
 
     # Auto-adjust width
-    if v['EVAL_WIDTH'] is None: v['EVAL_WIDTH'] = d * 0.1
+    if myconfig['layout/width'] is None: myconfig['layout/width'] = d * 0.1
 
     # Format dictionary.
-    v.update({'EVAL_BOXPLOT':', '.join(['%.6f' % x for x in numpy.reshape(A, (5 * d,))]),
-              'EVAL_EFFECTS':', '.join(['%d, %.6f' % (i, x) for (i, x) in effects]),
-              'EVAL_DIM':str(d), 'EVAL_XAXS':A.shape[1] * 1.2 + 1,
-              'EVAL_PDF':os.path.join(v['RUN_FOLDER'], 'plot.pdf').replace('\\', '/'),
-              'EVAL_TITLE_TEXT': title,
-              'EVAL_TITLE_SIZE': v['EVAL_TITLE'] * [v['EVAL_WIDTH'] * 10.0 / float(len(title)), 0.75][v['EVAL_LINES'] > 1]
-              })
+    myconfig.update({'layout/data':', '.join(['%.6f' % x for x in numpy.reshape(A, (5 * d,))]),
+          'layout/effects':', '.join(['%d, %.6f' % (i, x) for (i, x) in effects]),
+          'layout/dim':str(d), 'layout/xaxs':A.shape[1] * 1.2 + 1,
+          'layout/pdf':os.path.join(myconfig['run/folder'], 'plot.pdf').replace('\\', '/'),
+          'layout/title text': title,
+          'layout/title_size': myconfig['layout/title'] * \
+                [myconfig['layout/width'] * 10.0 / float(len(title)), 0.75][myconfig['layout/lines'] > 1]
+                })
 
     # Format names.
     name_length = 0
-    for i, x in enumerate(v['EVAL_NAMES']):
-        if 'POW2' in x: v['EVAL_NAMES'][i] = x[:x.index('.')] + '.x.' + x[:x.index('.')]
+    for i, x in enumerate(myconfig['layout/names']):
+        if 'POW2' in x: myconfig['layout/names'][i] = x[:x.index('.')] + '.x.' + x[:x.index('.')]
         if name_length < len(str(x)):name_length = len(str(x))
-    v['EVAL_NAMES'] = ', '.join(["'" + str(x).upper().replace('.X.', '.x.') + "'" for x in v['EVAL_NAMES']])
+    myconfig['layout/names'] = ', '.join(["'" + str(x).upper().replace('.X.', '.x.')
+                                        + "'" for x in myconfig['layout/names']])
 
     # Auto-adjust margins
-    if v['EVAL_INNER_MARGIN'] is None:
-        v['EVAL_INNER_MARGIN'] = [name_length * 0.5, 2, 0.5, 0]
-    if v['EVAL_OUTER_MARGIN'] is None:
-        v['EVAL_OUTER_MARGIN'] = [0, 0, max(0.5, 2 * v['EVAL_TITLE_SIZE']), 0]
-    for key in ['EVAL_OUTER_MARGIN', 'EVAL_INNER_MARGIN']:
-        v[key] = ', '.join([str(x) for x in v[key]])
+    if myconfig['layout/inner_margin'] is None:
+        myconfig['layout/inner_margin'] = [name_length * 0.5, 2, 0.5, 0]
+    if myconfig['layout/outer_margin'] is None:
+        myconfig['layout/outer_margin'] = [0, 0, max(0.5, 2 * myconfig['layout/title_size']), 0]
+    for key in ['layout/outer_margin', 'layout/inner_margin']:
+        if not isinstance(myconfig[key], str):
+            myconfig[key] = ', '.join([str(x) for x in myconfig[key]])
 
     # Create R-script.
-    if v['EVAL_LINES'] > 1:
-        v['EVAL_WIDTH'], v['EVAL_HEIGHT'] = 20, 20
-        R = R_TEMPLATE.replace("pdf(", "pdf(paper='a4', ") % v
+    if myconfig['layout/lines'] > 1:
+        myconfig['layout/width'], myconfig['layout/height'] = 20, 20
+        R = R_TEMPLATE.replace("pdf(", "pdf(paper='a4', ") % myconfig
     else:
-        R = R_TEMPLATE % v
+        R = R_TEMPLATE % myconfig
 
-    if v['EVAL_TITLE']:
-        R += ("mtext('%(EVAL_TITLE_TEXT)s', family='%(EVAL_FONT_FAMILY)s', " +
-                  "line=0.5, cex=%(EVAL_TITLE_SIZE)s, outer=TRUE)\n") % v
+    if myconfig['layout/title']:
+        R += ("mtext('%(layout/title_text)s', family='%(layout/font_family)s', " +
+                  "line=0.5, cex=%(layout/title_size)s, outer=TRUE)\n") % myconfig
 
     R += 'dev.off()'
-    R_file = open(os.path.join(v['SYS_ROOT'], v['RUN_PATH'], v['RUN_NAME'], 'plot.R'), 'w')
+    R_file = open(os.path.join(myconfig['path/root'], myconfig['path/run'], myconfig['run/name'], 'plot.R'), 'w')
     R_file.write(R)
     R_file.close()
 
     # Execute R-script.
-    subprocess.Popen([v['SYS_R'], 'CMD', 'BATCH', '--vanilla',
-                      os.path.join(v['RUN_FOLDER'], 'plot.R'),
-                      os.path.join(v['RUN_FOLDER'], 'plot.Rout')]).wait()
+    subprocess.Popen([myconfig['path/r'], 'CMD', 'BATCH', '--vanilla',
+                      os.path.join(myconfig['run/folder'], 'plot.R'),
+                      os.path.join(myconfig['run/folder'], 'plot.Rout')]).wait()
 
 R_TEMPLATE = """
 #
@@ -343,22 +379,22 @@ R_TEMPLATE = """
 #
 
 # boxplot data from repeated runs
-boxplot = c(%(EVAL_BOXPLOT)s)
-boxplot = t(array(boxplot,c(length(boxplot)/5,5)))
+data = c(%(layout/data)s)
+data = t(array(data,c(length(data)/5,5)))
 
 # positions of effects
-effects = c(%(EVAL_EFFECTS)s)
+effects = c(%(layout/effects)s)
 if (length(effects) > 0) effects = t(array(effects,c(2,length(effects)/2)))
 
 # covariate names
-names = c(%(EVAL_NAMES)s)
+names = c(%(layout/names)s)
 
-no_lines=%(EVAL_LINES)s
+no_lines=%(layout/lines)s
 no_bars=ceiling(length(names)/no_lines)
 
 # create PDF-file
-pdf(file='%(EVAL_PDF)s', height=%(EVAL_HEIGHT)s, width=%(EVAL_WIDTH)s)
-par(mfrow=c(no_lines,1), oma=c(%(EVAL_OUTER_MARGIN)s), mar=c(%(EVAL_INNER_MARGIN)s))
+pdf(file='%(layout/pdf)s', height=%(layout/height)s, width=%(layout/width)s)
+par(mfrow=c(no_lines,1), oma=c(%(layout/outer_margin)s), mar=c(%(layout/inner_margin)s))
 
 # create empty vector
 empty=rep(0,length(names))
@@ -368,7 +404,7 @@ for(i in 1:no_lines) {
   end  = min(i*no_bars, length(names))
 
   # create empty plot
-  barplot(empty[start:end], ylim=c(0, 1), axes=FALSE, xaxs='i', xlim=c(-1, %(EVAL_XAXS)s/no_lines))
+  barplot(empty[start:end], ylim=c(0, 1), axes=FALSE, xaxs='i', xlim=c(-1, %(layout/xaxs)s/no_lines))
   
   # plot effects
   if (length(effects) > 0) {
@@ -383,7 +419,7 @@ for(i in 1:no_lines) {
   }
   
   # plot results
-  barplot(boxplot[,start:end], ylim=c(0, 1), names=names[start:end], las=2, cex.names=0.5, cex.axis=0.75,
-          axes=TRUE, col=c('%(EVAL_COLOR)s','black','white','white','black'), add=TRUE)
+  barplot(data[,start:end], ylim=c(0, 1), names=names[start:end], las=2, cex.names=0.5, cex.axis=0.75,
+          axes=TRUE, col=c('%(layout/color)s','black','white','white','black'), add=TRUE)
 }
 """

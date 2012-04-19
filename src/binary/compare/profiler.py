@@ -11,6 +11,7 @@ import binary.base
 import cProfile
 import os
 import pstats
+import utils
 
 generator_classes = [
 ExchangeableBinary,
@@ -23,7 +24,8 @@ GaussianCopulaBinary,
 LogisticCondBinary,
 LinearCondBinary,
 ArctanCondBinary,
-QuLinearBinary]
+QuLinearBinary
+]
 
 n = 2e3
 d = 4

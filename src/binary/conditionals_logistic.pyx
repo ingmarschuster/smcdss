@@ -72,9 +72,10 @@ class LogisticCondBinary(conditionals.ConditionalsBinary):
             \param verbose detailed output
             \return logistic model
         """
+        py_wrapper = wrapper.conditionals_logistic()
         return cls(LogisticCondBinary.calc_A(X, weights, Init=Init,
                                              job_server=job_server, eps=eps, delta=delta,
-                                             verbose=verbose))
+                                             verbose=verbose, py_wrapper=py_wrapper))
 
     def renew_from_data(self, X, weights, job_server=None, eps=0.02, delta=0.075, lag=0, verbose=False):
         """ 
@@ -91,14 +92,14 @@ class LogisticCondBinary(conditionals.ConditionalsBinary):
         # Compute new parameter from data.
         newA = LogisticCondBinary.calc_A(X, weights, Init=self.A,
                                          job_server=job_server, eps=eps, delta=delta,
-                                         verbose=verbose, pywrapper=self.py_wrapper)
+                                         verbose=verbose, py_wrapper=self.py_wrapper)
 
         # Set convex combination of old and new parameter.
         self.A = (1 - lag) * newA + lag * self.A
         self.p = LogisticCondBinary.link(self.A.sum(axis=1))
 
     @classmethod
-    def calc_A(cls, X, weights, eps=0.02, delta=0.05, Init=None, job_server=None, verbose=True, pywrapper=None):
+    def calc_A(cls, X, weights, eps=0.02, delta=0.05, Init=None, job_server=None, verbose=True, py_wrapper=None):
         """ 
             Computes the logistic regression coefficients of all conditionals. 
             \param sample binary data
@@ -158,13 +159,13 @@ class LogisticCondBinary(conditionals.ConditionalsBinary):
                 if not job_server is None:
                     jobs.append([i, covariates + [i],
                             (job_server.submit(
-                             func=LogisticCondBinary.calc_log_regr,
+                             func=py_wrapper.calc_log_regr,
                              args=(Z[:, i],
                                    Z[:, covariates + [d]],
                                    ZW[:, covariates + [d]],
                                    Init[i, covariates + [i]],
                                    weights),
-                             modules=('numpy', 'scipy.linalg')))
+                             modules=('numpy', 'scipy.linalg', 'binary.conditionals_logistic')))
                     ])
                     # once jobs are assigned to all cpus let the job server
                     # wait in order to prevent memory errors on large problems
@@ -189,8 +190,10 @@ class LogisticCondBinary(conditionals.ConditionalsBinary):
 
         # write results to A matrix
         for i, covariates, job in jobs:
-            if isinstance(job, tuple): a, iterations = job
-            else: a, iterations = job()
+            if isinstance(job, tuple):
+                a, iterations = job
+            else:
+                a, iterations = job()
 
             if verbose:
                 stats['iterations'] = iterations

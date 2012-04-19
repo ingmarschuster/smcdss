@@ -68,6 +68,8 @@ class ParticleSystem(object):
         ## particle diversities
         self.r_pd = list()
 
+        self.r_rs = list()
+
         ## minimum distance of the marginal probability from the boundaries of the unit interval.
         self.eps = param['smc/eps']
 
@@ -85,8 +87,8 @@ class ParticleSystem(object):
             Initialize particle system.
         """
         # sample particles
-        if 'prior/model_maxsize_hp' in param.keys() and param['prior/model_maxsize_hp'] is not None:
-            u = LimitedBinary(d=self.d, q=param['prior/model_maxsize_hp'])
+        if 'prior/model_maxsize' in param.keys() and param['prior/model_maxsize'] is not None:
+            u = LimitedBinary(d=self.d, q=param['prior/model_maxsize'])
             self.X = u.rvs(self.n, self.job_server)
         elif 'data/constraints' in param.keys() and param['data/constraints'].shape[0] > 0:
             u = ConstrProductBinary(d=self.d, constrained=param['data/constraints'])
@@ -223,13 +225,10 @@ class ParticleSystem(object):
             alpha = target - self.rho
 
         # print progress bar
-        progress(ratio=self.rho + alpha, last_ratio=self.rho)
+        if not self.verbose:
+            progress(ratio=self.rho + alpha, last_ratio=self.rho)
         self.rho += alpha
         self.log_weights += alpha * self.log_f
-
-        if self.verbose:
-            progress(ratio=self.rho, text='\n')
-            print '\n' + str(self) + '\n'
 
     def fit_proposal(self):
         """
@@ -287,18 +286,15 @@ class ParticleSystem(object):
         """
 
         prev_pD = 0
-        self.r_ac += [0]
         for i in xrange(10):
             self.n_moves += 1
             accept = self.kernel()
-            self.r_ac[-1] += accept
             pD = self.get_particle_diversity()
-            if self.verbose: print "moved with aR: %.3f, pD: %.3f" % (accept / float(self.n), pD)
+            self.r_ac += [float(accept) / float(self.n)]
+            self.r_pd += [pD]
             if pD - prev_pD < 0.04 or pD > 0.93: break
             else: prev_pD = pD
-
-        self.r_ac[-1] /= ((i + 1) * float(self.n))
-        self.r_pd += [pD]
+        self.r_rs += [i + 1]
 
     def kernel(self):
         """
@@ -323,6 +319,9 @@ class ParticleSystem(object):
         if self.verbose: print '\revaluated in %.2f sec' % (time.time() - t)
 
         # move
+        if self.verbose:
+            sys.stdout.write('moving...')
+            t = time.time()
         log_pi_Y = self.rho * log_f_Y
         log_pi_X = self.rho * self.log_f
         log_prop_X = self.log_prop
@@ -334,4 +333,5 @@ class ParticleSystem(object):
         for i in xrange(self.n):
             if accept[i]:
                 self.id[i] = self.get_id(Y[i])
+        if self.verbose: print '\rmoved in %.2f sec' % (time.time() - t)
         return accept.sum()

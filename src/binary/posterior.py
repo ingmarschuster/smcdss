@@ -11,6 +11,7 @@
 import numpy
 import scipy.linalg
 import binary.base as base
+import os
 
 class Posterior(base.BaseBinary):
     """ Posterior distribution for Bayesian variable selection."""
@@ -42,7 +43,7 @@ class Posterior(base.BaseBinary):
         self.TSS = None
 
         # maximum model size
-        self.max_size = config['prior/model_maxsize_hp']
+        self.max_size = config['prior/model_maxsize']
         if self.max_size is None:
             self.max_size = numpy.inf
         elif isinstance(self.max_size, str):
@@ -51,7 +52,7 @@ class Posterior(base.BaseBinary):
         self.max_size
 
         self.constraints = config['data/constraints']
-        self.penalty = -self.n * numpy.dot(y.T, y)
+        self.PENALTY = -self.n * self.tss
 
     def __str__(self):
 
@@ -131,9 +132,29 @@ class Posterior(base.BaseBinary):
 
             if violations > 0 or size > config.max_size:
                 # inadmissible model
-                L[k] = config.penalty - violations - size
+                L[k] = config.PENALTY - violations - size
             else:
                 # regular model
                 L[k] = cls.score(Ystar, config, size)
 
         return L
+
+def main():
+
+    path = os.path.expanduser('~/Documents/Data/bvs/test')
+    n = 200
+    p = 10
+    d = 100
+
+    beta = numpy.random.standard_normal(size=p)
+    X = numpy.random.standard_normal(size=(n, d))
+    y = numpy.dot(X[:, :p], beta)
+
+    f = open(os.path.join(path, 'test.csv'), 'w')
+    f.write(','.join(['y'] + ['x%d' % (i + 1) for i in xrange(d)]) + '\n')
+    for k in xrange(n):
+        f.write(','.join(['%.6f' % y[k]] + ['%.6f' % x for x in X[k]]) + '\n')
+    f.close()
+
+if __name__ == "__main__":
+    main()

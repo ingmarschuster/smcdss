@@ -50,29 +50,29 @@ class AnnealedSMC():
         """
             \return A comma separated values of mean, name, evals, time, pd, ac, log_f.
         """
-        return (','.join(['%.8f' % x for x in self.get_mean()]),
-                ','.join([self.condition.__name__,
-                          '%.3f' % (self.n_f_evals / 1000.0),
+        return (','.join(['%.8f' % x for x in self.ps.get_mean()]),
+                ','.join(['resample-move',
+                          '%.3f' % (self.ps.n_f_evals / 1000.0),
                           '%.3f' % (time.time() - self.start)]),
-                ','.join(['%.5f' % x for x in self.r_pd]),
-                ','.join(['%.5f' % x for x in self.r_ac]),
-                ','.join(['%.5f' % x for x in self.log_f]))
+                ','.join(['%.5f' % x for x in self.ps.r_pd]),
+                ','.join(['%.5f' % x for x in self.ps.r_ac]))
 
     def check_gui(self):
         """
             Plots advance of SMC on GUI.
         """
-        if self.gui is None:
-            return True
+        if self.gui is None: return True
 
         # show status
-        if not self.gui.mygraph is None:
-            self.gui.mygraph.values = [self.ps.r_ac, self.ps.r_pd]
-            self.gui.mygraph.redraw()
-        if not self.gui.mybarplot is None:
-            self.gui.mybarplot.values = self.ps.get_mean()
-            self.gui.mybarplot.redraw()
-        self.gui.rho.setvalue(self.ps.rho)
+        if self.gui.is_running:
+            if not self.gui.mygraph is None:
+                self.gui.mygraph.values = [self.ps.r_ac, self.ps.r_pd]
+                self.gui.mygraph.lines = [self.ps.r_rs]
+                self.gui.mygraph.redraw()
+            if not self.gui.mybarplot is None:
+                self.gui.mybarplot.values = self.ps.get_mean()
+                self.gui.mybarplot.redraw()
+            self.gui.progress_bar.set_value(self.ps.rho / self.target)
 
         # check if running
         return self.gui.is_running
