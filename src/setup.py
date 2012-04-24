@@ -21,6 +21,7 @@ if os.name == 'nt':
 # extensions
 ext_modules = [Extension('binary.%s' % pyx_name, ['binary/%s.pyx' % pyx_name])
                for pyx_name in ['base', 'product', 'product_positive', 'product_constrained',
+                                'selector_glm', 'selector_glm_ml', 'selector_glm_bayes',
                                 'product_limited', 'conditionals', 'conditionals_logistic', 'quadratic_linear']]
 
 ext_modules += [Extension('algo.resample', ['algo/resample.pyx'])]

@@ -2,24 +2,23 @@
 # -*- coding: utf-8 -*-
 
 """
-    Hierarchical Bayesian posterior.
-    @namespace binary.posterior_bvs
+    Hierarchical Bayesian posterior for linear normal models.
+    @namespace binary.selector_ln_bayes
 """
 
 import numpy
 import scipy.linalg
-import binary.posterior as posterior
+import binary.selector_ln as ln
 import wrapper
 
 PRIOR_ZELLNER = 1
 PRIOR_ZELLNER_INVGAMMA = 2
 PRIOR_INDEPENDENT = 3
-HALF_LOG_2_PI = 0.5 * numpy.log(2 * numpy.pi)
 
-class PosteriorBVS(posterior.Posterior):
+class SelectorLnBayes(ln.SelectorLn):
     """ Hierarchical Bayesian posterior. """
 
-    name = 'hierarchical Bayesian posterior.'
+    name = 'hierarchical Bayesian posterior ln'
 
     def __init__(self, y, Z, config, name=name, long_name=__doc__):
         """ 
@@ -29,11 +28,11 @@ class PosteriorBVS(posterior.Posterior):
             \param config parameter dictionary
         """
 
-        super(PosteriorBVS, self).__init__(y, Z, config, name=name, long_name=long_name)
+        super(SelectorLnBayes, self).__init__(y, Z, config, name=name, long_name=long_name)
 
         # add modules
-        self.py_wrapper = wrapper.posterior_bvs()
-        self.pp_modules += ('binary.posterior_bvs',)
+        self.py_wrapper = wrapper.selector_ln_bayes()
+        self.pp_modules += ('binary.selector_ln_bayes',)
 
         # prior covariance on beta
         self.LOCAL_EMPIRICAL_BAYES = False
@@ -59,16 +58,12 @@ class PosteriorBVS(posterior.Posterior):
         self.a = config['prior/var_hp_a']
         self.b = config['prior/var_hp_b']
 
-        # prior on Y
-        p = config['prior/model_inclprob']
-
         # constants
         self.A_TIMES_B_PLUS_TSS = self.a * self.b + self.tss
         self.A_TIMES_B_PLUS_SCALED_TSS = self.a * self.b + (1.0 + 1.0 / self.tau) * self.tss
         self.NEG_HALF_N_MINUS_ONE_PLUS_A = -0.5 * (self.n - 1.0 + self.a)
         self.NEG_HALF_LOG_ONE_PLUS_TAU = -0.5 * numpy.log(1.0 + self.tau)
         self.NEG_HALF_LOG_TAU = -0.5 * numpy.log(self.tau)
-        self.LOGIT_P = numpy.log(p / (1.0 - p))
 
     def univariate_bayes(self):
         """ 
@@ -136,7 +131,7 @@ class PosteriorBVS(posterior.Posterior):
                 - (2 * n) / (tau_max ** 3)
                 )
 
-        return HALF_LOG_2_PI - 0.5 * numpy.log(-d2h_max) + h_max
+        return -0.5 * numpy.log(-d2h_max) + h_max
 
     @classmethod
     def score(cls, Ystar, config, size):

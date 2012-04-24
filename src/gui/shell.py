@@ -147,7 +147,7 @@ def prepare_logger(config):
         Setup logger.
     '''
     if config['run/verbose']:
-        log_stream = utils.logger.Logger(sys.stdout, config['run/folder'] + '/log')
+        log_stream = utils.logger.Logger(stdout=sys.stdout, filename=config['run/folder'] + '/log')
         config['log_id'] = os.path.splitext(os.path.basename(log_stream.logfile.name))[0]
         sys.stdout = log_stream
     else:
@@ -163,7 +163,8 @@ def prepare_job_server(config):
         t = time.time()
         sys.stdout.write('Starting job server...')
         job_server = pp.Server(ncpus=config['run/cpus'], ppservers=())
-        sys.stdout.write('\rJob server (%i) started in %.2f sec' % (job_server.get_ncpus(), time.time() - t))
+        sys.stdout.write('\rJob server (%i) started in %.2f sec\n' % (job_server.get_ncpus(), time.time() - t))
+        sys.stdout.flush()
 
     return job_server
 
@@ -198,11 +199,12 @@ def run(myconfig):
         if myconfig['run/n'] > 1:
             print '\nStarting %i/%i' % (index + 1, myconfig['run/n'])
 
-        job_server = prepare_job_server(myconfig)
         myconfig = prepare_logger(myconfig)
+        job_server = prepare_job_server(myconfig)
         myconfig = prepare_run(myconfig)
 
         smc = algo.smc.AnnealedSMC(myconfig, target=1.0, job_server=job_server)
+        smc.initialize()
         smc.sample()
         write_result_file(smc.get_csv(), index, myconfig)
 

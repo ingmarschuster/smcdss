@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """ 
-    Posterior distribution for Bayesian variable selection.
-    @namespace binary.posterior
-    @details Reads a dataset and construct the posterior probabilities of all linear models
-             with variables regressed on the first column.
+    Variable selector for linear normal models.
+    @namespace binary.selector_ln
 """
 
 import numpy
@@ -13,10 +11,10 @@ import scipy.linalg
 import binary.base as base
 import os
 
-class Posterior(base.BaseBinary):
-    """ Posterior distribution for Bayesian variable selection."""
+class SelectorLn(base.BaseBinary):
+    """ Variable selector for linear normal models."""
 
-    name = 'posterior'
+    name = 'selector ln'
 
     def __init__(self, y, Z, config, name=name, long_name=__doc__):
         """ 
@@ -28,10 +26,10 @@ class Posterior(base.BaseBinary):
 
         self.static = config['data/static']
 
-        super(Posterior, self).__init__(d=Z.shape[1] - self.static, name=name, long_name=long_name)
+        super(SelectorLn, self).__init__(d=Z.shape[1] - self.static, name=name, long_name=long_name)
 
         # add modules
-        self.pp_modules += ('scipy.linalg', 'binary.posterior',)
+        self.pp_modules += ('scipy.linalg', 'binary.selector_ln',)
 
         # normalize
         self.Z = numpy.subtract(Z, Z.mean(axis=0))
@@ -41,6 +39,11 @@ class Posterior(base.BaseBinary):
         # store parameters
         self.n = Z.shape[0]
         self.TSS = None
+
+        # prior on marginal inclusion probability
+        p = config['prior/model_inclprob']
+        if p is None: p = 0.5
+        self.LOGIT_P = numpy.log(p / (1.0 - p))
 
         # maximum model size
         self.max_size = config['prior/model_maxsize']
@@ -54,6 +57,7 @@ class Posterior(base.BaseBinary):
         self.constraints = config['data/constraints']
         self.PENALTY = -self.n * self.tss
 
+
     def __str__(self):
 
         ZtZ = numpy.dot(self.Z.T, self.Z) + 1e-10 * numpy.eye(self.dstar)
@@ -62,9 +66,9 @@ class Posterior(base.BaseBinary):
         sigma2_null = self.tss / float(self.n - 2)
 
         # only static components
-        if self.last_static > 0:
+        if self.static > 0:
             i = numpy.zeros(self.dstar, dtype=bool)
-            i[:self.last_static] = True
+            i[:self.static] = True
             sigma2_fixed = (self.tss - numpy.dot(self.Zty[i, :], scipy.linalg.solve(ZtZ[i, :][:, i], self.Zty[i, :], sym_pos=True)))
             sigma2_fixed /= float(self.n - 2)
         else:
@@ -82,7 +86,7 @@ class Posterior(base.BaseBinary):
                     > sigma^2_fixed    : %f
                     > sigma^2_full     : %f
                     > number of obs    : %d
-                    > number of covs   : %d (%(constraints)d constraints)
+                    > number of covs   : %d
                     > number of pcs    : %d""".replace(20 * ' ', '')
 
         return template % (sigma2_null, sigma2_fixed, sigma2_full, self.n, self.dstar, self.static)

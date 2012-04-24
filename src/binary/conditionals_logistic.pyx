@@ -122,7 +122,8 @@ class LogisticCondBinary(conditionals.ConditionalsBinary):
         Z[:n, d] = numpy.ones(n, dtype=float)
 
         # Compute weighted sample.
-        weights = weights / weights.sum()
+        if weights is None: weights = numpy.ones(n) / float(n)
+        else: weights = weights / weights.sum()
         ZW = weights[:, numpy.newaxis] * Z
 
         # Compute slightly adjusted mean and real log odds.
@@ -230,7 +231,7 @@ class LogisticCondBinary(conditionals.ConditionalsBinary):
         n = Z.shape[0]
         d = Z.shape[1]
         a = init
-        if w is None: w = numpy.ones(n) / float(n)
+        if weights is None: weights = numpy.ones(n) / float(n)
         v = numpy.empty(n)
         P = numpy.empty(n)
         llh = -numpy.inf

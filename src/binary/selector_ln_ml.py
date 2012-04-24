@@ -2,19 +2,19 @@
 # -*- coding: utf-8 -*-
 
 """
-    Criteria based on maximum likelihood like AIC and BIC.
-    @namespace binary.posterior_ml
+    Criteria based on maximum likelihood for linear normal models.
+    @namespace binary.selector_ln_ml
 """
 
 import numpy
 import scipy.linalg
-import binary.posterior as posterior
+import binary.selector_ln as ln
 import binary.wrapper as wrapper
 
-class PosteriorML(posterior.Posterior):
-    """ Criteria based on maximum likelihood like AIC and BIC. """
+class SelectorLnMl(ln.SelectorLn):
+    """ Criteria based on maximum likelihood for linear normal models."""
 
-    name = 'Bayesian information criterion'
+    name = 'selector ln ml'
 
     def __init__(self, y, Z, config, name=name, long_name=__doc__):
         """ 
@@ -24,20 +24,19 @@ class PosteriorML(posterior.Posterior):
             \param config parameter dictionary
         """
 
-        super(PosteriorML, self).__init__(y, Z, config, name=name, long_name=long_name)
+        super(SelectorLnMl, self).__init__(y, Z, config, name=name, long_name=long_name)
 
         # add modules
-        self.py_wrapper = wrapper.posterior_ml()
-        self.pp_modules += ('binary.posterior_ml',)
+        self.py_wrapper = wrapper.selector_ln_ml()
+        self.pp_modules += ('binary.selector_ln_ml',)
 
         self.W = numpy.dot(self.Z.T, self.Z) + 1e-10 * numpy.eye(self.Z.shape[1])
         self.HALF_NEG_N = -0.5 * self.n
-        LOG_P = numpy.log(config['prior/model_inclprob'])
 
         if config['prior/criterion'].lower() == 'bic':
-            self.PENALTY = 0.5 * numpy.log(self.n) - LOG_P
+            self.SIZE_PENALTY = 0.5 * numpy.log(self.n) - self.LOGIT_P
         if config['prior/criterion'].lower() in ['aic', 'aicc']:
-            self.PENALTY = 1 - LOG_P
+            self.SIZE_PENALTY = 1 - self.LOGIT_P
 
         # AIC with correction
         self.AICc = False
@@ -49,7 +48,7 @@ class PosteriorML(posterior.Posterior):
         if size > 0:
             W_inv_Zty = scipy.linalg.solve(config.W[Ystar, :][:, Ystar], config.Zty[Ystar, :], sym_pos=True)
             RSS = numpy.dot(config.Zty[Ystar], W_inv_Zty)
-        L = config.HALF_NEG_N * numpy.log(config.tss - RSS) - config.PENALTY * size
+        L = config.HALF_NEG_N * numpy.log(config.tss - RSS) - config.SIZE_PENALTY * size
 
         if config.AICc: L += -size * (size + 1) / float((config.n - 1 - size))
 

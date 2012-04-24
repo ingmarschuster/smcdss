@@ -7,9 +7,11 @@ GUI config.
 """
 
 from binary.conditionals_logistic import LogisticCondBinary
-from binary.posterior_ml import PosteriorML
-from binary.posterior_bvs import PosteriorBVS
 from binary.product import ProductBinary
+from binary.selector_glm_bayes import SelectorGmlBayes
+from binary.selector_glm_ml import SelectorGmlMl
+from binary.selector_ln_bayes import SelectorLnBayes
+from binary.selector_ln_ml import SelectorLnMl
 import Tkinter as tk
 import copy
 import csv
@@ -18,7 +20,6 @@ import os
 import tkFileDialog
 import utils.configobj as configobj
 import utils.pmw.Pmw as pmw
-
 
 BUTTON = {'width':8}
 STANDARD = {'padx':5, 'pady':5}
@@ -363,6 +364,10 @@ def import_config(filename, config={}):
     if config['smc/binary_model'] == 'logistic':
         config['smc/binary_model'] = LogisticCondBinary
 
+    for key in ['prior/var_hp_a', 'prior/var_hp_b']:
+        if config[key] is None:
+            config[key] = 0.0
+
     # Update configuration dictionary.
     config['run/file'] = filename
     config['run/name'] = os.path.splitext(os.path.basename(filename))[0]
@@ -399,7 +404,7 @@ def import_data(config):
             if len(free_range) == 1:free_range += [free_range[0]]
             for i in xrange(2):
                 if free_range[i].isdigit(): free_range[i] = int(free_range[i]) - 1
-                elif free_range[i] == 'inf': free_range[i] = d - 1
+                elif free_range[i] in ['inf', '']: free_range[i] = d - 1
                 else: free_range[i] = header.index(free_range[i])
             free_index += range(free_range[0], free_range[1] + 1)
 
@@ -411,7 +416,7 @@ def import_data(config):
             if len(static_range) == 1:static_range += [static_range[0]]
             for i in xrange(2):
                 if static_range[i].isdigit(): static_range[i] = int(static_range[i]) - 1
-                elif static_range[i] == 'inf': static_range[i] = d - 1
+                elif static_range[i] in ['inf', '']: static_range[i] = d - 1
                 else: static_range[i] = header.index(static_range[i])
             static_index += range(static_range[0], static_range[1] + 1)
     config['data/static'] = len(static_index)
@@ -451,15 +456,22 @@ def import_data(config):
     if config['prior/var_dispersion'] in ['n', '', None]:
         config['prior/var_dispersion'] = config['data/max_obs']
 
-    if config['prior/criterion'].lower() == 'bayes':
-        Posterior = PosteriorBVS
-    else:
-        Posterior = PosteriorML
+    if config['prior/model'].lower() == 'linear normal':
+        if config['prior/criterion'].lower() == 'bayes':
+            f = SelectorLnBayes
+        else:
+            f = SelectorLnMl
+
+    if config['prior/model'].lower() == 'binary response':
+        if config['prior/criterion'].lower() in ['bayes', 'laplace']:
+            f = SelectorGmlBayes
+        else:
+            f = SelectorGmlMl
 
     config.update({'data/header' : header,
                    'data/free_header' : free_header,
                    'data/static_header' : static_header,
-                   'f': Posterior(y=sample[:, 0], Z=sample[:, 1:], config=config)})
+                   'f': f(y=sample[:, 0], Z=sample[:, 1:], config=config)})
     return config
 
 '''

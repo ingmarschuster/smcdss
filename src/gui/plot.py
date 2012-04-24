@@ -13,6 +13,7 @@ import numpy
 import os
 import subprocess
 import sys
+import threading
 import utils.pmw.Pmw as pmw
 
 TOP_BORDER = 10
@@ -21,19 +22,21 @@ LEFT_BORDER = 40
 RIGHT_BORDER = 10
 GRAPH_PLOTCHARS = ['x', 'o', '']
 GRAPH_COLORS = ['#990000', '#009900', '#5555EE']
-CHAR_HEIGHT = 15.0
-CHAR_WIDTH = 5.0
+CHAR_HEIGHT = 12.0
+CHAR_WIDTH = 6.0
 GREEK_RHO = u'\u03C1'
 
 class GuiPlot(tk.Toplevel, object):
 
     name = 'Plot'
 
-    def __init__(self, master, x=10, y=10, w=400, h=400, title='', labels=None, legend=None):
+    def __init__(self, master, x=10, y=10, w=400, h=400, labels=None, legend=None):
 
         tk.Toplevel.__init__(self, master, height=h, width=w)
         self.geometry('+%d+%d' % (x, y))
-        self.title(self.name + ' - ' + title)
+        self.title(self.name + ': ' + master.myconfig['run/name']
+                   + ' - ' + master.myconfig['prior/model']
+                   + ' using ' + master.myconfig['prior/criterion'])
 
         self.legend = legend
 
@@ -41,6 +44,7 @@ class GuiPlot(tk.Toplevel, object):
         self.pressed_ctrl = False
         self.pressed_alt = False
         self.wheel_event = False
+        self.lock = threading.Lock()
 
         # compute space for labels
         self.labels = labels
@@ -75,7 +79,7 @@ class GuiPlot(tk.Toplevel, object):
             self.label_height = 0
             return
         if self.plot_width == 0: return
-        box_width = self.plot_width / float(len(self.labels) * CHAR_WIDTH)
+        box_width = max(1.0, self.plot_width / float(len(self.labels) * CHAR_WIDTH))
         self.label_height = max([1.0] + [len(str(label)) / box_width for label in self.labels]) * CHAR_HEIGHT
 
     def set_pressed_ctrl(self, mode):
@@ -101,13 +105,18 @@ class GuiPlot(tk.Toplevel, object):
 
     def resize_window_handler(self, event):
         if self.pressed_ctrl and not self.wheel_event:
-            self.plot_width = event.width - LEFT_BORDER - RIGHT_BORDER
-            self.compute_label_height()
-            self.plot_height = event.height - TOP_BORDER - BOTTOM_BORDER - self.label_height
-            self.draw_axis()
-            self.redraw()
-            self.sc.resizescrollregion()
+            self.c.bind('<Configure>', None)
+            self.resize(event.width, event.height)
+            self.c.bind('<Configure>', self.resize_window_handler)
         self.wheel_event = False
+
+    def resize(self, width, height):
+        self.plot_width = width - LEFT_BORDER - RIGHT_BORDER
+        self.compute_label_height()
+        self.plot_height = height - TOP_BORDER - BOTTOM_BORDER - self.label_height
+        self.draw_axis()
+        self.redraw()
+        self.sc.resizescrollregion()
 
     def redraw(self):
         self.c.update()
@@ -163,9 +172,9 @@ class GuiBarPlot(GuiPlot):
 
     name = 'Barplot'
 
-    def __init__(self, master, x=10, y=10, w=400, h=400, title='', labels=None, bar_color='#33ffff'):
+    def __init__(self, master, x=10, y=10, w=400, h=400, labels=None, bar_color='#33ffff'):
 
-        super(GuiBarPlot, self).__init__(master, x, y, w, h, title, labels=labels)
+        super(GuiBarPlot, self).__init__(master, x, y, w, h, labels=labels)
         self.bar_color = bar_color
 
     def close_window(self):
@@ -184,15 +193,15 @@ class GuiBarPlot(GuiPlot):
                                TOP_BORDER + (1.0 - self.values[i]) * self.plot_height,
                                LEFT_BORDER + x,
                                TOP_BORDER + self.plot_height, fill=self.bar_color, tags='graph')
-
         self.c.update()
+
 
 class GuiGraph(GuiPlot):
 
     name = 'Graph'
 
-    def __init__(self, master, x=10, y=10, w=400, h=400, title='', legend=None):
-        super(GuiGraph, self).__init__(master, x, y, w, h, title, legend=legend)
+    def __init__(self, master, x=10, y=10, w=400, h=400, legend=None):
+        super(GuiGraph, self).__init__(master, x, y, w, h, legend=legend)
         self.lines = None
 
     def close_window(self):
@@ -206,6 +215,7 @@ class GuiGraph(GuiPlot):
         # add lines
         for j, graph in enumerate(self.lines):
             n = sum(graph)
+            if n == 0: break
             box_width = self.plot_width / float(n)
             for k in numpy.cumsum(numpy.array(graph)):
                 self.c.create_line(LEFT_BORDER + k * box_width,
@@ -218,6 +228,7 @@ class GuiGraph(GuiPlot):
         # add graphs
         for i, graph in enumerate(self.values):
             n = len(graph)
+            if n == 0: break
             box_width = self.plot_width / float(n)
             graph = [1.0] + [x for x in graph]
             for j, x in enumerate(numpy.linspace(box_width, self.plot_width, n)):
@@ -231,7 +242,6 @@ class GuiGraph(GuiPlot):
                                    fill=GRAPH_COLORS[i], tags='graph',
                                    text=GRAPH_PLOTCHARS[i], anchor=tk.CENTER)
         self.c.update()
-
 
 def plot_R(myconfig):
     """ 
@@ -271,8 +281,8 @@ def plot_R(myconfig):
     X = numpy.array(X)
 
     if len(X) == 0:
-        print 'Empty file %s.' % os.path.join(myconfig['run/folder'], 'result.csv')
-        sys.exit(0)
+        print '\rEmpty file %s.' % os.path.join(myconfig['run/folder'], 'result.csv')
+        return False
 
     # Read effects.
     data_filename = os.path.join(myconfig['path/root'], myconfig['path/data'], myconfig['data/csv_file'])
@@ -339,13 +349,14 @@ def plot_R(myconfig):
     name_length = 0
     for i, x in enumerate(myconfig['layout/names']):
         if 'POW2' in x: myconfig['layout/names'][i] = x[:x.index('.')] + '.x.' + x[:x.index('.')]
-        if name_length < len(str(x)):name_length = len(str(x))
+        if name_length < len(str(x)):
+            name_length = len(str(x))
     myconfig['layout/names'] = ', '.join(["'" + str(x).upper().replace('.X.', '.x.')
                                         + "'" for x in myconfig['layout/names']])
 
     # Auto-adjust margins
     if myconfig['layout/inner_margin'] is None:
-        myconfig['layout/inner_margin'] = [name_length * 0.5, 2, 0.5, 0]
+        myconfig['layout/inner_margin'] = [name_length * 0.4, 2, 0.5, 0]
     if myconfig['layout/outer_margin'] is None:
         myconfig['layout/outer_margin'] = [0, 0, max(0.5, 2 * myconfig['layout/title_size']), 0]
     for key in ['layout/outer_margin', 'layout/inner_margin']:

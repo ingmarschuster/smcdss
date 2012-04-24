@@ -10,12 +10,14 @@
 from algo.smc import AnnealedSMC
 import Tkinter as tk
 import config
+import numpy
 import os
 import plot
+import shell
 import shutil
 import subprocess
 import sys
-import shell
+import threading
 import tkColorChooser as tkcc
 import tkMessageBox
 import utils.logger
@@ -24,7 +26,8 @@ import utils.pmw.meter as meter
 
 BUTTON = {'width':8}
 STANDARD = {'padx':5, 'pady':5}
-
+THREAD = True
+VERBOSE = False
 HEIGTH = 200
 WIDTH = 600
 PADDING = 100
@@ -41,7 +44,9 @@ class App(tk.Tk):
         self.job_server = None
         self.mygraph = None
         self.mybarplot = None
+        self.myplots = list()
         self.config_window = None
+        self.smc_thread = None
         self.is_running = False
 
         self.default_filename = config.get_default_filename()
@@ -55,9 +60,10 @@ class App(tk.Tk):
         self.rowconfigure(1, weight=1)
 
         self.bar_color = '#33ffff'
-
-        log_stream = utils.logger.Logger(stdout=sys.stdout, textfield=self)
-        sys.stdout = log_stream
+        if VERBOSE:
+            sys.stdout = utils.logger.Logger(sys.stdout, textfield=self)
+        else:
+            sys.stdout = utils.logger.Logger(textfield=self)
 
         # dashboard group
         #
@@ -90,6 +96,7 @@ class App(tk.Tk):
                               ('Config', self.open_config_window)]:
             buttons[text] = tk.Button(frame, text=text, command=command, **BUTTON)
             buttons[text].pack(side='right', **STANDARD)
+        self.stop_button = buttons['Stop']
 
         frame = tk.Frame(group)
         frame.grid(row=3, column=0, columnspan=3, sticky='ew', **STANDARD)
@@ -124,7 +131,7 @@ class App(tk.Tk):
             grid(row=1, column=0, sticky='ew', **STANDARD)
         tk.Label(group, text='color'). \
             grid(row=1, column=1, sticky='w', **STANDARD)
-        self.bar_color_button = tk.Button(group, command=self.set_bar_color,
+        self.bar_color_button = tk.Button(group, command=self.set_bar_color, width=4,
                                           activebackground=self.bar_color, background=self.bar_color)
         self.bar_color_button. \
             grid(row=1, column=2, sticky='ew', **STANDARD)
@@ -142,6 +149,12 @@ class App(tk.Tk):
         self.refresh_run_file()
 
         self.target.setvalue(1.0)
+
+        self.protocol("WM_DELETE_WINDOW", self.close_window)
+
+    def close_window(self):
+        self.reset(kill_plots=True)
+        self.destroy()
 
     def on_arrow_keys(self, move):
         '''
@@ -191,6 +204,10 @@ class App(tk.Tk):
         self.progress_news.update()
         self.progress_news.config(state=tk.DISABLED)
 
+    def write_result_file(self):
+        if self.write_file.get():
+            shell.write_result_file(self.smc.get_csv(), 0, self.myconfig)
+
     def delete_run_file(self):
         '''
             Delete selected run file.
@@ -221,7 +238,6 @@ class App(tk.Tk):
             self.config_window.filename = self.myconfig_filename
             self.config_window.reset()
 
-        self.myconfig['run/verbose'] = True
         self.set_bar_color(self.myconfig['layout/color'])
 
     def refresh_run_file(self):
@@ -256,8 +272,11 @@ class App(tk.Tk):
         '''
             Stop running algorithm.
         '''
-        self.is_running = False
-        self.box_run_file._listbox.config(state='normal')
+        if self.is_running:
+            self.write('\rstopping...')
+            self.is_running = False
+            self.stop_button.config(disabledforeground='#dd0000', relief='sunken', state='disabled')
+            self.box_run_file._listbox.config(state='normal')
 
     def reset(self, kill_plots=True):
         '''
@@ -270,11 +289,14 @@ class App(tk.Tk):
         self.smc = None
         self.job_server = None
         self.write('\r')
-        if not self.mybarplot is None:
-            if kill_plots: self.mybarplot.destroy()
+
+        if kill_plots:
+            for plot in self.myplots:
+                try:
+                    plot.destroy()
+                except:
+                    pass
             self.mybarplot = None
-        if not self.mygraph is None:
-            if kill_plots: self.mygraph.destroy()
             self.mygraph = None
 
     def start_external(self):
@@ -300,6 +322,7 @@ class App(tk.Tk):
             Start algorithm.
         '''
         self.myconfig = config.import_data(self.myconfig)
+        self.myconfig['run/verbose'] = True
         self.is_running = True
         self.box_run_file._listbox.config(state='disabled')
 
@@ -315,18 +338,29 @@ class App(tk.Tk):
                 shell.prepare_run(self.myconfig)
             target = float(self.target.getvalue())
             self.smc = AnnealedSMC(param=self.myconfig, target=target, job_server=self.job_server, gui=self)
-            self.prepare_plots()
+            self.prepare_plots(values=0.5 * numpy.ones(self.smc.ps.d))
+
+            # init SM
+            if THREAD:
+                lock = threading.Lock()
+                t = threading.Thread(target=self.smc.initialize, args=(lock,))
+                t.daemon = True
+                t.start()
+            else:
+                self.smc.initialize()
         else:
+            lock = threading.Lock()
             self.smc.target = float(self.target.getvalue())
 
         # run SMC
-        self.smc.sample()
-        if self.smc.ps.rho == float(self.target.getvalue()):
-            self.stop()
-            if self.write_file.get():
-                shell.write_result_file(self.smc.get_csv(), 0, self.myconfig)
+        if THREAD:
+            t = threading.Thread(target=self.smc.sample, args=(lock,))
+            t.daemon = True
+            t.start()
+        else:
+            self.smc.sample()
 
-    def prepare_plots(self):
+    def prepare_plots(self, values=None):
         '''
             Open plots.
         '''
@@ -335,7 +369,6 @@ class App(tk.Tk):
                               x=t.winfo_x() + t.winfo_width() + 10,
                               y=50,
                               w=WIDTH, h=HEIGTH,
-                              title=self.myconfig['run/name'],
                               legend=['accceptance rate', 'particle diversity', 'resampling'])
         t = self.winfo_toplevel()
 
@@ -343,11 +376,12 @@ class App(tk.Tk):
                               x=t.winfo_x() + t.winfo_width() + 10,
                               y=HEIGTH + PADDING,
                               w=WIDTH, h=2 * HEIGTH,
-                              title=self.myconfig['run/name'],
                               bar_color=self.bar_color,
                               labels=self.myconfig['data/free_header'])
-        self.mybarplot.values = self.smc.ps.get_mean()
+        if values is None: values = self.smc.ps.get_mean()
+        self.mybarplot.values = values
         self.mybarplot.redraw()
+        self.myplots += [self.mygraph, self.mybarplot]
 
 
 class FileCopyDialog(tk.Toplevel):

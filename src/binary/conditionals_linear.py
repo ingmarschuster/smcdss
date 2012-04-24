@@ -3,12 +3,11 @@
 
 """ Binary parametric family with linear conditionals. \namespace binary.conditionals_linear """
 
-import numpy
-
-import scipy.linalg
-import binary.conditionals as conditionals
 import binary.base as base
+import binary.conditionals as conditionals
 import binary.wrapper as wrapper
+import numpy
+import scipy.linalg
 
 class LinearCondBinary(conditionals.ConditionalsBinary):
     """ Binary parametric family with linear conditionals. """
@@ -65,14 +64,15 @@ class LinearCondBinary(conditionals.ConditionalsBinary):
         return cls(A)
 
     @classmethod
-    def from_data(cls, sample):
+    def from_data(cls, X, weights=None):
         """
             Constructs a linear model from data. Warning: This method might
             produce parameters that are infeasible and yield an improper
             distribution.
             \param d dimension
         """
-        return cls.from_moments(sample.mean, sample.cor)
+        mean, corr = base.sample2corr(X, weights)
+        return cls.from_moments(mean, corr)
 
     @classmethod
     def link(cls, x):

@@ -1,5 +1,5 @@
 
-import pmwcolor
+import utils.pmw.PmwColor as pmwcolor
 Color = pmwcolor
 del pmwcolor
 

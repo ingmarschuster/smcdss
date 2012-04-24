@@ -98,13 +98,14 @@ class ProductBinary(product_exchangeable.ExchangeableBinary):
         return cls(p=0.5 * numpy.ones(d))
 
     @classmethod
-    def from_data(cls, sample):
+    def from_data(cls, X, weights):
         """ 
             Construct a product model from data.
             \param cls class
             \param sample a sample of binary data
         """
-        return cls(sample.mean)
+        mean = base.sample2mean(X, weights)
+        return cls.from_moments(mean)
 
     def renew_from_data(self, X, weights, lag=0.0, verbose=False):
         """ 

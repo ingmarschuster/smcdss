@@ -86,6 +86,10 @@ class ParticleSystem(object):
         """
             Initialize particle system.
         """
+        if self.verbose:
+            sys.stdout.write('initialize particle system...')
+            t = time.time()
+
         # sample particles
         if 'prior/model_maxsize' in param.keys() and param['prior/model_maxsize'] is not None:
             u = LimitedBinary(d=self.d, q=param['prior/model_maxsize'])
@@ -103,14 +107,22 @@ class ParticleSystem(object):
         # compute first step
         self.reweight(target)
 
+        if self.verbose:
+            sys.stdout.write('\rinitialized in %.2f sec\n' % (time.time() - t))
+
     def enumerate_state_space(self, target):
         """
             Enumerate state space.
         """
+        if self.verbose:
+            t = time.time()
+            sys.stdout.write('enumerate state space...')
         self.X = state_space(self.d)
         self.log_f = self.f.lpmf(self.X, self.job_server)
         self.log_weights = self.log_f * target
         self.rho = target
+        if self.verbose:
+            sys.stdout.write('\rstate space enumerated in %.2f sec\n' % (time.time() - t))
 
     def __str__(self):
         """
@@ -244,7 +256,7 @@ class ParticleSystem(object):
                                   eps=self.eps,
                                   delta=self.delta)
         if self.verbose:
-            print '\rfitted proposal in %.2f sec' % (time.time() - t)
+            sys.stdout.write('\rfitted proposal in %.2f sec\n' % (time.time() - t))
 
     def resample(self):
         """
@@ -264,7 +276,7 @@ class ParticleSystem(object):
         self.log_f = self.log_f[indices]
         self.log_weights = numpy.zeros(self.n)
 
-        # update log proposal values
+        # update log proposal values after fitting of proposal
         if not self.job_server is None and self.job_server.get_ncpus() > 1:
             self.log_prop = self.prop.lpmf(self.X, self.job_server)
         else:
@@ -277,7 +289,7 @@ class ParticleSystem(object):
 
         if self.verbose:
             pD = self.get_particle_diversity()
-            print '\rresampled in %.2f sec, pD: %.3f' % (time.time() - t, pD)
+            sys.stdout.write('\rresampled in %.2f sec, pD: %.3f\n' % (time.time() - t, pD))
 
     def move(self):
         """ 
@@ -309,14 +321,16 @@ class ParticleSystem(object):
             sys.stdout.write('sampling...')
             t = time.time()
         Y, log_prop_Y = self.prop.rvslpmf(self.n, self.job_server)
-        if self.verbose: print '\rsampled in %.2f sec' % (time.time() - t)
+        if self.verbose:
+            sys.stdout.write('\rsampled in %.2f sec\n' % (time.time() - t))
 
         # evaluate
         if self.verbose:
             sys.stdout.write('evaluating...')
             t = time.time()
         log_f_Y = self.f.lpmf(Y, self.job_server)
-        if self.verbose: print '\revaluated in %.2f sec' % (time.time() - t)
+        if self.verbose:
+            sys.stdout.write('\revaluated in %.2f sec\n' % (time.time() - t))
 
         # move
         if self.verbose:
@@ -333,5 +347,6 @@ class ParticleSystem(object):
         for i in xrange(self.n):
             if accept[i]:
                 self.id[i] = self.get_id(Y[i])
-        if self.verbose: print '\rmoved in %.2f sec' % (time.time() - t)
+        if self.verbose:
+            sys.stdout.write('\rmoved in %.2f sec\n' % (time.time() - t))
         return accept.sum()

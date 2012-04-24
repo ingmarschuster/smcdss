@@ -120,14 +120,18 @@ class copula_student(wrapper):
     def rvslpmf(self, V, param):
         return self.rvs(V, param), None
 
-class posterior_ml(wrapper):
+class selector_ln_bayes(wrapper):
     def lpmf(self, Y, param):
-        return binary.posterior_ml.PosteriorML._lpmf(Y, param)
+        return binary.selector_ln_bayes.SelectorLnBayes._lpmf(Y, param)
 
-class posterior_bvs(wrapper):
+class selector_ln_ml(wrapper):
     def lpmf(self, Y, param):
-        return binary.posterior_bvs.PosteriorBVS._lpmf(Y, param)
-    
-class posterior_link(wrapper):
+        return binary.selector_ln_ml.SelectorLnMl._lpmf(Y, param)
+
+class selector_glm_ml(wrapper):
     def lpmf(self, Y, param):
-        return binary.posterior_link.PosteriorLink._lpmf(Y, param)
+        return binary.selector_glm_ml.SelectorGmlMl._lpmf(numpy.array(Y, dtype=numpy.int8), param)
+
+class selector_glm_bayes(wrapper):
+    def lpmf(self, Y, param):
+        return binary.selector_glm_bayes.SelectorGmlBayes._lpmf(numpy.array(Y, dtype=numpy.int8), param)

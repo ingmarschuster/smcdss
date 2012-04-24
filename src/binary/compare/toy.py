@@ -10,7 +10,6 @@ from __init__ import *
 import binary.base as base
 import numpy
 import os
-import utils.data
 
 generator_colors = {
 'product family':'skyblue',
@@ -28,31 +27,33 @@ StudentCopulaBinary,
 GaussianCopulaBinary,
 LogisticCondBinary,
 LinearCondBinary,
-#ArctanCondBinary,
 QuLinearBinary]
 
 def main():
-    plot_toy_ubqo()
+    plot_toy_bvs()
 
 def plot_toy_bvs():
     """
         Plots comparison based on Bayesian Variable Selection problem.
     """
     size = 100
-    Y, X = numpy.empty(size), numpy.empty((size, 4))
+    y, X = numpy.empty(size), numpy.empty((size, 4))
     for i in xrange(100):
         W = [numpy.random.normal() + mean for mean in [-10.0, +10.0]]
-        Z = [x + 5 * numpy.random.normal() for x in 2 * W]
-        Y[i] = W[0] + W[1]
+        Z = [x + 2.5 * numpy.random.normal() for x in 2 * W]
+        y[i] = W[0] + W[1]
         X[i] = numpy.array(Z)
-    param = {
-             'PRIOR_CRITERION':'bayes',
-             'PRIOR_BETA_PARAM_U2':10.0,
-             'PRIOR_SIGMA_PARAM_W':4.0,
-             'PRIOR_SIGMA_PARAM_LAMBDA':1.0,
-             'PRIOR_GAMMA_PARAM_P':0.5,
+    config = {'data/static': 0,
+             'prior/criterion':'bayes',
+             'prior/var_dispersion':size,
+             'prior/cov_matrix_hp':'independent',
+             'prior/var_hp_a':0.0,
+             'prior/var_hp_b':0.0,
+             'prior/model_inclprob':0.5,
+             'prior/model_maxsize':None,
+             'data/constraints':[]
              }
-    f = Posterior(param=param, X=X, Y=Y)
+    f = SelectorLnBayes(y=y, Z=X, config=config)
     f2R(f=f, path='~/Documents/R')
 
 def plot_toy_ubqo():
@@ -95,16 +96,17 @@ def f2R(f, path, m=5e4, n=5e4):
     hist[0] /= hist[0].sum()
 
     # create pseudo sample
-    sample=utils.data.data()
+    X = list()
     for dec in range(2 ** d):
         for k in xrange(int(m * hist[0, dec])):
-            sample.append(base.dec2bin(dec, d))
+            X.append(base.dec2bin(dec, d))
+    X = numpy.array(X)
 
     # init approximations
     generators = list()
     for generator in generator_classes:
-        generators.append(generator.from_data(sample))
-        
+        generators.append(generator.from_data(X=X, weights=None))
+
     generators.insert(0, f)
     for k in xrange(n):
         for index in range(1, nfunc):
