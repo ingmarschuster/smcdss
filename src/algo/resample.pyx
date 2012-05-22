@@ -50,7 +50,7 @@ def resample_systematic_python(w, u):
         u = u + 1.
     return index
 
-def resample_reductive(w, u, n, f_select):
+def resample_reductive(w, u, n, f_select=select_iterative):
     """ 
         Computes the particle indices and weights by reductive resampling.
         \param w weights
@@ -141,7 +141,8 @@ def select_iterative(w, n):
             l = q + 1
         else:
             u = q
-        if u == l: return w[l]
+        if u == l:
+            return w[l]
 
 def select_linear(w, n):
     """ Selects kappa via backward linear search.
@@ -152,7 +153,8 @@ def select_linear(w, n):
     w.sort()
     m = w.shape[0]
     for i in xrange(m - 1, -1, -1):
-        if numpy.minimum(w / w[i], numpy.ones(m)).sum() > n: return w[min(i + 1, m - 1)]
+        if numpy.minimum(w / w[i], numpy.ones(m)).sum() > n:
+            return w[min(i + 1, m - 1)]
 
 
 #

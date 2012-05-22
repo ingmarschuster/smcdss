@@ -63,6 +63,9 @@ class Meter(tk.Frame):
     def set_color(self, color):
         self._canv.itemconfig(self._rect, fill=color)
 
+    def get_color(self):
+        self._canv.itemcget(self._rect, 'fill')
+
     def set_value(self, value=0.0, text=None):
         #make the value failsafe:
         if value < 0.0:

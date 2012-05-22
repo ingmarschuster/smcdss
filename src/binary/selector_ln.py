@@ -30,6 +30,7 @@ class SelectorLn(base.BaseBinary):
 
         # add modules
         self.pp_modules += ('scipy.linalg', 'binary.selector_ln',)
+        self.criterion = None
 
         # normalize
         self.Z = numpy.subtract(Z, Z.mean(axis=0))
@@ -142,23 +143,3 @@ class SelectorLn(base.BaseBinary):
                 L[k] = cls.score(Ystar, config, size)
 
         return L
-
-def main():
-
-    path = os.path.expanduser('~/Documents/Data/bvs/test')
-    n = 200
-    p = 10
-    d = 100
-
-    beta = numpy.random.standard_normal(size=p)
-    X = numpy.random.standard_normal(size=(n, d))
-    y = numpy.dot(X[:, :p], beta)
-
-    f = open(os.path.join(path, 'test.csv'), 'w')
-    f.write(','.join(['y'] + ['x%d' % (i + 1) for i in xrange(d)]) + '\n')
-    for k in xrange(n):
-        f.write(','.join(['%.6f' % y[k]] + ['%.6f' % x for x in X[k]]) + '\n')
-    f.close()
-
-if __name__ == "__main__":
-    main()

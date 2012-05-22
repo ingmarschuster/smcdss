@@ -7,17 +7,26 @@
 """
 
 cimport numpy
+
 import binary.base as base
 import binary.wrapper as wrapper
 import numpy
 import os
 import scipy.linalg
-import scipy.special
+from scipy.special._cephes import ndtri
 import sys
 
 cdef extern from "math.h":
     float exp(float)
     float log(float)
+    float erf(float)
+
+cdef float SQRT_2_PI = 2.506628274631000241612355239340104162693023681640625
+cdef float SQRT_2 = 1.4142135623730951454746218587388284504413604736328125
+cdef int MAXIMUM_ITERATIONS = 20
+
+cdef int LOGISTIC = 1
+cdef int PROBIT = 2
 
 class SelectorGlm(base.BaseBinary):
     """ Variable selector for generalized linear models."""
@@ -35,20 +44,28 @@ class SelectorGlm(base.BaseBinary):
         super(SelectorGlm, self).__init__(d=Z.shape[1], name=name, long_name=long_name)
 
         # add modules
-        self.pp_modules += ('binary.selector_glm',)
+        self.pp_modules += ('binary.selector_glm', 'scipy.linalg',)
 
         # add constant column
         self.Z = numpy.column_stack((numpy.ones(Z.shape[0]), Z))
         self.n = Z.shape[0]
         self.y = y
 
+        if config['prior/model'].lower() == 'logistic':
+            self.link = LOGISTIC
+        if config['prior/model'].lower() == 'probit':
+            self.link = PROBIT
+
         # prior on marginal inclusion probability
         p = config['prior/model_inclprob']
-        if p is None: self.LOGIT_P = 0.0
-        else: self.LOGIT_P = numpy.log(p / (1.0 - p))
+        self.LOGIT_P = log(p / (1.0 - p))
 
         # empty model
-        self.ILINK = ilink(self.y.sum() / float(self.n))
+        self.tau = -1
+        if self.link == LOGISTIC:
+            self.const = ilogistic(self.y.sum() / float(self.n))
+        if self.link == PROBIT:
+            self.const = iprobit(self.y.sum() / float(self.n))
 
     @classmethod
     def _lpmf(cls, numpy.ndarray[dtype=numpy.int8_t, ndim=2] Y, config):
@@ -72,65 +89,32 @@ class SelectorGlm(base.BaseBinary):
         cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 2] Z = config.Z
 
         # loop over all models
-        for k in xrange(Y.shape[0]):
+        for k from 0 <= k < Y.shape[0]:
 
             # determine indices
             d, j = 1 + Y[k].sum(), 1
             index = numpy.zeros(d, dtype=numpy.int16)
-            for i in xrange(config.d):
+            for i from 0 <= i < config.d:
                 if Y[k, i]:
                     index[j] = i + 1
                     j += 1
-
-            L[k] = d * config.LOGIT_P
-            L[k] += config.score(y, Z, index)
+            L[k] = config.score(y, Z, index) + d * config.LOGIT_P
 
         return L
 
-    def bvs(self, numpy.ndarray[dtype=numpy.float64_t, ndim=1] y,
-                        numpy.ndarray[dtype=numpy.float64_t, ndim=2] Z,
-                        numpy.ndarray[dtype=numpy.int16_t, ndim=1] index):
-
-        cdef Py_ssize_t d = index.shape[0]
-        cdef Py_ssize_t i, j
-        cdef float log_proposal, log_target
-
-        cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 1] w = numpy.empty(self.n_samples)
-        cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 2] F_mle
-
-        beta_mle, F_mle = self.compute_mle(y, Z, index)
-        C = scipy.linalg.cholesky(scipy.linalg.inv(F_mle), lower=True)
-
-        for k in xrange(self.n_samples):
-
-            # compute Gaussian proposal
-            x = numpy.dot(C, numpy.random.normal(size=d))
-            log_proposal = 0.0
-            for i in xrange(d):
-                log_proposal -= 0.5 * F_mle[i, i] * x[i] * x[i]
-                for j in xrange(i):
-                    log_proposal -= F_mle[i, j] * x[i] * x[j]
-
-            # compute log-likelihood
-            log_target = self.log_llh(y, Z, beta=beta_mle + x, index=index)
-
-            # store log-weight
-            w[k] = log_target - log_proposal
-
-        # compute average
-        m = w.max()
-        return log(numpy.exp(w - m).sum()) + m
-
-
     def compute_mle(self, numpy.ndarray[dtype=numpy.float64_t, ndim=1] y,
-                            numpy.ndarray[dtype=numpy.float64_t, ndim=2] Z,
-                            numpy.ndarray[dtype=numpy.int16_t, ndim=1] index):
+                          numpy.ndarray[dtype=numpy.float64_t, ndim=2] Z,
+                          numpy.ndarray[dtype=numpy.int16_t, ndim=1] index):
         """
             Compute maximum likelihood estimator
             \return maximum log-likelihood, maximum likelihood estimator, Fisher matrix
         """
 
-        cdef Py_ssize_t d = index.shape[0]
+        cdef Py_ssize_t d
+        cdef Py_ssize_t k
+        cdef float tau
+
+        d = index.shape[0]
 
         # coefficients
         cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 1] beta = numpy.zeros(d)
@@ -140,10 +124,10 @@ class SelectorGlm(base.BaseBinary):
         cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 2] F = numpy.empty((d, d))
 
         # initialize beta
-        beta[0] = self.ILINK
+        beta[0] = self.const
 
         # Newton-Raphson iterations
-        while True:
+        for k from 0 <= k < MAXIMUM_ITERATIONS:
             beta_before = beta.copy()
 
             # score and Fisher matrix
@@ -151,16 +135,16 @@ class SelectorGlm(base.BaseBinary):
 
             # Newton-Raphson update
             beta += scipy.linalg.solve(F, s, sym_pos=True)
+
             if numpy.allclose(beta_before, beta, rtol=0, atol=self.PRECISION):
                 break
 
         return beta, F
 
-
     def log_llh(self, numpy.ndarray[dtype=numpy.float64_t, ndim=1] y,
-                            numpy.ndarray[dtype=numpy.float64_t, ndim=2] Z,
-                            numpy.ndarray[dtype=numpy.float64_t, ndim=1] beta,
-                            numpy.ndarray[dtype=numpy.int16_t, ndim=1] index):
+                    numpy.ndarray[dtype=numpy.float64_t, ndim=2] Z,
+                    numpy.ndarray[dtype=numpy.float64_t, ndim=1] beta,
+                    numpy.ndarray[dtype=numpy.int16_t, ndim=1] index):
         """
             Compute the log-likelihood.
             \param y observations
@@ -169,116 +153,171 @@ class SelectorGlm(base.BaseBinary):
             \param index model
         """
         cdef float zbeta, mu, v, s
-        cdef Py_ssize_t i, k
-        cdef Py_ssize_t d = index.shape[0]
+        cdef Py_ssize_t i, k, d, n
+        cdef int link
 
+        d = index.shape[0]
+        n = Z.shape[0]
+        link = self.link
         v = 0.0
-        for k in xrange(self.n):
 
+        for k from 0 <= k < n:
             zbeta = 0.0
-            for i in xrange(d):
+            for i from 0 <= i < d:
                 zbeta += Z[k, index[i]] * beta[i]
-            mu = c_link(zbeta)
+
+            if link == LOGISTIC: mu = logistic(zbeta)
+            if link == PROBIT: mu = probit(zbeta)
 
             if y[k]:
                 v += log(mu)
             else:
-                v += log(1 - mu)
+                v += log(1.0 - mu)
 
-        # prior
-        if self.prior and d > 1:
-            s = (d + self.a - 1) / 2.0
-            v += scipy.special.gammaln(s)
-            v -= s * log(numpy.pi * (2 * self.b + numpy.dot(beta, beta)))
+        # normal prior
+        if self.tau > -1:
+            v -= self.HALF_LOG_2_PI_TAU * d
+            v -= 0.5 * c_inner(beta) / self.tau
 
         return v
 
     def d_log_llh(self, numpy.ndarray[dtype=numpy.float64_t, ndim=1] y,
-                                        numpy.ndarray[dtype=numpy.float64_t, ndim=2] Z,
-                                        numpy.ndarray[dtype=numpy.float64_t, ndim=1] beta,
-                                        numpy.ndarray[dtype=numpy.int16_t, ndim=1] index):
-        """
-            Compute the derivatives of the log-likelihood function.
-            \param y observations
-            \param Z predictors
-            \param beta coefficients
-            \param index model
-            \return score vector, Fisher matrix
-        """
+                  numpy.ndarray[dtype=numpy.float64_t, ndim=2] Z,
+                  numpy.ndarray[dtype=numpy.float64_t, ndim=1] beta,
+                  numpy.ndarray[dtype=numpy.int16_t, ndim=1] index):
+            """
+                Compute the derivatives of the log-likelihood function.
+                \param y observations
+                \param Z predictors
+                \param beta coefficients
+                \param index model
+                \param tau dispersion parameter
+                \return score vector, Fisher matrix
+            """
 
-        cdef Py_ssize_t i, j, k
-        cdef Py_ssize_t d = index.shape[0]
-        cdef float zbeta, mu, v1, v2
+            cdef Py_ssize_t i, j, k, n, d
+            cdef int link
+            cdef float zbeta, mu, c1der_link, c2der_link, s1, s2, s_add, f_add
 
-        # score vector
-        cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 1] s = numpy.zeros(d)
-        # Fisher matrix
-        cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 2] F = numpy.zeros((d, d))
+            n = Z.shape[0]
+            d = index.shape[0]
+            link = self.link
 
-        for k in xrange(self.n):
+            # score vector
+            cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 1] s = numpy.zeros(d)
+            # Fisher matrix
+            cdef numpy.ndarray[dtype = numpy.float64_t, ndim = 2] F = numpy.zeros((d, d))
 
-            # compute linear combination
-            zbeta = 0.0
-            for i in xrange(d):
-                zbeta += Z[k, index[i]] * beta[i]
+            for k from 0 <= k < n:
 
-            # compute link
-            mu = c_link(zbeta)
+                # compute linear combination
+                zbeta = 0.0
+                for i from 0 <= i < d:
+                    zbeta += Z[k, index[i]] * beta[i]
 
-            # compute summands
-            if self.y[k]:
-                v1 = c_1der_link(zbeta) / mu
-                v2 = c_2der_link(zbeta) / mu - v1 * v1
-            else:
-                v1 = -c_1der_link(zbeta) / (1 - mu)
-                v2 = -c_2der_link(zbeta) / (1.0 - mu) - v1 * v1
+                # compute summands
+                if link == LOGISTIC:
+                    mu = logistic(zbeta)
+                    c1der_link = logistic_1der(zbeta)
+                    c2der_link = logistic_2der(zbeta)
+                if link == PROBIT:
+                    mu = probit(zbeta)
+                    c1der_link = probit_1der(zbeta)
+                    c2der_link = probit_2der(zbeta)
+                s1 = c1der_link / mu
+                s2 = c1der_link / (1.0 - mu)
 
-            # add summands
-            for i in xrange(d):
-                s[i] += Z[k, index[i]] * v1
-                F[i, i] -= Z[k, index[i]] * Z[k, index[i]] * v2
-                for j in xrange(i):
-                    F[i, j] -= Z[k, index[i]] * Z[k, index[j]] * v2
+                if y[k]:
+                    s_add = s1
+                    f_add = c2der_link / mu - s1 * s1
+                else:
+                    s_add = -s2
+                    f_add = -c2der_link / (1.0 - mu) - s2 * s2
 
-        # Use symmetry of Fisher matrix
-        for i in xrange(d):
-            for j in xrange(i):
-                F[j, i] = F[i, j]
+                '''
+                s_add = y[k] * s1 - (1.0 - y[k]) * s2
+                f_add = (
+                        y[k] * (c2der_link / mu - s1 * s1) -
+                        (1.0 - y[k]) * (c2der_link / (1.0 - mu) + s2 * s2)
+                        )
+                '''
 
-        # prior
-        if self.prior and d + self.a > 1:
-            beta2 = numpy.dot(beta, beta) + 2 * self.b
-            p1 = (d + self.a - 1) / beta2
-            p2 = 2 * p1 / beta2
-            for i in xrange(d):
-                # adjust score
-                s[i] -= p1 * beta[i]
+                # add summands
+                for i from 0 <= i < d:
+                    s[i] += Z[k, index[i]] * s_add
+                    F[i, i] -= Z[k, index[i]] * Z[k, index[i]] * f_add
+                    for j from 0 <= j < i:
+                        F[i, j] -= Z[k, index[i]] * Z[k, index[j]] * f_add
 
-                # adjust Fisher matrix
-                F[i, i] += p1 * beta[i]
-                for j in xrange(d):
-                    F[i, j] -= p2 * beta[i] * beta[j]
+            # use symmetry of Fisher matrix
+            for i from 0 <= i < d:
+                for j from 0 <= j < i:
+                    F[j, i] = F[i, j]
 
-        return s, F
+            # normal prior
+            if self.tau > -1:
+                for i from 0 <= i < d:
+                    # adjust score
+                    s[i] -= beta[i] / self.tau
+                    # adjust Fisher matrix
+                    F[i, i] += 1.0 / self.tau
+            
+            return s, F
 
-def link(x):
-    """ Link. """
-    return c_link(x)
+def w_probit(x):
+    return probit(x)
+def w_logistic(x):
+    return logistic(x)
 
-def ilink(p):
+cdef float iprobit(float p):
+    """ Inverse """
+    return ndtri(p)
+
+cdef float probit(float x):
+    """ Link """
+    cdef float mu
+    mu = 0.5 + 0.5 * erf(x / SQRT_2)
+    if mu < 0.0000001: mu = 0.0000001
+    if mu > 0.9999999: mu = 0.9999999
+    return mu
+
+cdef float probit_1der(float x):
+    """ 1 Derivative. """
+    return exp(-0.5 * x * x) / SQRT_2_PI
+
+cdef float probit_2der(float x):
+    """ 2 Derivative. """
+    return -x * exp(-0.5 * x * x) / SQRT_2_PI
+
+
+cdef float ilogistic(float p):
     """ Inverse """
     return log(p / (1.0 - p))
 
-cdef float c_link(float x):
+cdef float logistic(float x):
     """ Link """
-    return 1.0 / (1.0 + exp(-x))
+    cdef float mu
+    mu = 1.0 / (1.0 + exp(-x))
+    if mu < 0.0000001: mu = 0.0000001
+    if mu > 0.9999999: mu = 0.9999999
+    return mu
 
-cdef float c_1der_link(float x):
+cdef float logistic_1der(float x):
     """ 1 Derivative. """
-    v = c_link(x)
+    cdef float v
+    v = logistic(x)
     return v * (1 - v)
 
-cdef float c_2der_link(float x):
+cdef float logistic_2der(float x):
     """ 2 Derivative. """
-    v = c_link(x)
+    cdef float v
+    v = logistic(x)
     return v * (1 - v) * (1 - 2 * v)
+
+cdef float c_inner(numpy.ndarray[dtype=numpy.float64_t, ndim=1] beta):
+    """ Link """
+    cdef float v
+    cdef long i
+    for i from 0 <= i < beta.shape[0]:
+        v += beta[i] * beta[i]
+    return v

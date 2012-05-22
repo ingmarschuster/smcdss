@@ -21,6 +21,7 @@ OPTIONS:
 """
 
 import algo.smc
+import algo.mcmc
 import config
 import getopt
 import os
@@ -136,8 +137,8 @@ def prepare_run(config):
     config['result_file'] = config['run/folder'] + '/' + 'result.csv'
     if not os.path.isfile(config['result_file']):
         f = open(config['result_file'], 'w')
-        f.write(','.join(config['data/static_header'] + config['data/free_header']
-                         + ['LOG_FILE', 'LOG_NO'] + [config['run/algo']]) + '\n')
+        f.write(','.join(config['data/free_header']
+                         + ['LOG_FILE', 'LOG_NO', 'EVALS', 'TIME']) + '\n')
         f.close()
 
     return config
@@ -177,10 +178,12 @@ def write_result_file(result, index, config):
         f.write(','.join([result[0], config['log_id'], str(index + 1) , result[1]]) + '\n')
         f.close()
 
+        '''
         for filename, i in [('pd', 2), ('ar', 3)]:
             f = open(config['run/folder'] + '/' + '%s.csv' % filename, 'a')
             f.write(result[i] + '\n')
             f.close()
+        '''
     except:
         sys.stdout.write('\rFailed to write to %s.' % config['result_file'])
 
@@ -192,7 +195,8 @@ def run(myconfig):
 
     # Read data.
     myconfig = config.import_data(myconfig)
-
+    job_server = None
+    
     # Start SMC.
     for index in xrange(myconfig['run/n']):
 
@@ -200,14 +204,18 @@ def run(myconfig):
             print '\nStarting %i/%i' % (index + 1, myconfig['run/n'])
 
         myconfig = prepare_logger(myconfig)
-        job_server = prepare_job_server(myconfig)
+        if job_server is None:
+            job_server = prepare_job_server(myconfig)
         myconfig = prepare_run(myconfig)
-
-        smc = algo.smc.AnnealedSMC(myconfig, target=1.0, job_server=job_server)
-        smc.initialize()
-        smc.sample()
-        write_result_file(smc.get_csv(), index, myconfig)
-
+        if myconfig['run/algo'].lower()=='smc':
+            myalgo = algo.smc.AnnealedSMC(myconfig, target=1.0, job_server=job_server)
+        if myconfig['run/algo'].lower()=='mcmc':
+            myalgo = algo.mcmc.MCMC(myconfig, job_server=job_server)        
+        myalgo.initialize()
+        myalgo.sample()
+        write_result_file(myalgo.get_csv(), index, myconfig)
+    if not job_server is None:
+        job_server.destroy()
 
 if __name__ == "__main__":
     main()

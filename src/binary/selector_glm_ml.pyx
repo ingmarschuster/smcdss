@@ -34,24 +34,20 @@ class SelectorGmlMl(glm.SelectorGlm):
         self.py_wrapper = wrapper.selector_glm_ml()
         self.pp_modules += ('binary.selector_glm_ml',)
 
-        self.SIZE_PENALTY = -self.LOGIT_P
-
         # determine criterion
         if config['prior/criterion'].lower() == 'bic':
-            self.SIZE_PENALTY += 0.5 * numpy.log(self.n)
+            self.SIZE_PENALTY = 0.5 * numpy.log(self.n)
         if config['prior/criterion'].lower() in ['aic', 'aicc']:
-            self.SIZE_PENALTY += 1
+            self.SIZE_PENALTY = 1
 
         # use AIC with correction
         self.AICc = False
         if config['prior/criterion'].lower() == 'aicc':
             self.AICc = True
 
-        self.prior = False
-
     def score(self, numpy.ndarray[dtype=numpy.float64_t, ndim=1] y,
-                        numpy.ndarray[dtype=numpy.float64_t, ndim=2] Z,
-                        numpy.ndarray[dtype=numpy.int16_t, ndim=1] index):
+                    numpy.ndarray[dtype=numpy.float64_t, ndim=2] Z,
+                    numpy.ndarray[dtype=numpy.int16_t, ndim=1] index):
         """
             Criterion.
             \return criterion

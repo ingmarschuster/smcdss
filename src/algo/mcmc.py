@@ -2,380 +2,119 @@
 # -*- coding: utf-8 -*-
 
 """
-Markov chain Monte Carlo on binary spaces.
+    Markov chain Monte Carlo on binary spaces.
+    @namespace ibs.mcmc
 """
 
-"""
-@namespace ibs.mcmc
-$Author$
-$Rev$
-$Date$
-@details The algorithms include the classic Gibbs kernel, Symmetric Metropolis-
-Hasting kernels and Adaptvie Metropolis-Hastings kernels.
-"""
+import time
+import sys
+import datetime
+import mc
 
-import time, sys
-import numpy
-import scipy
-import scipy.stats as stats
-import utils
+BURNIN_COLOR = "#999999"
 
-class mcmc():
-    """ Auxiliary class. """
-    header = ['LENGTH', 'NO_EVALS', 'NO_MOVES', 'ACC_RATE' , 'TIME']
-    @staticmethod
-    def run(v):
-        return integrate_mcmc(v)
+class MCMC():
 
-def integrate_mcmc(param):
-    """
-        Compute an estimate of the expected value via MCMC.
-        \param v parameters
-        \param verbose verbose
-    """
+    def __init__(self, param, gui=None, job_server=None):
+        self.ps = mc.MarkovChain(param)
+        self.gui = gui
+        self.param = param
 
-    mc = MarkovChain(param)
-    mc.burn_in()
-
-    # run for maximum time or maximum iterations
-    while not mc.done:
-        mc.do_step()
-        mc.kernel.adapt(mc.mean, mc.cov)
-
-    print '\nDone.'
-    return mc.getCsv()
-
-class MarkovChain(object):
-    """ Markov chain. """
-
-    def __init__(self, param):
+    def initialize(self, lock=None):
         """
-            Constructor.
-            \param f probability mass function 
-            \param kernel Markov kernel
-            \param q expected number of bits to be flipped
-            \param max_evals maximum number of target evaluations
-            \param step_size number of steps stored before updating the estimator
+            Initialize Markov chain.
+        """
+        if not lock is None:
+            lock.acquire()
+        if self.ps.d < self.param['data/min_dim']:
+            self.ps.enumerate_state_space(self.target)
+            return
+
+        t = time.time()
+        self.ps.max_evals /= 100.0
+        self.ps.chunk_size = self.ps.max_evals / 20.0
+        sys.stdout.write('%s: %i steps burn in...' % (self.ps.kernel.name.lower(), self.ps.max_evals))
+
+        if not self.gui is None:
+            bar_color = self.gui.bar_color
+            self.gui.progress_bar.set_color(BURNIN_COLOR)
+            if not self.gui.mybarplot is None: self.gui.mybarplot.bar_color = BURNIN_COLOR
+
+        while not self.ps.done:
+            self.ps.do_step()
+            if not self.check_gui(): return
+
+        sys.stdout.write('\rburn in completed in %.2f sec\n' % (time.time() - t))
+        self.ps = mc.MarkovChain(self.param, x=self.ps.x)
+
+        if not self.gui is None:
+            self.gui.progress_bar.set_color(bar_color)
+            if not self.gui.mybarplot is None: self.gui.mybarplot.bar_color = bar_color
+            self.check_gui()
+
+        if not lock is None:
+            lock.release()
+
+    def sample(self, lock=None):
+        """
+            Compute an estimate of the expected value via MCMC.
+            \param v parameters
             \param verbose verbose
         """
 
-        ## time
+        if not lock is None:
+            lock.acquire()
+
+        time.sleep(0.2)
         self.start = time.time()
-        ## verbose
-        self.verbose = param['RUN_VERBOSE']
-        ## Markov kernel
-        self.kernel = param['MCMC_KERNEL'].setup(param['f'], float(param['MCMC_EXP_FLIPS']))
-        ## dimension
-        self.d = self.kernel.d
-        ## number of steps stored before updating the estimator
-        self.chunk_size = int(min(param['MCMC_CHUNK_SIZE'], param['MCMC_MAX_EVALS']))
-        ## maximum number of target evaluations
-        self.max_evals = float(param['MCMC_MAX_EVALS'])
-        ## current state
-        self.x = numpy.random.random(self.d) > 0.5
-        ## log probability of the current state
-        self.log_f_x = self.kernel.f.lpmf(self.x)
 
-        ## number of moves
-        self.n_moves = 0
-        ## number of target function evaluations
-        self.n_evals = 0
-        ## number of steps
-        self.n_steps = 0
+        # run for maximum time or maximum iterations
+        while not self.ps.done:
+            self.ps.do_step()
+            if not self.check_gui(): return
 
-        ## mean estimator
-        self.mean = numpy.zeros(self.d)
-        ## covariance estimator
-        self.cov = numpy.zeros((self.d, self.d))
+        sys.stdout.write('\rmarkov chain monte carlo completed in %s.\n' % self.get_time_elapsed())
 
-    def __str__(self):
-        return '\nmean: %s\nprogress: %.3f %%\nlength: %.3f\nacc_rate: %.3f\nmoves: %.3f\nevals: %.3f' % \
-                ('[' + ', '.join(['%.3f' % x for x in self.mean]) + ']',
-                 self.progress,
-                 self.length * 1e-3,
-                 self.acc_rate,
-                 self.n_moves * 1e-3,
-                 self.n_evals * 1e-3)
+        # finalize thread
+        if not self.gui is None:
+            self.gui.stop()
+            self.gui.write_result_file()
+            self.check_gui()
 
-    def burn_in(self, n_burn_in=None):
+    def get_time_elapsed(self):
         """
-            Run a burn-in period to come closer to the invariant distribution.
-            \param n_burn_in number of steps to burn-in 
+            \return Get elapsed time.
         """
+        return str(datetime.timedelta(seconds=time.time() - self.start))
 
-        if n_burn_in is None: n_burn_in = int(self.max_evals / 100.0)
-        last_ratio = 0
-        print "\n%s: %i steps burn in..." % (self.kernel.name, n_burn_in)
-        for i in xrange(n_burn_in):
-            self.x, self.log_f_x, move, eval = self.kernel.rvs(self.x, self.log_f_x)
-            last_ratio = utils.aux.progress(i / float(n_burn_in), last_ratio=last_ratio)
-        if not self.verbose: print "\n%s: %i steps MCMC..." % (self.kernel.name, self.max_evals)
-
-    def do_step(self):
-        """ Propagate the Markov chain. """
-        mean = numpy.zeros(self.d)
-        cov = numpy.zeros((self.d, self.d))
-        t = 1.0
-        last_ratio = self.n_evals / self.max_evals
-
-        for i in xrange(self.chunk_size):
-
-            x, self.log_f_x, move, eval = self.kernel.rvs(self.x, self.log_f_x)
-            self.n_evals += eval
-
-            if move:
-                mean += t * self.x
-                cov += t * numpy.dot(x[:, numpy.newaxis], x[ numpy.newaxis, :])
-                self.n_moves += 1
-                self.x = x
-                t = 1.0
-            else:
-                t += 1.0
-            if not self.verbose:
-                last_ratio = utils.aux.progress(ratio=self.n_evals / self.max_evals, last_ratio=last_ratio)
-
-        mean /= float(self.chunk_size)
-        cov /= float(self.chunk_size)
-        r = self.n_steps / float(self.n_steps + 1)
-        self.mean = r * self.mean + (1 - r) * mean
-        self.cov = r * self.cov + (1 - r) * cov
-        self.n_steps += 1
-
-        if self.verbose: print self
-
-    def getDone(self):
-        return self.max_evals <= self.n_evals
-
-    def getAccRate(self):
-        return self.n_moves / float(self.n_evals)
-
-    def getProgress(self):
-        return self.n_evals / float(self.max_evals)
-
-    def getLength(self):
-        return self.n_steps * self.chunk_size
-
-    def getCsv(self):
-        mean = ','.join(['%.8f' % x for x in self.mean])
-        return mean , '%.3f,%.3f,%.3f,%.3f,%.3f' % \
-            (self.length * 1e-3,
-             self.n_evals * 1e-3,
-             self.n_moves * 1e-3,
-             self.acc_rate,
-             time.time() - self.start)
-
-    done = property(fget=getDone, doc="is done")
-    acc_rate = property(fget=getAccRate, doc="acceptance rate")
-    progress = property(fget=getProgress, doc="progress")
-    length = property(fget=getLength, doc="length")
-
-
-class Kernel(stats.rv_discrete):
-    """ Wrapper class for Markov kernels. """
-
-    def __init__(self, f, name='Markov kernel', long_name='Markov kernel.'):
+    def get_csv(self):
         """
-            Constructor.
-            \param f log probability mass function of the invariant distribution 
-            \param name name
-            \param long_name long_name
+            \return A comma separated values of mean, evals, length, moves, time
         """
-        stats.rv_discrete.__init__(self, name=name, long_name=long_name)
+        return (','.join(['%.8f' % x for x in self.ps.get_mean()]),
+                ','.join(['%.3f' % (self.ps.n_f_evals * 1e-3),
+                          '%.3f' % (self.ps.length * 1e-3),
+                          '%.3f' % (self.ps.n_moves * 1e-3),
+                          '%.3f' % (time.time() - self.start)]),
+                ','.join(['%.5f' % x for x in self.ps.r_ac]))
 
-        ## log probability mass function of the invariant distribution 
-        self.f = f
-        ## dimension
-        self.d = f.d
-
-    @classmethod
-    def setup(cls, f, q):
-        return cls(f, q)
-
-    def rvs(self, x, log_f_x=None):
+    def check_gui(self):
         """
-            Draw from kernel k(x,\cdot)
-            \param x current state
-            \param log_f_x log probability of current state
+            Plots advance of SMC on GUI.
         """
-        if log_f_x is None: log_f_x = self.f.lpmf(x)
-        return self._rvs(x, log_f_x)
+        if self.gui is None: return True
+        # show status
+        if self.gui.is_running:
+            if not self.gui.mygraph is None:
+                self.gui.mygraph.values = [self.ps.r_ac, self.ps.r_bf]
+                self.gui.mygraph.redraw()
+            if not self.gui.mybarplot is None:
+                self.gui.mybarplot.values = self.ps.get_mean()
+                self.gui.mybarplot.redraw()
+            self.gui.progress_bar.set_value(self.ps.rho)
+        else:
+            self.gui.write('\rstopped.')
+            self.gui.stop_button.config(relief='raised', state='normal')
 
-    def adapt(self, mean, cov):
-        """ Adapt the kernel. """
-        return
-
-    def proposal(self, x, Index):
-        Y = x.copy()
-        for index in Index:
-            Y[index] = Y[index] ^ True
-        log_f_Y = self.f.lpmf(Y)
-        return Y, log_f_Y
-
-    def getPermutation(self):
-        """
-            Draw a random permutation of the index set.
-            \return permutation
-        """
-        perm = range(self.d)
-        for i in reversed(range(1, self.d)):
-            # pick an element in p[:i+1] with which to exchange p[i]
-            j = numpy.random.randint(low=0, high=i + 1)
-            perm[i], perm[j] = perm[j], perm[i]
-        return perm
-
-
-class Gibbs(Kernel):
-        """ Gibbs kernel. """
-
-        def __init__(self, f, q=1.0, name='Gibbs kernel', long_name='Gibbs kernel.'):
-            """
-                Constructor.
-                \param f log probability mass function of the invariant distribution 
-            """
-            Kernel.__init__(self, f, name, long_name)
-            self.q = q
-
-        def _rvs(self, x, log_f_x):
-            """
-                Draw from Gibbs kernel k(x,\cdot)
-                \param x current state
-                \param log_f_x log probability of current state
-            """
-            Y, log_f_Y = self.proposal(x, Index=[numpy.random.randint(low=0, high=self.d)])
-
-            if numpy.random.random() < 1.0 / (1.0 + numpy.exp(log_f_x - log_f_Y)):
-                return Y, log_f_Y, True, True
-            else:
-                return x, log_f_x, False, True
-
-
-class SwapMetropolisHastings(Gibbs):
-        """ Swap Metropolis-Hastings kernel. """
-
-        def __init__(self, f, q, name='Swap Metropolis-Hastings kernel', long_name='Swap Metropolis-Hastings kernel.'):
-            """
-                Constructor.
-                \param f log probability mass function of the invariant distribution 
-            """
-            Gibbs.__init__(self, f, q, name=name, long_name=long_name)
-
-        def _rvs(self, x, log_f_x):
-            """
-                Draw from Swap Metropolis-Hastings kernel k(x,\cdot)
-            """
-
-            Y = x.copy()
-            if numpy.random.random() < 0.5:
-                index = numpy.random.randint(low=0, high=self.d)
-                Y[index] = Y[index] ^ True
-            else:
-                index_in = numpy.where(Y)[0]
-                index_out = numpy.where(Y ^ True)[0]
-                Y[index_in[numpy.random.randint(low=0, high=index_in.shape[0])]] = False
-                Y[index_out[numpy.random.randint(low=0, high=index_out.shape[0])]] = True
-            log_f_Y = self.f.lpmf(Y)
-            if numpy.random.random() < numpy.exp(log_f_Y - log_f_x):
-                return Y, log_f_Y, True, True
-            else:
-                return x, log_f_x, False, True
-
-
-class SymmetricMetropolisHastings(Gibbs):
-        """ Symmetric Metropolis-Hastings kernel. """
-
-        def __init__(self, f, q, name='Symmetric Metropolis-Hastings kernel', long_name='Symmetric Metropolis-Hastings kernel.'):
-            """
-                Constructor.
-                \param f log probability mass function of the invariant distribution 
-            """
-            Gibbs.__init__(self, f, q, name=name, long_name=long_name)
-
-        def _rvs(self, x, log_f_x):
-            """
-                Draw from Symmetric Metropolis-Hastings kernel k(x,\cdot)
-            """
-            Y, log_f_Y = self.proposal(x, Index=self.getRandomSubset())
-            if numpy.random.random() < numpy.exp(log_f_Y - log_f_x):
-                return Y, log_f_Y, True, True
-            else:
-                return x, log_f_x, False, True
-
-        def getRandomSubset(self):
-            """
-                Draw a uniformly random subset of the index set.
-                \return subset
-            """
-            if self.q == 1: return [numpy.random.randint(low=0, high=self.d)]
-            k = min(stats.geom.rvs(1.0 / self.q), self.d)
-            if k < 5:
-                Index = []
-                while len(Index) < k:
-                    n = numpy.random.randint(low=0, high=self.d)
-                    if not n in Index: Index.append(n)
-            else:
-                Index = self.getPermutation()[:k]
-            return Index
-
-
-class AdaptiveMetropolisHastings(Kernel):
-        """ Adaptive Metropolis-Hastings kernel"""
-
-        def __init__(self, f, q=1.0, name='Adaptive Metropolis-Hastings kernel',
-                     long_name='Adaptive Metropolis-Hastings kernel.'):
-            """
-                Constructor.
-                \param f log probability mass function of the invariant distribution
-                \param q expected number of bits to be flipped
-                \param name name
-                \param long_name long_name
-            """
-            Kernel.__init__(self, f=f, name=name, long_name=long_name)
-            self.adapted = False
-            self.mean = 0.5 * numpy.ones(self.d)
-            self.W = numpy.eye(self.d)
-            self.k = 0
-            self.perm = range(self.d)
-            self.delta = 0.01
-            self.xlambda = 0.01
-
-        def adapt(self, mean, cov):
-            """ Adapt the kernel. """
-            self.mean = mean
-            self.W = scipy.linalg.inv(cov + self.xlambda * numpy.eye(self.d))
-            self.adapted = True
-
-        def _rvs(self, x, log_f_x):
-            """
-                Draw from Metropolised Gibbs kernel k(x,\cdot)
-                \param x current state
-                \param log_f_x log probability of current state
-            """
-            if self.k == self.d:
-                self.perm = self.getPermutation()
-                self.k = 0
-            j = self.perm[self.k]
-            self.k += 1
-
-            if self.adapted:
-                not_j = [i for i in self.perm if not i == j]
-                v = numpy.dot(self.W[j, not_j], x[not_j] - self.mean[not_j])
-                psi = self.mean[j] - v / self.W[j, j]
-
-                q = max(min(psi, 1 - self.delta), self.delta)
-
-                # return if there is no mutation
-                if (numpy.random.random() < q) == x[j]: return x, log_f_x, False, False
-            else:
-                q = 0.5
-
-            Y, log_f_Y = self.proposal(x, Index=[j])
-
-            if Y[j]:
-                r = (1 - q) / q
-            else:
-                r = q / (1 - q)
-
-            if numpy.random.random() < numpy.exp(log_f_Y - log_f_x) * r:
-                return Y, log_f_Y, True, True
-            else:
-                return x, log_f_x, False, True
+        # check if running
+        return self.gui.is_running

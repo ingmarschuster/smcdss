@@ -13,12 +13,11 @@ import numpy
 import os
 import subprocess
 import sys
-import threading
 import utils.pmw.Pmw as pmw
 
 TOP_BORDER = 10
 BOTTOM_BORDER = 10
-LEFT_BORDER = 40
+LEFT_BORDER = 45
 RIGHT_BORDER = 10
 GRAPH_PLOTCHARS = ['x', 'o', '']
 GRAPH_COLORS = ['#990000', '#009900', '#5555EE']
@@ -40,11 +39,11 @@ class GuiPlot(tk.Toplevel, object):
 
         self.legend = legend
 
+        self.top_scale = 1.0
         self.values = None
         self.pressed_ctrl = False
         self.pressed_alt = False
         self.wheel_event = False
-        self.lock = threading.Lock()
 
         # compute space for labels
         self.labels = labels
@@ -149,7 +148,7 @@ class GuiPlot(tk.Toplevel, object):
                           TOP_BORDER + y,
                           LEFT_BORDER + self.plot_width,
                           TOP_BORDER + y, stipple="gray25", fill="#000077", tag='axis')
-            self.c.create_text(3, TOP_BORDER + y, text=str(1 - i / 10.0), anchor=tk.W, tag='axis')
+            self.c.create_text(1, TOP_BORDER + y, text='%.2f' % (self.top_scale * (1.0 - i / 10.0)), anchor=tk.W, tag='axis')
 
     def draw_legend(self):
         '''
@@ -200,9 +199,11 @@ class GuiGraph(GuiPlot):
 
     name = 'Graph'
 
-    def __init__(self, master, x=10, y=10, w=400, h=400, legend=None):
+    def __init__(self, master, x=10, y=10, w=400, h=400, legend=None, adjust_scale=False, first_val=1.0):
         super(GuiGraph, self).__init__(master, x, y, w, h, legend=legend)
         self.lines = None
+        self.first_val = first_val
+        self.adjust_scale = adjust_scale
 
     def close_window(self):
         self.master.mygraph = None
@@ -212,17 +213,27 @@ class GuiGraph(GuiPlot):
         # remove old graph
         self.c.delete('graph')
 
+        if self.adjust_scale:
+            flat_list = [item for sublist in self.values for item in sublist]
+            if len(flat_list) == 0: top_scale = 1.0
+            else:
+                top_scale = round(max(flat_list) + 0.05, 1)
+            if not top_scale == self.top_scale:
+                self.top_scale = top_scale
+                self.draw_axis()
+
         # add lines
-        for j, graph in enumerate(self.lines):
-            n = sum(graph)
-            if n == 0: break
-            box_width = self.plot_width / float(n)
-            for k in numpy.cumsum(numpy.array(graph)):
-                self.c.create_line(LEFT_BORDER + k * box_width,
-                                   TOP_BORDER + self.plot_height,
-                                   LEFT_BORDER + k * box_width,
-                                   TOP_BORDER,
-                                   fill=GRAPH_COLORS[-1], tags='graph', width=2)
+        if not self.lines is None:
+            for j, graph in enumerate(self.lines):
+                n = sum(graph)
+                if n == 0: break
+                box_width = self.plot_width / float(n)
+                for k in numpy.cumsum(numpy.array(graph)):
+                    self.c.create_line(LEFT_BORDER + k * box_width,
+                                       TOP_BORDER + self.plot_height,
+                                       LEFT_BORDER + k * box_width,
+                                       TOP_BORDER,
+                                       fill=GRAPH_COLORS[-1], tags='graph', width=2)
         self.draw_legend()
 
         # add graphs
@@ -230,15 +241,15 @@ class GuiGraph(GuiPlot):
             n = len(graph)
             if n == 0: break
             box_width = self.plot_width / float(n)
-            graph = [1.0] + [x for x in graph]
+            graph = [self.first_val] + [x for x in graph]
             for j, x in enumerate(numpy.linspace(box_width, self.plot_width, n)):
                 self.c.create_line(LEFT_BORDER + x - box_width,
-                                   TOP_BORDER + (1.0 - graph[j]) * self.plot_height,
+                                   TOP_BORDER + (self.top_scale - graph[j]) * self.plot_height / self.top_scale,
                                    LEFT_BORDER + x,
-                                   TOP_BORDER + (1.0 - graph[j + 1]) * self.plot_height,
+                                   TOP_BORDER + (self.top_scale - graph[j + 1]) * self.plot_height / self.top_scale,
                                    fill=GRAPH_COLORS[i], tags='graph', width=2)
                 self.c.create_text(LEFT_BORDER + x,
-                                   TOP_BORDER + (1.0 - graph[j + 1]) * self.plot_height,
+                                   TOP_BORDER + (self.top_scale - graph[j + 1]) * self.plot_height / self.top_scale,
                                    fill=GRAPH_COLORS[i], tags='graph',
                                    text=GRAPH_PLOTCHARS[i], anchor=tk.CENTER)
         self.c.update()
@@ -349,14 +360,14 @@ def plot_R(myconfig):
     name_length = 0
     for i, x in enumerate(myconfig['layout/names']):
         if 'POW2' in x: myconfig['layout/names'][i] = x[:x.index('.')] + '.x.' + x[:x.index('.')]
-        if name_length < len(str(x)):
-            name_length = len(str(x))
+        if name_length < len(str(x)) + 1:
+            name_length = len(str(x)) + 1
     myconfig['layout/names'] = ', '.join(["'" + str(x).upper().replace('.X.', '.x.')
                                         + "'" for x in myconfig['layout/names']])
 
     # Auto-adjust margins
     if myconfig['layout/inner_margin'] is None:
-        myconfig['layout/inner_margin'] = [name_length * 0.4, 2, 0.5, 0]
+        myconfig['layout/inner_margin'] = [name_length * 0.6, 2, 0.5, 0]
     if myconfig['layout/outer_margin'] is None:
         myconfig['layout/outer_margin'] = [0, 0, max(0.5, 2 * myconfig['layout/title_size']), 0]
     for key in ['layout/outer_margin', 'layout/inner_margin']:

@@ -424,18 +424,21 @@ def import_data(config):
     # convert csv data to numpy.array
     sample = list()
     for row in reader:
-        if len(row) > 0 and not row[Y_pos] == 'NA':
+        if len(row) > 0 and not (row[Y_pos] == 'NA' or row[Y_pos] == ''):
             sample += [numpy.array([
                 eval(x) for x in
                     [row[Y_pos]] + # observation column
                     [row[i] for i in static_index] + # static predictor columns
                     [row[i] for i in free_index]     # free predictor columns
-                ])]
+                ], dtype=float)]
     sample = numpy.array(sample)
 
     # cut number of observations
-    config['data/max_obs'] = min(config['data/max_obs'], sample.shape[0])
-    sample = sample[:config['data/max_obs'], :]
+    if config['data/max_obs'] in ['', None]:
+        max_obs = sample.shape[0]
+    else:
+        max_obs = min(int(config['data/max_obs']), sample.shape[0])
+    sample = sample[:max_obs, :]
 
     free_header, static_header = [header[i] for i in free_index], [header[i] for i in static_index]
 
@@ -450,11 +453,12 @@ def import_data(config):
     # overwrite data dependent place holders
     if config['prior/model_inclprob'] is None:
         config['prior/model_inclprob'] = 0.5
-        config['prior/model_maxsize'] = config['data/max_obs']
     if config['prior/model_maxsize'] in ['n', '', None]:
-        config['prior/model_maxsize'] = config['data/max_obs']
+        config['prior/model_maxsize'] = max_obs
     if config['prior/var_dispersion'] in ['n', '', None]:
-        config['prior/var_dispersion'] = config['data/max_obs']
+        config['prior/var_dispersion'] = float(max_obs)
+    else:
+        config['prior/var_dispersion'] = float(config['prior/var_dispersion'])
 
     if config['prior/model'].lower() == 'linear normal':
         if config['prior/criterion'].lower() == 'bayes':
@@ -462,8 +466,8 @@ def import_data(config):
         else:
             f = SelectorLnMl
 
-    if config['prior/model'].lower() == 'binary response':
-        if config['prior/criterion'].lower() in ['bayes', 'laplace']:
+    if config['prior/model'].lower() in ['logistic', 'probit']:
+        if config['prior/criterion'].lower() in ['laplace+is', 'laplace','full is']:
             f = SelectorGmlBayes
         else:
             f = SelectorGmlMl
